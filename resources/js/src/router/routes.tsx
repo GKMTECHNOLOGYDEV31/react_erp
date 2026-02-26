@@ -1,4 +1,5 @@
 import { lazy } from 'react';
+const InicioPage = lazy(() => import('../pages/inicio')); // 👈 Agrega esta línea
 const Index = lazy(() => import('../pages/Index'));
 const Analytics = lazy(() => import('../pages/Analytics'));
 const Finance = lazy(() => import('../pages/Finance'));
@@ -104,7 +105,8 @@ const routes = [
     // dashboard
     {
         path: '/',
-        element: <Index />,
+        element: <InicioPage />,
+        layout: 'blank',  // Sin sidebar/header
     },
     // {
     //     path: '/index',
