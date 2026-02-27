@@ -100,6 +100,9 @@ const QuillEditor = lazy(() => import('../pages/Forms/QuillEditor'));
 const MarkDownEditor = lazy(() => import('../pages/Forms/MarkDownEditor'));
 const DateRangePicker = lazy(() => import('../pages/Forms/DateRangePicker'));
 const Clipboard = lazy(() => import('../pages/Forms/Clipboard'));
+const ListaTickets = lazy(() => import('../pages/tickets/index'));  // index.jsx es la lista
+const CrearTicket = lazy(() => import('../pages/tickets/CrearTicket'));
+const EditarTicket = lazy(() => import('../pages/tickets/EditarTicket'));
 
 const routes = [
     // dashboard
@@ -117,62 +120,76 @@ const routes = [
         path: '/analytics',
         element: <Analytics />,
     },
+    
+    {
+        path: '/tickets',  // La lista en la ruta principal
+        element: <ListaTickets />,
+    },
+    {
+        path: '/tickets/crear',
+        element: <CrearTicket />,
+    },
+    
+    {
+        path: '/tickets/editar/:id',
+        element: <EditarTicket />,
+    },
     // finance page
-    {
-        path: '/finance',
-        element: <Finance />,
-    },
+    // {
+    //     path: '/finance',
+    //     element: <Finance />,
+    // },
     // crypto page
-    {
-        path: '/crypto',
-        element: <Crypto />,
-    },
-    {
-        path: '/apps/todolist',
-        element: <Todolist />,
-    },
-    {
-        path: '/apps/notes',
-        element: <Notes />,
-    },
-    {
-        path: '/apps/contacts',
-        element: <Contacts />,
-    },
-    {
-        path: '/apps/mailbox',
-        element: <Mailbox />,
-    },
-    {
-        path: '/apps/invoice/list',
-        element: <List />,
-    },
+    // {
+    //     path: '/crypto',
+    //     element: <Crypto />,
+    // },
+    // {
+    //     path: '/apps/todolist',
+    //     element: <Todolist />,
+    // },
+    // {
+    //     path: '/apps/notes',
+    //     element: <Notes />,
+    // },
+    // {
+    //     path: '/apps/contacts',
+    //     element: <Contacts />,
+    // },
+    // {
+    //     path: '/apps/mailbox',
+    //     element: <Mailbox />,
+    // },
+    // {
+    //     path: '/apps/invoice/list',
+    //     element: <List />,
+    // },
     // Apps page
-    {
-        path: '/apps/chat',
-        element: <Chat />,
-    },
-    {
-        path: '/apps/scrumboard',
-        element: <Scrumboard />,
-    },
-    {
-        path: '/apps/calendar',
-        element: <Calendar />,
-    },
+    // {
+    //     path: '/apps/chat',
+    //     element: <Chat />,
+    // },
+    // {
+    //     path: '/apps/scrumboard',
+    //     element: <Scrumboard />,
+    // },
+    // {
+    //     path: '/apps/calendar',
+    //     element: <Calendar />,
+    // },
     // preview page
-    {
-        path: '/apps/invoice/preview',
-        element: <Preview />,
-    },
-    {
-        path: '/apps/invoice/add',
-        element: <Add />,
-    },
-    {
-        path: '/apps/invoice/edit',
-        element: <Edit />,
-    },
+    // {
+    //     path: '/apps/invoice/preview',
+    //     element: <Preview />,
+    // },
+    // {
+    //     path: '/apps/invoice/add',
+    //     element: <Add />,
+    // },
+    // {
+    //     path: '/apps/invoice/edit',
+    //     element: <Edit />,
+    // },
     // components page
     {
         path: '/components/tabs',
@@ -186,50 +203,50 @@ const routes = [
         path: '/components/modals',
         element: <Modals />,
     },
-    {
-        path: '/components/cards',
-        element: <Cards />,
-    },
-    {
-        path: '/components/carousel',
-        element: <Carousel />,
-    },
-    {
-        path: '/components/countdown',
-        element: <Countdown />,
-    },
-    {
-        path: '/components/counter',
-        element: <Counter />,
-    },
-    {
-        path: '/components/sweetalert',
-        element: <SweetAlert />,
-    },
-    {
-        path: '/components/timeline',
-        element: <Timeline />,
-    },
-    {
-        path: '/components/notifications',
-        element: <Notification />,
-    },
-    {
-        path: '/components/media-object',
-        element: <MediaObject />,
-    },
-    {
-        path: '/components/list-group',
-        element: <ListGroup />,
-    },
-    {
-        path: '/components/pricing-table',
-        element: <PricingTable />,
-    },
-    {
-        path: '/components/lightbox',
-        element: <LightBox />,
-    },
+    // {
+    //     path: '/components/cards',
+    //     element: <Cards />,
+    // },
+    // {
+    //     path: '/components/carousel',
+    //     element: <Carousel />,
+    // },
+    // {
+    //     path: '/components/countdown',
+    //     element: <Countdown />,
+    // },
+    // {
+    //     path: '/components/counter',
+    //     element: <Counter />,
+    // },
+    // {
+    //     path: '/components/sweetalert',
+    //     element: <SweetAlert />,
+    // },
+    // {
+    //     path: '/components/timeline',
+    //     element: <Timeline />,
+    // },
+    // {
+    //     path: '/components/notifications',
+    //     element: <Notification />,
+    // },
+    // {
+    //     path: '/components/media-object',
+    //     element: <MediaObject />,
+    // },
+    // {
+    //     path: '/components/list-group',
+    //     element: <ListGroup />,
+    // },
+    // {
+    //     path: '/components/pricing-table',
+    //     element: <PricingTable />,
+    // },
+    // {
+    //     path: '/components/lightbox',
+    //     element: <LightBox />,
+    // },
     // elements page
     {
         path: '/elements/alerts',
@@ -305,174 +322,174 @@ const routes = [
     },
 
     // charts page
-    {
-        path: '/charts',
-        element: <Charts />,
-    },
+    // {
+    //     path: '/charts',
+    //     element: <Charts />,
+    // },
     // widgets page
-    {
-        path: '/widgets',
-        element: <Widgets />,
-    },
+    // {
+    //     path: '/widgets',
+    //     element: <Widgets />,
+    // },
     //  font-icons page
     {
         path: '/font-icons',
         element: <FontIcons />,
     },
     //  Drag And Drop page
-    {
-        path: '/dragndrop',
-        element: <DragAndDrop />,
-    },
+    // {
+    //     path: '/dragndrop',
+    //     element: <DragAndDrop />,
+    // },
     //  Tables page
-    {
-        path: '/tables',
-        element: <Tables />,
-    },
+    // {
+    //     path: '/tables',
+    //     element: <Tables />,
+    // },
     // Data Tables
-    {
-        path: '/datatables/basic',
-        element: <Basic />,
-    },
-    {
-        path: '/datatables/advanced',
-        element: <Advanced />,
-    },
-    {
-        path: '/datatables/skin',
-        element: <Skin />,
-    },
-    {
-        path: '/datatables/order-sorting',
-        element: <OrderSorting />,
-    },
-    {
-        path: '/datatables/multi-column',
-        element: <MultiColumn />,
-    },
-    {
-        path: '/datatables/multiple-tables',
-        element: <MultipleTables />,
-    },
-    {
-        path: '/datatables/alt-pagination',
-        element: <AltPagination />,
-    },
-    {
-        path: '/datatables/checkbox',
-        element: <Checkbox />,
-    },
-    {
-        path: '/datatables/range-search',
-        element: <RangeSearch />,
-    },
-    {
-        path: '/datatables/export',
-        element: <Export />,
-    },
-    {
-        path: '/datatables/column-chooser',
-        element: <ColumnChooser />,
-    },
+    // {
+    //     path: '/datatables/basic',
+    //     element: <Basic />,
+    // },
+    // {
+    //     path: '/datatables/advanced',
+    //     element: <Advanced />,
+    // },
+    // {
+    //     path: '/datatables/skin',
+    //     element: <Skin />,
+    // },
+    // {
+    //     path: '/datatables/order-sorting',
+    //     element: <OrderSorting />,
+    // },
+    // {
+    //     path: '/datatables/multi-column',
+    //     element: <MultiColumn />,
+    // },
+    // {
+    //     path: '/datatables/multiple-tables',
+    //     element: <MultipleTables />,
+    // },
+    // {
+    //     path: '/datatables/alt-pagination',
+    //     element: <AltPagination />,
+    // },
+    // {
+    //     path: '/datatables/checkbox',
+    //     element: <Checkbox />,
+    // },
+    // {
+    //     path: '/datatables/range-search',
+    //     element: <RangeSearch />,
+    // },
+    // {
+    //     path: '/datatables/export',
+    //     element: <Export />,
+    // },
+    // {
+    //     path: '/datatables/column-chooser',
+    //     element: <ColumnChooser />,
+    // },
     // Users page
-    {
-        path: '/users/profile',
-        element: <Profile />,
-    },
-    {
-        path: '/users/user-account-settings',
-        element: <AccountSetting />,
-    },
+    // {
+    //     path: '/users/profile',
+    //     element: <Profile />,
+    // },
+    // {
+    //     path: '/users/user-account-settings',
+    //     element: <AccountSetting />,
+    // },
     // pages
-    {
-        path: '/pages/knowledge-base',
-        element: <KnowledgeBase />,
-    },
-    {
-        path: '/pages/contact-us-boxed',
-        element: <ContactUsBoxed />,
-        layout: 'blank',
-    },
-    {
-        path: '/pages/contact-us-cover',
-        element: <ContactUsCover />,
-        layout: 'blank',
-    },
-    {
-        path: '/pages/faq',
-        element: <Faq />,
-    },
-    {
-        path: '/pages/coming-soon-boxed',
-        element: <ComingSoonBoxed />,
-        layout: 'blank',
-    },
-    {
-        path: '/pages/coming-soon-cover',
-        element: <ComingSoonCover />,
-        layout: 'blank',
-    },
-    {
-        path: '/pages/error404',
-        element: <ERROR404 />,
-        layout: 'blank',
-    },
-    {
-        path: '/pages/error500',
-        element: <ERROR500 />,
-        layout: 'blank',
-    },
-    {
-        path: '/pages/error503',
-        element: <ERROR503 />,
-        layout: 'blank',
-    },
-    {
-        path: '/pages/maintenence',
-        element: <Maintenence />,
-        layout: 'blank',
-    },
+    // {
+    //     path: '/pages/knowledge-base',
+    //     element: <KnowledgeBase />,
+    // },
+    // {
+    //     path: '/pages/contact-us-boxed',
+    //     element: <ContactUsBoxed />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/pages/contact-us-cover',
+    //     element: <ContactUsCover />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/pages/faq',
+    //     element: <Faq />,
+    // },
+    // {
+    //     path: '/pages/coming-soon-boxed',
+    //     element: <ComingSoonBoxed />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/pages/coming-soon-cover',
+    //     element: <ComingSoonCover />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/pages/error404',
+    //     element: <ERROR404 />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/pages/error500',
+    //     element: <ERROR500 />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/pages/error503',
+    //     element: <ERROR503 />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/pages/maintenence',
+    //     element: <Maintenence />,
+    //     layout: 'blank',
+    // },
     //Authentication
-    {
-        path: '/auth/boxed-signin',
-        element: <LoginBoxed />,
-        layout: 'blank',
-    },
-    {
-        path: '/auth/boxed-signup',
-        element: <RegisterBoxed />,
-        layout: 'blank',
-    },
-    {
-        path: '/auth/boxed-lockscreen',
-        element: <UnlockBoxed />,
-        layout: 'blank',
-    },
-    {
-        path: '/auth/boxed-password-reset',
-        element: <RecoverIdBoxed />,
-        layout: 'blank',
-    },
-    {
-        path: '/auth/cover-login',
-        element: <LoginCover />,
-        layout: 'blank',
-    },
-    {
-        path: '/auth/cover-register',
-        element: <RegisterCover />,
-        layout: 'blank',
-    },
-    {
-        path: '/auth/cover-lockscreen',
-        element: <UnlockCover />,
-        layout: 'blank',
-    },
-    {
-        path: '/auth/cover-password-reset',
-        element: <RecoverIdCover />,
-        layout: 'blank',
-    },
+    // {
+    //     path: '/auth/boxed-signin',
+    //     element: <LoginBoxed />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/auth/boxed-signup',
+    //     element: <RegisterBoxed />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/auth/boxed-lockscreen',
+    //     element: <UnlockBoxed />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/auth/boxed-password-reset',
+    //     element: <RecoverIdBoxed />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/auth/cover-login',
+    //     element: <LoginCover />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/auth/cover-register',
+    //     element: <RegisterCover />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/auth/cover-lockscreen',
+    //     element: <UnlockCover />,
+    //     layout: 'blank',
+    // },
+    // {
+    //     path: '/auth/cover-password-reset',
+    //     element: <RecoverIdCover />,
+    //     layout: 'blank',
+    // },
     //forms page
     {
         path: '/forms/basic',
