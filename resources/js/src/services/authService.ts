@@ -9,11 +9,12 @@ const api = axios.create({
 });
 
 export const login = async (
-    correo: string,
+    documento: string,
     clave: string
 ): Promise<LoginResponse> => {
+
     const response = await api.post<LoginResponse>('/login', {
-        correo,
+        documento,
         clave,
     });
 

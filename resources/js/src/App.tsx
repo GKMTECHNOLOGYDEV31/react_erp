@@ -1,8 +1,17 @@
 import { PropsWithChildren, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { IRootState } from './store';
-import { toggleRTL, toggleTheme, toggleLocale, toggleMenu, toggleLayout, toggleAnimation, toggleNavbar, toggleSemidark } from './store/themeConfigSlice';
-import store from './store';
+import {
+    toggleRTL,
+    toggleTheme,
+    toggleLocale,
+    toggleMenu,
+    toggleLayout,
+    toggleAnimation,
+    toggleNavbar,
+    toggleSemidark
+} from './store/themeConfigSlice';
+import { Toaster } from 'react-hot-toast';
 
 function App({ children }: PropsWithChildren) {
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
@@ -17,14 +26,42 @@ function App({ children }: PropsWithChildren) {
         dispatch(toggleNavbar(localStorage.getItem('navbar') || themeConfig.navbar));
         dispatch(toggleLocale(localStorage.getItem('i18nextLng') || themeConfig.locale));
         dispatch(toggleSemidark(localStorage.getItem('semidark') || themeConfig.semidark));
-    }, [dispatch, themeConfig.theme, themeConfig.menu, themeConfig.layout, themeConfig.rtlClass, themeConfig.animation, themeConfig.navbar, themeConfig.locale, themeConfig.semidark]);
+    }, [dispatch]);
 
     return (
         <div
-            className={`${(store.getState().themeConfig.sidebar && 'toggle-sidebar') || ''} ${themeConfig.menu} ${themeConfig.layout} ${
-                themeConfig.rtlClass
-            } main-section antialiased relative font-nunito text-sm font-normal`}
+            className={`
+                ${themeConfig.sidebar ? 'toggle-sidebar' : ''}
+                ${themeConfig.menu}
+                ${themeConfig.layout}
+                ${themeConfig.rtlClass}
+                main-section antialiased relative font-nunito text-sm font-normal
+            `}
         >
+            {/* 🔥 Toaster Global */}
+            <Toaster
+                position="top-right"
+                toastOptions={{
+                    duration: 3000,
+                    style: {
+                        borderRadius: '10px',
+                        background: '#fff',
+                        color: '#333',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+                    },
+                    success: {
+                        style: {
+                            border: '1px solid #22c55e',
+                        },
+                    },
+                    error: {
+                        style: {
+                            border: '1px solid #ef4444',
+                        },
+                    },
+                }}
+            />
+
             {children}
         </div>
     );

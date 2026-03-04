@@ -2,30 +2,53 @@ import React, { useState } from 'react'; import { useNavigate } from 'react-rout
 import axios from 'axios';
 import { login } from '../../services/authService';
 import { Usuario } from '../../types/auth';
+import toast from 'react-hot-toast';
+
 const InicioPage: React.FC = () => {
 
 
-    const [correo, setCorreo] = useState('');
+    const [documento, setDocumento] = useState('');
     const [clave, setClave] = useState('');
     const [error, setError] = useState('');
     const navigate = useNavigate();
-
+    const [captchaChecked, setCaptchaChecked] = useState(false);
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setError('');
+
+        if (!documento || !clave) {
+            toast.error('Completa todos los campos');
+            return;
+        }
+
+        if (!captchaChecked) {
+            toast.error('Confirma que no eres un robot 🤖');
+            return;
+        }
+        const loadingToast = toast.loading('Validando credenciales...');
 
         try {
-            const data = await login(correo, clave);
+            const data = await login(documento, clave);
 
             localStorage.setItem('token', data.access_token);
             localStorage.setItem('user', JSON.stringify(data.user));
 
-            navigate('/analytics');
+            toast.dismiss(loadingToast);
+
+            toast.success('Bienvenido 🎉', {
+                duration: 2000,
+            });
+
+            setTimeout(() => {
+                navigate('/analytics');
+            }, 1200);
+
         } catch (error: any) {
+            toast.dismiss(loadingToast);
+
             if (error.response?.status === 401) {
-                setError('Credenciales incorrectas');
+                toast.error('Documento o contraseña incorrectos');
             } else {
-                setError('Error de conexión con el servidor');
+                toast.error('Error de conexión con el servidor');
             }
         }
     };
@@ -110,16 +133,15 @@ const InicioPage: React.FC = () => {
                                     <form className="space-y-4" onSubmit={handleSubmit}>
                                         {/* Documento de identidad */}
                                         <div>
-                                            <label htmlFor="documento" className="block text-sm font-medium text-gray-700 mb-1 drop-shadow-sm">
-                                                Correo electrónico
+                                            <label className="block text-sm font-medium text-gray-700 mb-1 drop-shadow-sm">
+                                                Número de documento
                                             </label>
                                             <input
                                                 type="text"
-                                                id="correo"
-                                                value={correo}
-                                                onChange={(e) => setCorreo(e.target.value)}
+                                                value={documento}
+                                                onChange={(e) => setDocumento(e.target.value)}
                                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D11D1D] focus:border-[#D11D1D] outline-none transition shadow-md hover:shadow-lg focus:shadow-lg"
-                                                placeholder="Ingresa tu correo electrónico"
+                                                placeholder="Ingresa tu número de documento"
                                             />
                                         </div>
 
@@ -145,6 +167,8 @@ const InicioPage: React.FC = () => {
                                                     <input
                                                         type="checkbox"
                                                         id="recaptcha"
+                                                        checked={captchaChecked}
+                                                        onChange={(e) => setCaptchaChecked(e.target.checked)}
                                                         className="w-4 h-4 text-[#D11D1D] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#D11D1D] focus:ring-offset-0 shadow-sm"
                                                     />
                                                     <label htmlFor="recaptcha" className="text-sm text-gray-700 cursor-pointer select-none font-medium">

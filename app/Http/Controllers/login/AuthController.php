@@ -12,15 +12,15 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'correo' => 'required|email',
-            'clave'  => 'required|string',
+            'documento' => 'required|string',
+            'clave'     => 'required|string',
         ]);
 
-        $user = Usuario::where('correo', $request->correo)->first();
+        $user = Usuario::where('documento', $request->documento)->first();
 
         if (!$user || !Hash::check($request->clave, $user->clave)) {
             return response()->json([
-                'message' => 'Credenciales incorrectas'
+                'message' => 'Documento o contraseña incorrectos'
             ], 401);
         }
 
@@ -30,9 +30,9 @@ class AuthController extends Controller
             'access_token' => $token,
             'token_type'   => 'Bearer',
             'user' => [
-                'id'      => $user->idUsuario,
-                'nombre'  => $user->Nombre,
-                'correo'  => $user->correo
+                'id'        => $user->idUsuario,
+                'nombre'    => $user->Nombre,
+                'documento' => $user->documento
             ]
         ], 200);
     }
