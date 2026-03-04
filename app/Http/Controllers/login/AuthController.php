@@ -18,26 +18,22 @@ class AuthController extends Controller
 
         $user = Usuario::where('correo', $request->correo)->first();
 
-        if (!$user) {
+        if (!$user || !Hash::check($request->clave, $user->clave)) {
             return response()->json([
                 'message' => 'Credenciales incorrectas'
             ], 401);
         }
 
-        // ⚠️ Si tu clave está encriptada con bcrypt
-        if ($request->clave !== $user->clave) {
-            return response()->json([
-                'message' => 'Credenciales incorrectas'
-            ], 401);
-        }
-
-        // Si usas Sanctum
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'access_token' => $token,
             'token_type'   => 'Bearer',
-            'user'         => $user
-        ]);
+            'user' => [
+                'id'      => $user->idUsuario,
+                'nombre'  => $user->Nombre,
+                'correo'  => $user->correo
+            ]
+        ], 200);
     }
 }

@@ -109,7 +109,9 @@ class Usuario extends Model
 	];
 
 	protected $hidden = [
-		'token'
+		'token',
+		'clave',
+
 	];
 
 	protected $fillable = [
