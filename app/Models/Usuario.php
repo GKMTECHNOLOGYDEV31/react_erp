@@ -9,6 +9,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * Class Usuario
@@ -87,6 +88,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Usuario extends Model
 {
+	use HasApiTokens;
 	protected $table = 'usuarios';
 	protected $primaryKey = 'idUsuario';
 	public $timestamps = false;
@@ -185,7 +187,7 @@ class Usuario extends Model
 	public function chats()
 	{
 		return $this->belongsToMany(Chat::class, 'chat_usuarios', 'idUsuario', 'idChat')
-					->withPivot('idChatUsuario', 'esAdmin', 'archivado');
+			->withPivot('idChatUsuario', 'esAdmin', 'archivado');
 	}
 
 	public function cuentasbancarias()

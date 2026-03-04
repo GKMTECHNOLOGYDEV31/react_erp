@@ -5,32 +5,39 @@ namespace App\Http\Controllers\login;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
+use App\Models\Usuario;
 
 class AuthController extends Controller
 {
     public function login(Request $request)
     {
         $request->validate([
-            'usuario' => 'required|string',
-            'password' => 'required|string',
+            'correo' => 'required|email',
+            'clave'  => 'required|string',
         ]);
 
-        $user = User::where('documento', $request->documento)->first();
+        $user = Usuario::where('correo', $request->correo)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user) {
             return response()->json([
                 'message' => 'Credenciales incorrectas'
             ], 401);
         }
 
-        // Si usas Laravel Sanctum
+        // ⚠️ Si tu clave está encriptada con bcrypt
+        if ($request->clave !== $user->clave) {
+            return response()->json([
+                'message' => 'Credenciales incorrectas'
+            ], 401);
+        }
+
+        // Si usas Sanctum
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => $user
+            'token_type'   => 'Bearer',
+            'user'         => $user
         ]);
     }
 }

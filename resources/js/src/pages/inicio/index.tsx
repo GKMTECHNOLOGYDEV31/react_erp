@@ -1,12 +1,33 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-
+import React, { useState } from 'react'; import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { login } from '../../services/authService';
+import { Usuario } from '../../types/auth';
 const InicioPage: React.FC = () => {
+
+
+    const [correo, setCorreo] = useState('');
+    const [clave, setClave] = useState('');
+    const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        navigate('/analytics');
+        setError('');
+
+        try {
+            const data = await login(correo, clave);
+
+            localStorage.setItem('token', data.access_token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+
+            navigate('/analytics');
+        } catch (error: any) {
+            if (error.response?.status === 401) {
+                setError('Credenciales incorrectas');
+            } else {
+                setError('Error de conexión con el servidor');
+            }
+        }
     };
 
     const handleCreateAccount = () => {
@@ -90,13 +111,15 @@ const InicioPage: React.FC = () => {
                                         {/* Documento de identidad */}
                                         <div>
                                             <label htmlFor="documento" className="block text-sm font-medium text-gray-700 mb-1 drop-shadow-sm">
-                                                Documento de identidad
+                                                Correo electrónico
                                             </label>
                                             <input
                                                 type="text"
-                                                id="documento"
+                                                id="correo"
+                                                value={correo}
+                                                onChange={(e) => setCorreo(e.target.value)}
                                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D11D1D] focus:border-[#D11D1D] outline-none transition shadow-md hover:shadow-lg focus:shadow-lg"
-                                                placeholder="Ingresa tu documento"
+                                                placeholder="Ingresa tu correo electrónico"
                                             />
                                         </div>
 
@@ -108,6 +131,8 @@ const InicioPage: React.FC = () => {
                                             <input
                                                 type="password"
                                                 id="password"
+                                                value={clave}
+                                                onChange={(e) => setClave(e.target.value)}
                                                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#D11D1D] focus:border-[#D11D1D] outline-none transition shadow-md hover:shadow-lg focus:shadow-lg"
                                                 placeholder="Ingresa tu contraseña"
                                             />
