@@ -63,6 +63,24 @@ class Modelo extends Model
 
 	public function tickets_cliente_generals()
 	{
-		return $this->hasMany(TicketsClienteGeneral::class, 'idModelo');
+		return $this->hasMany(TicketClienteGeneral::class, 'idModelo');
 	}
+
+	// Relación con Marca - ¡ESTO ES LO QUE FALTA!
+    public function marca()
+    {
+        return $this->belongsTo(Marca::class, 'idMarca', 'idMarca');
+    }
+
+    // Relación con Categoria
+    public function categoria()
+    {
+        return $this->belongsTo(Categorium::class, 'idCategoria', 'idCategoria');
+    }
+
+    // Relación con Tickets
+    public function tickets()
+    {
+        return $this->hasMany(TicketClienteGeneral::class, 'idModelo', 'idModelo');
+    }
 }
