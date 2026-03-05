@@ -23,9 +23,9 @@ import {
     faEnvelope,
     faLaptop,
     faHashtag,
-    faBuilding,
     faMapMarkerAlt,
-    faTag
+    faTag,
+    faBuilding
 } from '@fortawesome/free-solid-svg-icons';
 import DataTable from 'react-data-table-component';
 import toastr from 'toastr';
@@ -65,7 +65,6 @@ const ListaTickets = () => {
             try {
                 const userData = JSON.parse(usuario);
                 setUsuarioActual(userData);
-                console.log('Usuario actual:', userData);
             } catch (e) {
                 console.error('Error al parsear usuario:', e);
             }
@@ -117,7 +116,7 @@ const ListaTickets = () => {
                     fechaCompra: ticket.fechaCompra,
                     tiendaSedeCompra: ticket.tiendaSedeCompra,
                     
-                    // Estado
+                    // Estado (1: abierto, 2: en_proceso, 3: cerrado)
                     estado: ticket.estado === 1 ? 'abierto' : 
                             ticket.estado === 2 ? 'en_proceso' : 'cerrado',
                     
@@ -146,94 +145,10 @@ const ListaTickets = () => {
         } catch (error) {
             console.error('Error cargando tickets:', error);
             toastr.error('Error al cargar los tickets', 'Error');
-            
-            // Datos de ejemplo si hay error (solo para desarrollo)
-            if (process.env.NODE_ENV === 'development') {
-                setTicketsData(ejemplosTickets);
-            }
         } finally {
             setLoading(false);
         }
     };
-
-    // Datos de ejemplo para desarrollo
-    const ejemplosTickets = [
-        {
-            id: 1,
-            numeroTicket: 'GKM-000001',
-            nombreCompleto: 'GKM TECHNOLOGY',
-            correoElectronico: 'ventas@gkmtech.com',
-            telefonoCelular: '987654321',
-            telefonoFijo: '01-1234567',
-            tipoDocumento: 'RUC',
-            dni_ruc_ce: '20123456789',
-            tipoProducto: 'Laptop',
-            marca: 'HP',
-            modelo: 'EliteBook 840 G3',
-            serie: 'HP12345678',
-            detallesFalla: 'El equipo no enciende después de actualización',
-            fechaCreacion: '2024-01-15 10:30',
-            fechaCompra: '2023-12-10',
-            tiendaSedeCompra: 'Tienda Principal - Miraflores',
-            estado: 'abierto',
-            departamento: 'Lima',
-            provincia: 'Lima',
-            distrito: 'Miraflores',
-            direccionCompleta: 'Av. Principal 123',
-            usuarioCreador: 'Admin Sistema',
-            idClienteGeneral: 1
-        },
-        {
-            id: 2,
-            numeroTicket: 'DARLIN-000001',
-            nombreCompleto: 'DARLIN JOSUE SALDARRIAGA CRUZ',
-            correoElectronico: 'darlin@email.com',
-            telefonoCelular: '987654322',
-            telefonoFijo: '01-1234568',
-            tipoDocumento: 'DNI',
-            dni_ruc_ce: '72798042',
-            tipoProducto: 'Desktop',
-            marca: 'Dell',
-            modelo: 'Optiplex 3080',
-            serie: 'DL98765432',
-            detallesFalla: 'Pantalla parpadea constantemente',
-            fechaCreacion: '2024-01-15 11:45',
-            fechaCompra: '2023-11-20',
-            tiendaSedeCompra: 'Tienda Norte - San Miguel',
-            estado: 'en_proceso',
-            departamento: 'Lima',
-            provincia: 'Lima',
-            distrito: 'San Miguel',
-            direccionCompleta: 'Av. La Marina 456',
-            usuarioCreador: 'Admin Sistema',
-            idClienteGeneral: 1
-        },
-        {
-            id: 3,
-            numeroTicket: 'TECH-000001',
-            nombreCompleto: 'TECH SOLUTIONS PERU',
-            correoElectronico: 'soporte@techsolutions.pe',
-            telefonoCelular: '987654323',
-            telefonoFijo: '01-1234569',
-            tipoDocumento: 'RUC',
-            dni_ruc_ce: '20456789012',
-            tipoProducto: 'Servidor',
-            marca: 'Dell',
-            modelo: 'PowerEdge T340',
-            serie: 'DELL123456',
-            detallesFalla: 'Sobrecalentamiento del servidor',
-            fechaCreacion: '2024-01-14 09:15',
-            fechaCompra: '2023-10-05',
-            tiendaSedeCompra: 'Tienda Sur - Surco',
-            estado: 'cerrado',
-            departamento: 'Lima',
-            provincia: 'Lima',
-            distrito: 'Surco',
-            direccionCompleta: 'Av. Primavera 789',
-            usuarioCreador: 'Admin Sistema',
-            idClienteGeneral: 1
-        }
-    ];
 
     useEffect(() => {
         dispatch(setPageTitle('Lista de Tickets'));
@@ -338,7 +253,7 @@ const ListaTickets = () => {
 
             if (response.data.success) {
                 toastr.success('Ticket eliminado correctamente');
-                cargarTickets(); // Recargar la lista
+                cargarTickets();
             }
         } catch (error) {
             console.error('Error al eliminar ticket:', error);
@@ -349,16 +264,16 @@ const ListaTickets = () => {
         }
     };
 
-    // Definir columnas para DataTable - VERSIÓN CORREGIDA (sin props que causan warnings)
+    // Definir columnas para DataTable - VERSIÓN CORREGIDA
     const columns = [
         {
             name: 'N° Ticket',
-            selector: row => row.numeroTicket,
+            selector: (row) => row.numeroTicket,
             sortable: true,
-            width: '120px',
-            cell: row => (
-                <div style={{ textAlign: 'center', width: '100%' }}>
-                    <span className="font-mono font-bold text-primary">
+            minWidth: '120px',
+            cell: (row) => (
+                <div className="flex items-center justify-center w-full">
+                    <span className="font-mono font-bold text-primary text-sm">
                         {row.numeroTicket}
                     </span>
                 </div>
@@ -366,21 +281,21 @@ const ListaTickets = () => {
         },
         {
             name: 'Cliente',
-            selector: row => row.nombreCompleto,
+            selector: (row) => row.nombreCompleto,
             sortable: true,
-            width: '220px',
-            cell: row => (
-                <div className="flex flex-col items-start py-2">
-                    <span className="font-medium flex items-center gap-1">
-                        <FontAwesomeIcon icon={faUser} className="w-3 h-3 text-gray-500" />
+            minWidth: '200px',
+            cell: (row) => (
+                <div className="flex flex-col w-full py-2">
+                    <span className="font-medium text-sm truncate" title={row.nombreCompleto}>
+                        <FontAwesomeIcon icon={faUser} className="w-3 h-3 text-gray-500 mr-1" />
                         {row.nombreCompleto}
                     </span>
-                    <span className="text-xs text-gray-500 flex items-center gap-1">
-                        <FontAwesomeIcon icon={faEnvelope} className="w-2 h-2" />
+                    <span className="text-xs text-gray-500 truncate flex items-center" title={row.correoElectronico}>
+                        <FontAwesomeIcon icon={faEnvelope} className="w-2 h-2 text-gray-400 mr-1" />
                         {row.correoElectronico}
                     </span>
-                    <span className="text-xs text-gray-500 flex items-center gap-1">
-                        <FontAwesomeIcon icon={faHashtag} className="w-2 h-2" />
+                    <span className="text-xs text-gray-500 flex items-center">
+                        <FontAwesomeIcon icon={faHashtag} className="w-2 h-2 text-gray-400 mr-1" />
                         {row.tipoDocumento}: {row.dni_ruc_ce}
                     </span>
                 </div>
@@ -388,18 +303,18 @@ const ListaTickets = () => {
         },
         {
             name: 'Contacto',
-            selector: row => row.telefonoCelular,
+            selector: (row) => row.telefonoCelular,
             sortable: true,
-            width: '140px',
-            cell: row => (
-                <div className="flex flex-col items-start py-2">
-                    <span className="flex items-center gap-1 text-sm">
-                        <FontAwesomeIcon icon={faMobile} className="w-3 h-3 text-gray-500" />
+            minWidth: '130px',
+            cell: (row) => (
+                <div className="flex flex-col w-full py-2">
+                    <span className="text-sm flex items-center">
+                        <FontAwesomeIcon icon={faMobile} className="w-3 h-3 text-gray-500 mr-1" />
                         {row.telefonoCelular}
                     </span>
                     {row.telefonoFijo && (
-                        <span className="text-xs text-gray-500 flex items-center gap-1">
-                            <FontAwesomeIcon icon={faPhone} className="w-2 h-2" />
+                        <span className="text-xs text-gray-500 flex items-center">
+                            <FontAwesomeIcon icon={faPhone} className="w-2 h-2 text-gray-400 mr-1" />
                             {row.telefonoFijo}
                         </span>
                     )}
@@ -408,11 +323,11 @@ const ListaTickets = () => {
         },
         {
             name: 'Producto',
-            selector: row => row.modelo,
+            selector: (row) => row.modelo,
             sortable: true,
-            width: '200px',
-            cell: row => (
-                <div className="flex flex-col items-start py-2">
+            minWidth: '180px',
+            cell: (row) => (
+                <div className="flex flex-col w-full py-2">
                     <div className="flex items-center gap-1 mb-1">
                         <span className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
                             {row.tipoProducto}
@@ -421,9 +336,11 @@ const ListaTickets = () => {
                             {row.marca}
                         </span>
                     </div>
-                    <span className="text-sm font-medium">{row.modelo}</span>
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                        <FontAwesomeIcon icon={faHashtag} className="w-2 h-2" />
+                    <span className="text-sm font-medium truncate" title={row.modelo}>
+                        {row.modelo}
+                    </span>
+                    <span className="text-xs text-gray-400 flex items-center">
+                        <FontAwesomeIcon icon={faHashtag} className="w-2 h-2 mr-1" />
                         Serie: {row.serie}
                     </span>
                 </div>
@@ -431,16 +348,16 @@ const ListaTickets = () => {
         },
         {
             name: 'Ubicación',
-            selector: row => row.distrito,
+            selector: (row) => row.distrito,
             sortable: true,
-            width: '150px',
-            cell: row => (
-                <div className="flex flex-col items-start py-2">
-                    <span className="flex items-center gap-1 text-sm">
-                        <FontAwesomeIcon icon={faMapMarkerAlt} className="w-3 h-3 text-gray-500" />
-                        {row.distrito}
+            minWidth: '140px',
+            cell: (row) => (
+                <div className="flex flex-col w-full py-2">
+                    <span className="text-sm flex items-center truncate" title={row.distrito}>
+                        <FontAwesomeIcon icon={faMapMarkerAlt} className="w-3 h-3 text-gray-500 mr-1 flex-shrink-0" />
+                        <span className="truncate">{row.distrito}</span>
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 truncate">
                         {row.provincia}, {row.departamento}
                     </span>
                 </div>
@@ -448,13 +365,13 @@ const ListaTickets = () => {
         },
         {
             name: 'Fecha',
-            selector: row => row.fechaCreacion,
+            selector: (row) => row.fechaCreacion,
             sortable: true,
-            width: '140px',
-            cell: row => (
-                <div className="flex flex-col items-center py-2">
-                    <span className="flex items-center gap-1 text-sm">
-                        <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-500 w-3 h-3" />
+            minWidth: '130px',
+            cell: (row) => (
+                <div className="flex flex-col items-center w-full py-2">
+                    <span className="text-sm flex items-center">
+                        <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-500 w-3 h-3 mr-1" />
                         {row.fechaCreacion?.split(' ')[0]}
                     </span>
                     <span className="text-xs text-gray-500">
@@ -465,22 +382,22 @@ const ListaTickets = () => {
         },
         {
             name: 'Estado',
-            selector: row => row.estado,
+            selector: (row) => row.estado,
             sortable: true,
-            width: '120px',
-            cell: row => (
-                <div style={{ textAlign: 'center', width: '100%' }}>
+            minWidth: '110px',
+            cell: (row) => (
+                <div className="flex items-center justify-center w-full py-2">
                     {getStatusBadge(row.estado)}
                 </div>
             ),
         },
         {
             name: 'Acciones',
-            width: '200px',
-            cell: row => (
-                <div className="flex items-center justify-center gap-2 py-2">
+            minWidth: '150px',
+            cell: (row) => (
+                <div className="flex items-center justify-center gap-1 py-2">
                     <button
-                        className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-colors group"
+                        className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-colors group"
                         onClick={() => {
                             setSelectedTicket(row);
                             setModalVer(true);
@@ -490,14 +407,14 @@ const ListaTickets = () => {
                         <FontAwesomeIcon icon={faEye} className="text-blue-600 dark:text-blue-400 w-4 h-4 group-hover:scale-110 transition-transform" />
                     </button>
                     <button
-                        className="p-2 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 rounded-full transition-colors group"
+                        className="p-1.5 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 rounded-full transition-colors group"
                         onClick={() => (window.location.href = `/tickets/editar/${row.id}`)}
                         title="Editar ticket"
                     >
                         <FontAwesomeIcon icon={faEdit} className="text-yellow-600 dark:text-yellow-400 w-4 h-4 group-hover:scale-110 transition-transform" />
                     </button>
                     <button
-                        className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors group"
+                        className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors group"
                         onClick={() => {
                             setSelectedTicket(row);
                             setModalEliminar(true);
@@ -522,16 +439,19 @@ const ListaTickets = () => {
 
         // Filtro por búsqueda
         if (filterText) {
+            const searchLower = filterText.toLowerCase();
             data = data.filter(
                 (item) =>
-                    item.numeroTicket.toLowerCase().includes(filterText.toLowerCase()) ||
-                    item.nombreCompleto.toLowerCase().includes(filterText.toLowerCase()) ||
-                    item.correoElectronico.toLowerCase().includes(filterText.toLowerCase()) ||
+                    item.numeroTicket.toLowerCase().includes(searchLower) ||
+                    item.nombreCompleto.toLowerCase().includes(searchLower) ||
+                    item.correoElectronico.toLowerCase().includes(searchLower) ||
                     item.telefonoCelular.includes(filterText) ||
                     item.dni_ruc_ce.includes(filterText) ||
-                    item.marca.toLowerCase().includes(filterText.toLowerCase()) ||
-                    item.modelo.toLowerCase().includes(filterText.toLowerCase()) ||
-                    item.serie.toLowerCase().includes(filterText.toLowerCase()),
+                    item.marca.toLowerCase().includes(searchLower) ||
+                    item.modelo.toLowerCase().includes(searchLower) ||
+                    item.serie.toLowerCase().includes(searchLower) ||
+                    item.distrito.toLowerCase().includes(searchLower) ||
+                    item.provincia.toLowerCase().includes(searchLower),
             );
         }
 
@@ -626,7 +546,6 @@ const ListaTickets = () => {
         );
     }, [filterText, selectedStatus]);
 
-    // Estilos personalizados para la tabla
     const customStyles = {
         headCells: {
             style: {
@@ -636,18 +555,24 @@ const ListaTickets = () => {
                 color: isDark ? '#e2e8f0' : '#333',
                 paddingTop: '12px',
                 paddingBottom: '12px',
+                justifyContent: 'center',
+                textAlign: 'center',
                 borderBottom: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
             },
         },
         cells: {
             style: {
+                justifyContent: 'flex-start',
+                textAlign: 'left',
                 color: isDark ? '#cbd5e1' : '#4b5563',
                 backgroundColor: isDark ? '#0f172a' : 'transparent',
+                paddingTop: '4px',
+                paddingBottom: '4px',
             },
         },
         rows: {
             style: {
-                minHeight: '70px',
+                minHeight: '80px',
                 backgroundColor: isDark ? '#0f172a' : 'transparent',
                 color: isDark ? '#cbd5e1' : '#4b5563',
                 borderBottom: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
