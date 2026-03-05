@@ -46,6 +46,10 @@ class Marca extends Model
 
 	public function tickets_cliente_generals()
 	{
-		return $this->hasMany(TicketsClienteGeneral::class, 'idMarca');
+		return $this->hasMany(TicketClienteGeneral::class, 'idMarca');
 	}
+	    public function modelos()
+    {
+        return $this->hasMany(Modelo::class, 'idMarca', 'idMarca');
+    }
 }

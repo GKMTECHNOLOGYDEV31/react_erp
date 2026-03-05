@@ -22,12 +22,16 @@ import {
     faPhone,
     faEnvelope,
     faLaptop,
-    faHashtag
+    faHashtag,
+    faBuilding,
+    faMapMarkerAlt,
+    faTag
 } from '@fortawesome/free-solid-svg-icons';
 import DataTable from 'react-data-table-component';
 import toastr from 'toastr';
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.css';
+import axios from 'axios';
 
 // Importar modales
 import ModalVerTicket from './components/ModalVerTicket';
@@ -37,8 +41,10 @@ const ListaTickets = () => {
     const dispatch = useDispatch();
     const [filterText, setFilterText] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('todos');
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [ticketsData, setTicketsData] = useState([]);
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [usuarioActual, setUsuarioActual] = useState(null);
 
     // Estados para modales
     const [modalVer, setModalVer] = useState(false);
@@ -49,13 +55,202 @@ const ListaTickets = () => {
     const startDateRef = useRef(null);
     const endDateRef = useRef(null);
 
+    // URL base de la API
+    const API_URL = 'http://127.0.0.1:8000/api';
+
+    // Obtener usuario actual del localStorage
+    useEffect(() => {
+        const usuario = localStorage.getItem('user');
+        if (usuario) {
+            try {
+                const userData = JSON.parse(usuario);
+                setUsuarioActual(userData);
+                console.log('Usuario actual:', userData);
+            } catch (e) {
+                console.error('Error al parsear usuario:', e);
+            }
+        }
+    }, []);
+
+    // Cargar tickets desde el backend
+    const cargarTickets = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_URL}/tickets`, {
+                headers: {
+                    'Authorization': token ? `Bearer ${token}` : '',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.data.success) {
+                // Transformar datos para el frontend
+                const ticketsTransformados = response.data.data.map(ticket => ({
+                    id: ticket.idTicket,
+                    numeroTicket: ticket.numero_ticket,
+                    // Datos cliente
+                    nombreCompleto: ticket.nombreCompleto,
+                    correoElectronico: ticket.correoElectronico,
+                    telefonoCelular: ticket.telefonoCelular,
+                    telefonoFijo: ticket.telefonoFijo || '',
+                    tipoDocumento: ticket.tipoDocumento?.nombre || '',
+                    dni_ruc_ce: ticket.dni_ruc_ce,
+                    
+                    // Datos producto
+                    tipoProducto: ticket.categoria?.nombre || 'N/A',
+                    marca: ticket.modelo?.marca?.nombre || 'N/A',
+                    modelo: ticket.modelo?.nombre || 'N/A',
+                    serie: ticket.serieProducto,
+                    
+                    // Falla
+                    detallesFalla: ticket.detallesFalla,
+                    
+                    // Fechas
+                    fechaCreacion: new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }),
+                    fechaCompra: ticket.fechaCompra,
+                    tiendaSedeCompra: ticket.tiendaSedeCompra,
+                    
+                    // Estado
+                    estado: ticket.estado === 1 ? 'abierto' : 
+                            ticket.estado === 2 ? 'en_proceso' : 'cerrado',
+                    
+                    // Ubicación
+                    departamento: ticket.departamento,
+                    provincia: ticket.provincia,
+                    distrito: ticket.distrito,
+                    direccionCompleta: ticket.direccionCompleta,
+                    referenciaDomicilio: ticket.referenciaDomicilio,
+                    ubicacionGoogleMaps: ticket.ubicacionGoogleMaps,
+                    
+                    // Evidencias
+                    fotoVideoFalla: ticket.fotoVideoFalla,
+                    fotoBoletaFactura: ticket.fotoBoletaFactura,
+                    fotoNumeroSerie: ticket.fotoNumeroSerie,
+                    
+                    // Información adicional
+                    idUsuarioCreador: ticket.idUsuarioCreador,
+                    idClienteGeneral: ticket.idClienteGeneral,
+                    usuarioCreador: ticket.usuario_creador ? 
+                        `${ticket.usuario_creador.Nombre} ${ticket.usuario_creador.apellidoPaterno}` : 'N/A'
+                }));
+                
+                setTicketsData(ticketsTransformados);
+            }
+        } catch (error) {
+            console.error('Error cargando tickets:', error);
+            toastr.error('Error al cargar los tickets', 'Error');
+            
+            // Datos de ejemplo si hay error (solo para desarrollo)
+            if (process.env.NODE_ENV === 'development') {
+                setTicketsData(ejemplosTickets);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Datos de ejemplo para desarrollo
+    const ejemplosTickets = [
+        {
+            id: 1,
+            numeroTicket: 'GKM-000001',
+            nombreCompleto: 'GKM TECHNOLOGY',
+            correoElectronico: 'ventas@gkmtech.com',
+            telefonoCelular: '987654321',
+            telefonoFijo: '01-1234567',
+            tipoDocumento: 'RUC',
+            dni_ruc_ce: '20123456789',
+            tipoProducto: 'Laptop',
+            marca: 'HP',
+            modelo: 'EliteBook 840 G3',
+            serie: 'HP12345678',
+            detallesFalla: 'El equipo no enciende después de actualización',
+            fechaCreacion: '2024-01-15 10:30',
+            fechaCompra: '2023-12-10',
+            tiendaSedeCompra: 'Tienda Principal - Miraflores',
+            estado: 'abierto',
+            departamento: 'Lima',
+            provincia: 'Lima',
+            distrito: 'Miraflores',
+            direccionCompleta: 'Av. Principal 123',
+            usuarioCreador: 'Admin Sistema',
+            idClienteGeneral: 1
+        },
+        {
+            id: 2,
+            numeroTicket: 'DARLIN-000001',
+            nombreCompleto: 'DARLIN JOSUE SALDARRIAGA CRUZ',
+            correoElectronico: 'darlin@email.com',
+            telefonoCelular: '987654322',
+            telefonoFijo: '01-1234568',
+            tipoDocumento: 'DNI',
+            dni_ruc_ce: '72798042',
+            tipoProducto: 'Desktop',
+            marca: 'Dell',
+            modelo: 'Optiplex 3080',
+            serie: 'DL98765432',
+            detallesFalla: 'Pantalla parpadea constantemente',
+            fechaCreacion: '2024-01-15 11:45',
+            fechaCompra: '2023-11-20',
+            tiendaSedeCompra: 'Tienda Norte - San Miguel',
+            estado: 'en_proceso',
+            departamento: 'Lima',
+            provincia: 'Lima',
+            distrito: 'San Miguel',
+            direccionCompleta: 'Av. La Marina 456',
+            usuarioCreador: 'Admin Sistema',
+            idClienteGeneral: 1
+        },
+        {
+            id: 3,
+            numeroTicket: 'TECH-000001',
+            nombreCompleto: 'TECH SOLUTIONS PERU',
+            correoElectronico: 'soporte@techsolutions.pe',
+            telefonoCelular: '987654323',
+            telefonoFijo: '01-1234569',
+            tipoDocumento: 'RUC',
+            dni_ruc_ce: '20456789012',
+            tipoProducto: 'Servidor',
+            marca: 'Dell',
+            modelo: 'PowerEdge T340',
+            serie: 'DELL123456',
+            detallesFalla: 'Sobrecalentamiento del servidor',
+            fechaCreacion: '2024-01-14 09:15',
+            fechaCompra: '2023-10-05',
+            tiendaSedeCompra: 'Tienda Sur - Surco',
+            estado: 'cerrado',
+            departamento: 'Lima',
+            provincia: 'Lima',
+            distrito: 'Surco',
+            direccionCompleta: 'Av. Primavera 789',
+            usuarioCreador: 'Admin Sistema',
+            idClienteGeneral: 1
+        }
+    ];
+
     useEffect(() => {
         dispatch(setPageTitle('Lista de Tickets'));
+        cargarTickets();
+
+        toastr.options = {
+            closeButton: true,
+            progressBar: true,
+            positionClass: 'toast-top-right',
+            timeOut: 3000,
+            showDuration: 300,
+            hideDuration: 500,
+        };
     }, [dispatch]);
 
     // Inicializar Flatpickr
     useEffect(() => {
-        // Configuración para fecha inicio
         if (startDateRef.current) {
             flatpickr(startDateRef.current, {
                 dateFormat: 'Y-m-d',
@@ -68,7 +263,6 @@ const ListaTickets = () => {
             });
         }
 
-        // Configuración para fecha fin
         if (endDateRef.current) {
             flatpickr(endDateRef.current, {
                 dateFormat: 'Y-m-d',
@@ -85,7 +279,6 @@ const ListaTickets = () => {
     // Limpiar filtros de fecha
     const clearDateFilters = () => {
         setDateRange({ start: '', end: '' });
-        // Limpiar los inputs de flatpickr
         if (startDateRef.current && startDateRef.current._flatpickr) {
             startDateRef.current._flatpickr.clear();
         }
@@ -94,158 +287,9 @@ const ListaTickets = () => {
         }
     };
 
-    // Datos de ejemplo (estáticos) - ACTUALIZADOS con más campos
-    const [ticketsData, setTicketsData] = useState([
-        {
-            id: 1,
-            numeroTicket: 'TKT-2024-001',
-            // Datos cliente
-            nombreCompleto: 'Juan Carlos Pérez Rodríguez',
-            correoElectronico: 'juan.perez@email.com',
-            telefonoCelular: '987654321',
-            telefonoFijo: '01-1234567',
-            // Datos producto
-            tipoProducto: 'laptop',
-            marca: 'HP',
-            modelo: 'EliteBook 840 G3',
-            serie: 'HP12345678',
-            // Falla
-            detallesFalla: 'El equipo no enciende después de actualización',
-            prioridad: 'alta',
-            // Fechas
-            fechaCreacion: '2024-01-15 10:30',
-            fechaCompra: '2023-12-10',
-            tiendaSedeCompra: 'Tienda Principal - Miraflores',
-            // Estado
-            estado: 'abierto',
-            // Ubicación
-            departamento: 'Lima',
-            provincia: 'Lima',
-            distrito: 'Miraflores',
-            direccionCompleta: 'Av. Principal 123',
-            ubicacionGoogleMaps: 'https://maps.google.com/?q=-12.046374,-77.042793',
-        },
-        {
-            id: 2,
-            numeroTicket: 'TKT-2024-002',
-            nombreCompleto: 'María García López',
-            correoElectronico: 'maria.garcia@email.com',
-            telefonoCelular: '987654322',
-            telefonoFijo: '01-1234568',
-            tipoProducto: 'desktop',
-            marca: 'Dell',
-            modelo: 'Latitude 5420',
-            serie: 'DL98765432',
-            detallesFalla: 'Pantalla parpadea constantemente',
-            prioridad: 'media',
-            fechaCreacion: '2024-01-15 11:45',
-            fechaCompra: '2023-11-20',
-            tiendaSedeCompra: 'Tienda Norte - San Miguel',
-            estado: 'en_proceso',
-            departamento: 'Lima',
-            provincia: 'Lima',
-            distrito: 'San Miguel',
-            direccionCompleta: 'Av. La Marina 456',
-            ubicacionGoogleMaps: 'https://maps.google.com/?q=-12.078,-77.090',
-        },
-        {
-            id: 3,
-            numeroTicket: 'TKT-2024-003',
-            nombreCompleto: 'Carlos Rodríguez Torres',
-            correoElectronico: 'carlos.rodriguez@email.com',
-            telefonoCelular: '987654323',
-            telefonoFijo: '01-1234569',
-            tipoProducto: 'laptop',
-            marca: 'Lenovo',
-            modelo: 'ThinkPad X1',
-            serie: 'LV45678901',
-            detallesFalla: 'Actualización de software',
-            prioridad: 'baja',
-            fechaCreacion: '2024-01-14 09:15',
-            fechaCompra: '2023-10-05',
-            tiendaSedeCompra: 'Tienda Sur - Surco',
-            estado: 'cerrado',
-            departamento: 'Lima',
-            provincia: 'Lima',
-            distrito: 'Surco',
-            direccionCompleta: 'Av. Primavera 789',
-            ubicacionGoogleMaps: 'https://maps.google.com/?q=-12.140,-77.020',
-        },
-        {
-            id: 4,
-            numeroTicket: 'TKT-2024-004',
-            nombreCompleto: 'Ana María Flores Ríos',
-            correoElectronico: 'ana.flores@email.com',
-            telefonoCelular: '987654324',
-            telefonoFijo: '01-1234570',
-            tipoProducto: 'laptop',
-            marca: 'HP',
-            modelo: 'ProBook 450',
-            serie: 'HP78901234',
-            detallesFalla: 'No arranca el sistema, pantalla negra',
-            prioridad: 'urgente',
-            fechaCreacion: '2024-01-14 14:20',
-            fechaCompra: '2023-12-01',
-            tiendaSedeCompra: 'Tienda Principal - Miraflores',
-            estado: 'abierto',
-            departamento: 'Lima',
-            provincia: 'Lima',
-            distrito: 'Miraflores',
-            direccionCompleta: 'Calle Las Flores 123',
-            ubicacionGoogleMaps: 'https://maps.google.com/?q=-12.118,-77.038',
-        },
-        {
-            id: 5,
-            numeroTicket: 'TKT-2024-005',
-            nombreCompleto: 'Luis Alberto Sánchez',
-            correoElectronico: 'luis.sanchez@email.com',
-            telefonoCelular: '987654325',
-            telefonoFijo: '01-1234571',
-            tipoProducto: 'laptop',
-            marca: 'Apple',
-            modelo: 'MacBook Pro',
-            serie: 'MP34567890',
-            detallesFalla: 'Batería no carga, solo funciona enchufado',
-            prioridad: 'alta',
-            fechaCreacion: '2024-01-13 16:00',
-            fechaCompra: '2023-09-15',
-            tiendaSedeCompra: 'iShop - San Isidro',
-            estado: 'en_proceso',
-            departamento: 'Lima',
-            provincia: 'Lima',
-            distrito: 'San Isidro',
-            direccionCompleta: 'Av. Conquistadores 456',
-            ubicacionGoogleMaps: 'https://maps.google.com/?q=-12.097,-77.047',
-        },
-        {
-            id: 6,
-            numeroTicket: 'TKT-2024-006',
-            nombreCompleto: 'Patricia Mendoza Vargas',
-            correoElectronico: 'patricia.mendoza@email.com',
-            telefonoCelular: '987654326',
-            telefonoFijo: '01-1234572',
-            tipoProducto: 'laptop',
-            marca: 'Dell',
-            modelo: 'XPS 13',
-            serie: 'DX56789012',
-            detallesFalla: 'Sobrecalentamiento y apagados inesperados',
-            prioridad: 'media',
-            fechaCreacion: '2024-01-13 08:30',
-            fechaCompra: '2023-08-20',
-            tiendaSedeCompra: 'Tienda Norte - San Miguel',
-            estado: 'abierto',
-            departamento: 'Lima',
-            provincia: 'Lima',
-            distrito: 'San Miguel',
-            direccionCompleta: 'Jr. Junín 789',
-            ubicacionGoogleMaps: 'https://maps.google.com/?q=-12.078,-77.090',
-        },
-    ]);
-
     const isDark = useSelector((state) => {
         const theme = state.themeConfig.theme;
         const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
         if (theme === 'dark') return true;
         if (theme === 'light') return false;
         return isSystemDark;
@@ -282,40 +326,51 @@ const ListaTickets = () => {
     };
 
     // Función para manejar eliminación desde el modal
-    const handleConfirmDelete = (id) => {
+    const handleConfirmDelete = async (id) => {
         setLoading(true);
-        // Simular eliminación
-        setTimeout(() => {
-            const newData = ticketsData.filter((ticket) => ticket.id !== id);
-            setTicketsData(newData);
-            toastr.success('Ticket eliminado correctamente');
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.delete(`${API_URL}/tickets/${id}`, {
+                headers: {
+                    'Authorization': token ? `Bearer ${token}` : '',
+                }
+            });
+
+            if (response.data.success) {
+                toastr.success('Ticket eliminado correctamente');
+                cargarTickets(); // Recargar la lista
+            }
+        } catch (error) {
+            console.error('Error al eliminar ticket:', error);
+            toastr.error('Error al eliminar el ticket', 'Error');
+        } finally {
             setLoading(false);
-        }, 500);
+            setModalEliminar(false);
+        }
     };
 
-    // Definir columnas para DataTable - VERSIÓN CORREGIDA
+    // Definir columnas para DataTable - VERSIÓN CORREGIDA (sin props que causan warnings)
     const columns = [
         {
             name: 'N° Ticket',
-            selector: (row) => row.numeroTicket,
+            selector: row => row.numeroTicket,
             sortable: true,
-            grow: 1,
-            minWidth: '120px',
-            center: true,
-            cell: (row) => (
-                <span>
-                    {row.numeroTicket}
-                </span>
+            width: '120px',
+            cell: row => (
+                <div style={{ textAlign: 'center', width: '100%' }}>
+                    <span className="font-mono font-bold text-primary">
+                        {row.numeroTicket}
+                    </span>
+                </div>
             ),
         },
         {
             name: 'Cliente',
-            selector: (row) => row.nombreCompleto,
+            selector: row => row.nombreCompleto,
             sortable: true,
-            grow: 1.5,
-            minWidth: '180px',
-            cell: (row) => (
-                <div className="flex flex-col items-start">
+            width: '220px',
+            cell: row => (
+                <div className="flex flex-col items-start py-2">
                     <span className="font-medium flex items-center gap-1">
                         <FontAwesomeIcon icon={faUser} className="w-3 h-3 text-gray-500" />
                         {row.nombreCompleto}
@@ -324,17 +379,20 @@ const ListaTickets = () => {
                         <FontAwesomeIcon icon={faEnvelope} className="w-2 h-2" />
                         {row.correoElectronico}
                     </span>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                        <FontAwesomeIcon icon={faHashtag} className="w-2 h-2" />
+                        {row.tipoDocumento}: {row.dni_ruc_ce}
+                    </span>
                 </div>
             ),
         },
         {
             name: 'Contacto',
-            selector: (row) => row.telefonoCelular,
+            selector: row => row.telefonoCelular,
             sortable: true,
-            grow: 1,
-            minWidth: '140px',
-            cell: (row) => (
-                <div className="flex flex-col items-start">
+            width: '140px',
+            cell: row => (
+                <div className="flex flex-col items-start py-2">
                     <span className="flex items-center gap-1 text-sm">
                         <FontAwesomeIcon icon={faMobile} className="w-3 h-3 text-gray-500" />
                         {row.telefonoCelular}
@@ -350,18 +408,20 @@ const ListaTickets = () => {
         },
         {
             name: 'Producto',
-            selector: (row) => row.modelo,
+            selector: row => row.modelo,
             sortable: true,
-            grow: 1.5,
-            minWidth: '180px',
-            cell: (row) => (
-                <div className="flex flex-col items-start">
-                    <div className="flex items-center gap-1">
+            width: '200px',
+            cell: row => (
+                <div className="flex flex-col items-start py-2">
+                    <div className="flex items-center gap-1 mb-1">
                         <span className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
                             {row.tipoProducto}
                         </span>
+                        <span className="text-xs bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded-full text-blue-800 dark:text-blue-300">
+                            {row.marca}
+                        </span>
                     </div>
-                    <span className="text-xs text-gray-500">{row.modelo}</span>
+                    <span className="text-sm font-medium">{row.modelo}</span>
                     <span className="text-xs text-gray-400 flex items-center gap-1">
                         <FontAwesomeIcon icon={faHashtag} className="w-2 h-2" />
                         Serie: {row.serie}
@@ -370,14 +430,29 @@ const ListaTickets = () => {
             ),
         },
         {
-            name: 'Fecha',
-            selector: (row) => row.fechaCreacion,
+            name: 'Ubicación',
+            selector: row => row.distrito,
             sortable: true,
-            grow: 1,
-            minWidth: '140px',
-            center: true,
-            cell: (row) => (
-                <div className="flex flex-col items-center">
+            width: '150px',
+            cell: row => (
+                <div className="flex flex-col items-start py-2">
+                    <span className="flex items-center gap-1 text-sm">
+                        <FontAwesomeIcon icon={faMapMarkerAlt} className="w-3 h-3 text-gray-500" />
+                        {row.distrito}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                        {row.provincia}, {row.departamento}
+                    </span>
+                </div>
+            ),
+        },
+        {
+            name: 'Fecha',
+            selector: row => row.fechaCreacion,
+            sortable: true,
+            width: '140px',
+            cell: row => (
+                <div className="flex flex-col items-center py-2">
                     <span className="flex items-center gap-1 text-sm">
                         <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-500 w-3 h-3" />
                         {row.fechaCreacion?.split(' ')[0]}
@@ -390,20 +465,20 @@ const ListaTickets = () => {
         },
         {
             name: 'Estado',
-            selector: (row) => row.estado,
+            selector: row => row.estado,
             sortable: true,
-            grow: 1,
-            minWidth: '120px',
-            center: true,
-            cell: (row) => getStatusBadge(row.estado),
+            width: '120px',
+            cell: row => (
+                <div style={{ textAlign: 'center', width: '100%' }}>
+                    {getStatusBadge(row.estado)}
+                </div>
+            ),
         },
         {
             name: 'Acciones',
-            grow: 1,
-            minWidth: '200px',
-            center: true,
-            cell: (row) => (
-                <div className="flex items-center justify-center gap-2">
+            width: '200px',
+            cell: row => (
+                <div className="flex items-center justify-center gap-2 py-2">
                     <button
                         className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-colors group"
                         onClick={() => {
@@ -445,7 +520,7 @@ const ListaTickets = () => {
             data = data.filter((t) => t.estado === selectedStatus);
         }
 
-        // Filtro por búsqueda (más campos)
+        // Filtro por búsqueda
         if (filterText) {
             data = data.filter(
                 (item) =>
@@ -453,6 +528,7 @@ const ListaTickets = () => {
                     item.nombreCompleto.toLowerCase().includes(filterText.toLowerCase()) ||
                     item.correoElectronico.toLowerCase().includes(filterText.toLowerCase()) ||
                     item.telefonoCelular.includes(filterText) ||
+                    item.dni_ruc_ce.includes(filterText) ||
                     item.marca.toLowerCase().includes(filterText.toLowerCase()) ||
                     item.modelo.toLowerCase().includes(filterText.toLowerCase()) ||
                     item.serie.toLowerCase().includes(filterText.toLowerCase()),
@@ -533,7 +609,7 @@ const ListaTickets = () => {
                     <input
                         type="text"
                         className="form-input border-0 focus:ring-0 p-0 text-sm w-64"
-                        placeholder="Buscar por ticket, cliente, producto..."
+                        placeholder="Buscar por ticket, cliente, documento..."
                         value={filterText}
                         onChange={(e) => setFilterText(e.target.value)}
                     />
@@ -550,6 +626,7 @@ const ListaTickets = () => {
         );
     }, [filterText, selectedStatus]);
 
+    // Estilos personalizados para la tabla
     const customStyles = {
         headCells: {
             style: {
@@ -559,15 +636,11 @@ const ListaTickets = () => {
                 color: isDark ? '#e2e8f0' : '#333',
                 paddingTop: '12px',
                 paddingBottom: '12px',
-                justifyContent: 'center',
-                textAlign: 'center',
                 borderBottom: isDark ? '1px solid #334155' : '1px solid #e5e7eb',
             },
         },
         cells: {
             style: {
-                justifyContent: 'center',
-                textAlign: 'center',
                 color: isDark ? '#cbd5e1' : '#4b5563',
                 backgroundColor: isDark ? '#0f172a' : 'transparent',
             },
@@ -627,7 +700,7 @@ const ListaTickets = () => {
                 </li>
             </ul>
 
-            {/* Header */}
+            {/* Header con información del usuario */}
             <div className="flex items-center justify-between mb-5">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-white-light flex items-center gap-3">
@@ -636,7 +709,19 @@ const ListaTickets = () => {
                         </div>
                         Gestión de Tickets
                     </h1>
-                    <p className="text-gray-600 dark:text-gray-400 text-base mt-2">Administra todos los tickets de soporte técnico</p>
+                    <p className="text-gray-600 dark:text-gray-400 text-base mt-2">
+                        {usuarioActual ? (
+                            <span className="flex items-center gap-2">
+                                <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
+                                Bienvenido, {usuarioActual.Nombre} {usuarioActual.apellidoPaterno}
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                    ID Cliente: {usuarioActual.idClienteGeneral}
+                                </span>
+                            </span>
+                        ) : (
+                            'Administra todos los tickets de soporte técnico'
+                        )}
+                    </p>
                 </div>
                 <Link to="/tickets/crear" className="btn btn-primary flex items-center gap-2">
                     <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
@@ -644,14 +729,13 @@ const ListaTickets = () => {
                 </Link>
             </div>
 
-            {/* Filtros de fecha fuera del panel */}
+            {/* Filtros de fecha */}
             <div className="mb-5 flex items-center gap-4 flex-wrap bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
                 <span className="text-sm font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1">
                     <FontAwesomeIcon icon={faCalendarAlt} className="w-4 h-4" />
                     Filtrar por fecha:
                 </span>
 
-                {/* Fecha inicio */}
                 <div className="relative">
                     <input type="text" ref={startDateRef} className="form-input w-40 pl-8" placeholder="Fecha inicial" />
                     <FontAwesomeIcon icon={faCalendarAlt} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
@@ -659,25 +743,21 @@ const ListaTickets = () => {
 
                 <span className="text-gray-400">-</span>
 
-                {/* Fecha fin */}
                 <div className="relative">
                     <input type="text" ref={endDateRef} className="form-input w-40 pl-8" placeholder="Fecha final" />
                     <FontAwesomeIcon icon={faCalendarAlt} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
                 </div>
 
-                {/* Botón limpiar filtros */}
                 {(dateRange.start || dateRange.end) && (
-                    <button onClick={clearDateFilters} className="flex items-center gap-1 px-3 py-2 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors">
-                        <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
-                        Limpiar fechas
-                    </button>
-                )}
-
-                {/* Indicador de filtro activo */}
-                {(dateRange.start || dateRange.end) && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                        Filtro por fechas activo
-                    </span>
+                    <>
+                        <button onClick={clearDateFilters} className="flex items-center gap-1 px-3 py-2 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors">
+                            <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
+                            Limpiar fechas
+                        </button>
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            Filtro por fechas activo
+                        </span>
+                    </>
                 )}
             </div>
 
@@ -687,6 +767,12 @@ const ListaTickets = () => {
                     columns={columns}
                     data={filteredData}
                     progressPending={loading}
+                    progressComponent={
+                        <div className="flex justify-center items-center py-20">
+                            <FontAwesomeIcon icon={faSpinner} className="w-10 h-10 text-primary animate-spin" />
+                            <span className="ml-3 text-lg">Cargando tickets...</span>
+                        </div>
+                    }
                     pagination
                     paginationPerPage={10}
                     paginationRowsPerPageOptions={[5, 10, 25, 50]}
@@ -702,6 +788,9 @@ const ListaTickets = () => {
                         <div className="py-10 text-center text-gray-500">
                             <FontAwesomeIcon icon={faTicket} className="w-12 h-12 mb-3 text-gray-300" />
                             <p>No hay tickets para mostrar</p>
+                            <p className="text-sm text-gray-400 mt-2">
+                                Haz clic en "Nuevo Ticket" para crear el primero
+                            </p>
                         </div>
                     }
                     customStyles={customStyles}

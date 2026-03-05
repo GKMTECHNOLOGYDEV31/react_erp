@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { setPageTitle } from '../../store/themeConfigSlice';
@@ -38,14 +38,40 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import toastr from 'toastr';
 import flatpickr from 'flatpickr';
+import { Spanish } from 'flatpickr/dist/l10n/es.js';
 import 'flatpickr/dist/flatpickr.css';
+import axios from 'axios';
 
 const EditarTicket = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const { id } = useParams();
     const fechaCompraRef = useRef(null);
+    const fileInputFallaRef = useRef(null);
+    const fileInputBoletaRef = useRef(null);
+    const fileInputSerieRef = useRef(null);
 
-    // Estados para las previsualizaciones de imágenes
+    // Estados
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [tiposDocumento, setTiposDocumento] = useState([]);
+    const [categorias, setCategorias] = useState([]);
+    const [modelos, setModelos] = useState([]);
+    const [modelosFiltrados, setModelosFiltrados] = useState([]);
+    const [loadingModelos, setLoadingModelos] = useState(false);
+    
+    // Estados para ubigeo
+    const [departamentos, setDepartamentos] = useState([]);
+    const [provincias, setProvincias] = useState({});
+    const [distritos, setDistritos] = useState({});
+    const [provinciasFiltradas, setProvinciasFiltradas] = useState([]);
+    const [distritosFiltrados, setDistritosFiltrados] = useState([]);
+    const [loadingUbigeo, setLoadingUbigeo] = useState(true);
+
+    // Estados para archivos
+    const [fileFalla, setFileFalla] = useState(null);
+    const [fileBoleta, setFileBoleta] = useState(null);
+    const [fileSerie, setFileSerie] = useState(null);
     const [previewFalla, setPreviewFalla] = useState(null);
     const [previewBoleta, setPreviewBoleta] = useState(null);
     const [previewSerie, setPreviewSerie] = useState(null);
@@ -53,8 +79,195 @@ const EditarTicket = () => {
     // Estado para el modal de imagen ampliada
     const [modalImage, setModalImage] = useState(null);
 
+    // URL base de la API
+    const API_URL = 'http://127.0.0.1:8000/api';
+
+    // PRIMERO: Definir el esquema de validación
+    const validationSchema = Yup.object({
+        nombreCompleto: Yup.string()
+            .required('El nombre completo es requerido')
+            .min(3, 'Mínimo 3 caracteres')
+            .max(255, 'Máximo 255 caracteres'),
+        
+        correoElectronico: Yup.string()
+            .email('Correo electrónico inválido')
+            .required('El correo electrónico es requerido')
+            .max(255, 'Máximo 255 caracteres'),
+        
+        idTipoDocumento: Yup.number()
+            .required('El tipo de documento es requerido')
+            .positive('Seleccione un tipo de documento válido'),
+        
+        dni_ruc_ce: Yup.string()
+            .required('El número de documento es requerido')
+            .min(8, 'Mínimo 8 caracteres')
+            .max(20, 'Máximo 20 caracteres')
+            .matches(/^[0-9]+$/, 'Solo se permiten números'),
+        
+        telefonoCelular: Yup.string()
+            .required('El teléfono celular es requerido')
+            .min(9, 'Mínimo 9 dígitos')
+            .max(20, 'Máximo 20 dígitos')
+            .matches(/^[0-9]+$/, 'Solo se permiten números'),
+        
+        telefonoFijo: Yup.string()
+            .nullable()
+            .matches(/^[0-9-]+$/, 'Formato inválido'),
+
+        direccionCompleta: Yup.string()
+            .required('La dirección completa es requerida')
+            .max(500, 'Máximo 500 caracteres'),
+        
+        referenciaDomicilio: Yup.string()
+            .nullable()
+            .max(500, 'Máximo 500 caracteres'),
+        
+        departamento: Yup.string()
+            .required('El departamento es requerido'),
+        
+        provincia: Yup.string()
+            .required('La provincia es requerida'),
+        
+        distrito: Yup.string()
+            .required('El distrito es requerido'),
+
+        idCategoria: Yup.number()
+            .required('La categoría del producto es requerida')
+            .positive('Seleccione una categoría válida'),
+        
+        idModelo: Yup.number()
+            .required('El modelo del producto es requerido')
+            .positive('Seleccione un modelo válido'),
+        
+        serieProducto: Yup.string()
+            .required('El número de serie es requerido')
+            .max(100, 'Máximo 100 caracteres'),
+
+        detallesFalla: Yup.string()
+            .required('Los detalles de la falla son requeridos')
+            .min(10, 'Describe la falla con más detalle (mínimo 10 caracteres)')
+            .max(5000, 'Máximo 5000 caracteres'),
+        
+        fechaCompra: Yup.date()
+            .required('La fecha de compra es requerida')
+            .max(new Date(), 'La fecha no puede ser futura')
+            .typeError('Fecha inválida - Use el formato DD/MM/AAAA'),
+        
+        tiendaSedeCompra: Yup.string()
+            .required('La tienda y sede de compra es requerida')
+            .max(255, 'Máximo 255 caracteres'),
+
+        fotoVideoFalla: Yup.string()
+            .nullable()
+            .url('Debe ser una URL válida'),
+        
+        fotoBoletaFactura: Yup.string()
+            .nullable()
+            .url('Debe ser una URL válida'),
+        
+        fotoNumeroSerie: Yup.string()
+            .nullable()
+            .url('Debe ser una URL válida'),
+        
+        ubicacionGoogleMaps: Yup.string()
+            .nullable()
+            .url('Debe ser una URL válida de Google Maps')
+    });
+
+    // SEGUNDO: Inicializar Formik (con valores vacíos inicialmente)
+    const formik = useFormik({
+        initialValues: {
+            nombreCompleto: '',
+            correoElectronico: '',
+            idTipoDocumento: '',
+            dni_ruc_ce: '',
+            telefonoFijo: '',
+            telefonoCelular: '',
+            direccionCompleta: '',
+            referenciaDomicilio: '',
+            departamento: '',
+            provincia: '',
+            distrito: '',
+            idCategoria: '',
+            idModelo: '',
+            serieProducto: '',
+            detallesFalla: '',
+            fechaCompra: '',
+            tiendaSedeCompra: '',
+            fotoVideoFalla: '',
+            fotoBoletaFactura: '',
+            fotoNumeroSerie: '',
+            ubicacionGoogleMaps: ''
+        },
+        validationSchema,
+        onSubmit: async (values, { setSubmitting }) => {
+            setSubmitting(true);
+            
+            try {
+                toastr.info('Actualizando ticket...', 'Procesando');
+
+                const token = localStorage.getItem('token');
+
+                const formData = new FormData();
+                formData.append('_method', 'PUT');
+                
+                Object.keys(values).forEach(key => {
+                    if (values[key] !== null && values[key] !== undefined && values[key] !== '') {
+                        formData.append(key, values[key]);
+                    }
+                });
+
+                if (fileFalla) formData.append('fotoVideoFalla', fileFalla);
+                if (fileBoleta) formData.append('fotoBoletaFactura', fileBoleta);
+                if (fileSerie) formData.append('fotoNumeroSerie', fileSerie);
+
+                const response = await axios.post(`${API_URL}/tickets/${id}`, formData, {
+                    headers: {
+                        'Authorization': token ? `Bearer ${token}` : '',
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+
+                if (response.data.success) {
+                    toastr.clear();
+                    toastr.success('✅ ¡Ticket actualizado exitosamente!', 'Éxito');
+                    
+                    setTimeout(() => {
+                        navigate('/tickets');
+                    }, 2000);
+                }
+
+            } catch (error) {
+                console.error('Error al actualizar ticket:', error);
+                
+                if (error.response) {
+                    if (error.response.status === 422) {
+                        const errors = error.response.data.errors;
+                        Object.keys(errors).forEach(key => {
+                            toastr.error(errors[key][0], 'Error de validación');
+                        });
+                    } else if (error.response.status === 401) {
+                        toastr.error('No autorizado. Inicia sesión nuevamente.', 'Error');
+                    } else {
+                        toastr.error(error.response.data.message || 'Error en el servidor', 'Error');
+                    }
+                } else if (error.request) {
+                    toastr.error('No se pudo conectar con el servidor', 'Error');
+                } else {
+                    toastr.error('Error al actualizar el ticket', 'Error');
+                }
+            } finally {
+                setSubmitting(false);
+            }
+        }
+    });
+
+    // TERCERO: Todos los useEffect después de useFormik
+
+    // Cargar datos del ticket y datos del formulario
     useEffect(() => {
         dispatch(setPageTitle(`Editar Ticket #${id}`));
+        cargarDatosIniciales();
 
         toastr.options = {
             closeButton: true,
@@ -64,32 +277,211 @@ const EditarTicket = () => {
             showDuration: 300,
             hideDuration: 500,
         };
+    }, [dispatch, id]);
 
-        // Inicializar flatpickr
-        if (fechaCompraRef.current) {
+    // Cargar ubigeos
+    useEffect(() => {
+        const cargarUbigeos = async () => {
+            setLoadingUbigeo(true);
+            try {
+                const deptosResponse = await fetch('/assets/ubigeos/departamentos.json');
+                const deptosData = await deptosResponse.json();
+                setDepartamentos(deptosData);
+
+                const provsResponse = await fetch('/assets/ubigeos/provincias.json');
+                const provsData = await provsResponse.json();
+                setProvincias(provsData);
+
+                const distsResponse = await fetch('/assets/ubigeos/distritos.json');
+                const distsData = await distsResponse.json();
+                setDistritos(distsData);
+            } catch (error) {
+                console.error('Error cargando ubigeos:', error);
+                toastr.error('Error al cargar los datos de ubicación', 'Error');
+            } finally {
+                setLoadingUbigeo(false);
+            }
+        };
+
+        cargarUbigeos();
+    }, []);
+
+    // Cargar modelos cuando se selecciona una categoría
+    useEffect(() => {
+        if (formik.values.idCategoria) {
+            cargarModelosPorCategoria(formik.values.idCategoria);
+        } else {
+            setModelosFiltrados([]);
+        }
+    }, [formik.values.idCategoria]);
+
+    // Filtrar provincias cuando se selecciona un departamento
+    useEffect(() => {
+        if (formik.values.departamento && provincias[formik.values.departamento]) {
+            setProvinciasFiltradas(provincias[formik.values.departamento]);
+            if (!formik.values.provincia) {
+                formik.setFieldValue('provincia', '');
+                formik.setFieldValue('distrito', '');
+                setDistritosFiltrados([]);
+            }
+        } else {
+            setProvinciasFiltradas([]);
+        }
+    }, [formik.values.departamento, provincias]);
+
+    // Filtrar distritos cuando se selecciona una provincia
+    useEffect(() => {
+        if (formik.values.provincia && distritos[formik.values.provincia]) {
+            setDistritosFiltrados(distritos[formik.values.provincia]);
+            if (!formik.values.distrito) {
+                formik.setFieldValue('distrito', '');
+            }
+        } else {
+            setDistritosFiltrados([]);
+        }
+    }, [formik.values.provincia, distritos]);
+
+    // Inicializar flatpickr cuando el componente esté listo
+    useEffect(() => {
+        if (fechaCompraRef.current && !loading) {
             flatpickr(fechaCompraRef.current, {
-                dateFormat: 'Y-m-d',
+                locale: Spanish,
+                dateFormat: 'd/m/Y',
+                altInput: true,
+                altFormat: 'd/m/Y',
                 maxDate: 'today',
                 onChange: (selectedDates, dateStr) => {
-                    formik.setFieldValue('fechaCompra', dateStr);
+                    if (selectedDates[0]) {
+                        const year = selectedDates[0].getFullYear();
+                        const month = String(selectedDates[0].getMonth() + 1).padStart(2, '0');
+                        const day = String(selectedDates[0].getDate()).padStart(2, '0');
+                        const fechaFormatoDB = `${year}-${month}-${day}`;
+                        formik.setFieldValue('fechaCompra', fechaFormatoDB);
+                    }
                 }
             });
         }
-    }, [dispatch, id]);
+    }, [loading]);
 
-    // Manejadores para previsualización de imágenes
-    const handleImageChange = (e, setPreview) => {
+    // Funciones auxiliares
+    const cargarDatosIniciales = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            
+            const formDataResponse = await axios.get(`${API_URL}/tickets-form-data`, {
+                headers: {
+                    'Authorization': token ? `Bearer ${token}` : '',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (formDataResponse.data.success) {
+                setTiposDocumento(formDataResponse.data.data.tiposDocumento || []);
+                setCategorias(formDataResponse.data.data.categorias || []);
+                setModelos(formDataResponse.data.data.modelos || []);
+            }
+
+            const ticketResponse = await axios.get(`${API_URL}/tickets/${id}`, {
+                headers: {
+                    'Authorization': token ? `Bearer ${token}` : '',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (ticketResponse.data.success) {
+                const ticket = ticketResponse.data.data;
+                
+                formik.setValues({
+                    nombreCompleto: ticket.nombreCompleto || '',
+                    correoElectronico: ticket.correoElectronico || '',
+                    idTipoDocumento: ticket.idTipoDocumento || '',
+                    dni_ruc_ce: ticket.dni_ruc_ce || '',
+                    telefonoFijo: ticket.telefonoFijo || '',
+                    telefonoCelular: ticket.telefonoCelular || '',
+                    direccionCompleta: ticket.direccionCompleta || '',
+                    referenciaDomicilio: ticket.referenciaDomicilio || '',
+                    departamento: ticket.departamento || '',
+                    provincia: ticket.provincia || '',
+                    distrito: ticket.distrito || '',
+                    idCategoria: ticket.idCategoria || '',
+                    idModelo: ticket.idModelo || '',
+                    serieProducto: ticket.serieProducto || '',
+                    detallesFalla: ticket.detallesFalla || '',
+                    fechaCompra: ticket.fechaCompra || '',
+                    tiendaSedeCompra: ticket.tiendaSedeCompra || '',
+                    fotoVideoFalla: ticket.fotoVideoFalla || '',
+                    fotoBoletaFactura: ticket.fotoBoletaFactura || '',
+                    fotoNumeroSerie: ticket.fotoNumeroSerie || '',
+                    ubicacionGoogleMaps: ticket.ubicacionGoogleMaps || ''
+                });
+
+                if (ticket.fotoVideoFalla) setPreviewFalla(ticket.fotoVideoFalla);
+                if (ticket.fotoBoletaFactura) setPreviewBoleta(ticket.fotoBoletaFactura);
+                if (ticket.fotoNumeroSerie) setPreviewSerie(ticket.fotoNumeroSerie);
+            }
+
+        } catch (error) {
+            console.error('Error cargando datos:', error);
+            toastr.error('Error al cargar los datos del ticket', 'Error');
+            navigate('/tickets');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const cargarModelosPorCategoria = async (categoriaId) => {
+        setLoadingModelos(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_URL}/modelos-por-categoria/${categoriaId}`, {
+                headers: {
+                    'Authorization': token ? `Bearer ${token}` : '',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.data.success) {
+                setModelosFiltrados(response.data.data);
+            }
+        } catch (error) {
+            console.error('Error cargando modelos:', error);
+            const filtrados = modelos.filter(m => m.idCategoria === parseInt(categoriaId));
+            setModelosFiltrados(filtrados);
+        } finally {
+            setLoadingModelos(false);
+        }
+    };
+
+    const handleImageChange = (e, setFile, setPreview, fieldName) => {
         const file = e.target.files[0];
         if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+                toastr.error('La imagen no debe superar los 5MB', 'Error');
+                e.target.value = '';
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                toastr.error('Solo se permiten imágenes', 'Error');
+                e.target.value = '';
+                return;
+            }
+
+            setFile(file);
+            
             const reader = new FileReader();
             reader.onloadend = () => {
                 setPreview(reader.result);
             };
             reader.readAsDataURL(file);
+
+            if (fieldName) {
+                formik.setFieldValue(fieldName, '');
+            }
         }
     };
 
-    // Modal para ver imagen ampliada
     const ImageModal = ({ image, onClose }) => {
         if (!image) return null;
 
@@ -116,256 +508,14 @@ const EditarTicket = () => {
         );
     };
 
-    // Opciones para selects
-    const tipoDocumentoOptions = [
-        { value: 'dni', label: 'DNI' },
-        { value: 'ruc', label: 'RUC' },
-        { value: 'ce', label: 'Carnet de Extranjería' }
-    ];
-
-    const tipoProductoOptions = [
-        { value: 'laptop', label: 'Laptop' },
-        { value: 'desktop', label: 'Desktop' },
-        { value: 'tablet', label: 'Tablet' },
-        { value: 'celular', label: 'Celular' },
-        { value: 'impresora', label: 'Impresora' },
-        { value: 'monitor', label: 'Monitor' },
-        { value: 'otro', label: 'Otro' }
-    ];
-
-    const departamentoOptions = [
-        { value: 'lima', label: 'Lima' },
-        { value: 'callao', label: 'Callao' },
-        { value: 'ancash', label: 'Áncash' },
-        { value: 'apurimac', label: 'Apurímac' },
-        { value: 'arequipa', label: 'Arequipa' },
-        { value: 'ayacucho', label: 'Ayacucho' },
-        { value: 'cajamarca', label: 'Cajamarca' },
-        { value: 'cusco', label: 'Cusco' },
-        { value: 'huancavelica', label: 'Huancavelica' },
-        { value: 'huanuco', label: 'Huánuco' },
-        { value: 'ica', label: 'Ica' },
-        { value: 'junin', label: 'Junín' },
-        { value: 'libertad', label: 'La Libertad' },
-        { value: 'lambayeque', label: 'Lambayeque' },
-        { value: 'loreto', label: 'Loreto' },
-        { value: 'madrededios', label: 'Madre de Dios' },
-        { value: 'moquegua', label: 'Moquegua' },
-        { value: 'pasco', label: 'Pasco' },
-        { value: 'piura', label: 'Piura' },
-        { value: 'puno', label: 'Puno' },
-        { value: 'sanmartin', label: 'San Martín' },
-        { value: 'tacna', label: 'Tacna' },
-        { value: 'tumbes', label: 'Tumbes' },
-        { value: 'ucayali', label: 'Ucayali' }
-    ];
-
-    const provinciaOptions = [
-        { value: 'lima', label: 'Lima' },
-        { value: 'callao', label: 'Callao' },
-        { value: 'barranca', label: 'Barranca' },
-        { value: 'cajatambo', label: 'Cajatambo' },
-        { value: 'canta', label: 'Canta' },
-        { value: 'canete', label: 'Cañete' },
-        { value: 'huaral', label: 'Huaral' },
-        { value: 'huarochiri', label: 'Huarochirí' },
-        { value: 'huaura', label: 'Huaura' },
-        { value: 'oyon', label: 'Oyón' },
-        { value: 'yauyos', label: 'Yauyos' }
-    ];
-
-    const distritoOptions = [
-        { value: 'cercado', label: 'Cercado de Lima' },
-        { value: 'ate', label: 'Ate' },
-        { value: 'barranco', label: 'Barranco' },
-        { value: 'breña', label: 'Breña' },
-        { value: 'comas', label: 'Comas' },
-        { value: 'chorrillos', label: 'Chorrillos' },
-        { value: 'el_agustino', label: 'El Agustino' },
-        { value: 'jesus_maria', label: 'Jesús María' },
-        { value: 'la_molina', label: 'La Molina' },
-        { value: 'la_victoria', label: 'La Victoria' },
-        { value: 'lince', label: 'Lince' },
-        { value: 'magdalena', label: 'Magdalena del Mar' },
-        { value: 'miraflores', label: 'Miraflores' },
-        { value: 'pueblo_libre', label: 'Pueblo Libre' },
-        { value: 'puente_piedra', label: 'Puente Piedra' },
-        { value: 'rimac', label: 'Rímac' },
-        { value: 'san_borja', label: 'San Borja' },
-        { value: 'san_isidro', label: 'San Isidro' },
-        { value: 'san_juan_lurigancho', label: 'San Juan de Lurigancho' },
-        { value: 'san_juan_miraflores', label: 'San Juan de Miraflores' },
-        { value: 'san_luis', label: 'San Luis' },
-        { value: 'san_martin_porres', label: 'San Martín de Porres' },
-        { value: 'san_miguel', label: 'San Miguel' },
-        { value: 'santa_anita', label: 'Santa Anita' },
-        { value: 'santa_rosa', label: 'Santa Rosa' },
-        { value: 'santiago_surco', label: 'Santiago de Surco' },
-        { value: 'surquillo', label: 'Surquillo' },
-        { value: 'villa_el_salvador', label: 'Villa El Salvador' },
-        { value: 'villa_maria', label: 'Villa María del Triunfo' }
-    ];
-
-    const prioridadOptions = [
-        { value: 'baja', label: 'Baja', color: 'bg-green-100 text-green-800' },
-        { value: 'media', label: 'Media', color: 'bg-yellow-100 text-yellow-800' },
-        { value: 'alta', label: 'Alta', color: 'bg-orange-100 text-orange-800' },
-        { value: 'urgente', label: 'Urgente', color: 'bg-red-100 text-red-800' }
-    ];
-
-    // Datos de ejemplo (simulando carga desde API)
-    const ticketData = {
-        id: id,
-        // Datos personales
-        nombreCompleto: 'Juan Carlos Pérez Rodríguez',
-        tipoDocumento: 'dni',
-        dniRucCe: '12345678',
-        telefonoFijo: '01-1234567',
-        telefonoCelular: '987654321',
-        correoElectronico: 'juan.perez@email.com',
-
-        // Dirección - ACTUALIZADO con departamento
-        direccionCompleta: 'Av. Principal 123, Urbanización Las Flores',
-        referenciaDomicilio: 'Frente al parque, al costado del mercado',
-        departamento: 'lima',      // ✅ NUEVO
-        provincia: 'lima',
-        distrito: 'miraflores',
-
-        // Producto
-        tipoProducto: 'laptop',
-        modeloProducto: 'HP Pavilion 15',
-        serieProducto: 'HP12345678',
-
-        // Falla y compra
-        detallesFalla: 'El equipo no enciende y hace un ruido extraño al intentar prenderlo',
-        fechaCompra: '2024-01-15',
-        tiendaSedeCompra: 'Tienda Principal - Miraflores',
-
-        // Archivos y ubicación
-        fotoVideoFalla: '',
-        fotoBoletaFactura: '',
-        fotoSerieEquipo: '',
-        ubicacionGoogleMaps: 'https://maps.google.com/?q=-12.046374,-77.042793'
-    };
-
-    // Esquema de validación con Yup - ACTUALIZADO
-    const validationSchema = Yup.object({
-        // Datos personales
-        nombreCompleto: Yup.string()
-            .required('El nombre completo es requerido')
-            .min(3, 'Mínimo 3 caracteres'),
-        tipoDocumento: Yup.string()
-            .required('El tipo de documento es requerido'),
-        dniRucCe: Yup.string()
-            .required('Número de documento es requerido')
-            .min(8, 'Mínimo 8 caracteres')
-            .max(15, 'Máximo 15 caracteres'),
-        telefonoFijo: Yup.string(),
-        telefonoCelular: Yup.string()
-            .required('El teléfono celular es requerido')
-            .min(9, 'Mínimo 9 dígitos'),
-        correoElectronico: Yup.string()
-            .email('Correo inválido')
-            .required('El correo electrónico es requerido'),
-
-        // Dirección - ACTUALIZADO
-        direccionCompleta: Yup.string()
-            .required('La dirección completa es requerida'),
-        referenciaDomicilio: Yup.string(),
-        departamento: Yup.string()                    // ✅ NUEVO
-            .required('El departamento es requerido'),
-        provincia: Yup.string()
-            .required('La provincia es requerida'),
-        distrito: Yup.string()
-            .required('El distrito es requerido'),
-
-        // Producto
-        tipoProducto: Yup.string()
-            .required('El tipo de producto es requerido'),
-        modeloProducto: Yup.string()
-            .required('El modelo del producto es requerido'),
-        serieProducto: Yup.string()
-            .required('La serie del producto es requerida'),
-
-        // Falla y compra
-        detallesFalla: Yup.string()
-            .required('Los detalles de la falla son requeridos')
-            .min(10, 'Describe la falla con más detalle (mínimo 10 caracteres)'),
-        fechaCompra: Yup.date()
-            .required('La fecha de compra es requerida')
-            .max(new Date(), 'La fecha no puede ser futura'),
-        tiendaSedeCompra: Yup.string()
-            .required('La tienda y sede de compra es requerida'),
-
-        // Archivos y ubicación (opcionales)
-        fotoVideoFalla: Yup.string()
-            .url('Debe ser una URL válida'),
-        fotoBoletaFactura: Yup.string()
-            .url('Debe ser una URL válida'),
-        fotoSerieEquipo: Yup.string()
-            .url('Debe ser una URL válida'),
-        ubicacionGoogleMaps: Yup.string()
-            .url('Debe ser una URL válida de Google Maps')
-    });
-
-    // Formik - ACTUALIZADO con departamento
-    const formik = useFormik({
-        initialValues: {
-            // Datos personales
-            nombreCompleto: ticketData.nombreCompleto,
-            tipoDocumento: ticketData.tipoDocumento,
-            dniRucCe: ticketData.dniRucCe,
-            telefonoFijo: ticketData.telefonoFijo,
-            telefonoCelular: ticketData.telefonoCelular,
-            correoElectronico: ticketData.correoElectronico,
-
-            // Dirección - ACTUALIZADO
-            direccionCompleta: ticketData.direccionCompleta,
-            referenciaDomicilio: ticketData.referenciaDomicilio,
-            departamento: ticketData.departamento,     // ✅ NUEVO
-            provincia: ticketData.provincia,
-            distrito: ticketData.distrito,
-
-            // Producto
-            tipoProducto: ticketData.tipoProducto,
-            modeloProducto: ticketData.modeloProducto,
-            serieProducto: ticketData.serieProducto,
-
-            // Falla y compra
-            detallesFalla: ticketData.detallesFalla,
-            fechaCompra: ticketData.fechaCompra,
-            tiendaSedeCompra: ticketData.tiendaSedeCompra,
-
-            // Archivos y ubicación
-            fotoVideoFalla: ticketData.fotoVideoFalla,
-            fotoBoletaFactura: ticketData.fotoBoletaFactura,
-            fotoSerieEquipo: ticketData.fotoSerieEquipo,
-            ubicacionGoogleMaps: ticketData.ubicacionGoogleMaps,
-
-            // Prioridad
-            prioridad: ticketData.prioridad
-        },
-        validationSchema,
-        onSubmit: async (values, { setSubmitting }) => {
-            try {
-                toastr.info('Actualizando ticket...', 'Procesando');
-
-                // Simular actualización
-                await new Promise(resolve => setTimeout(resolve, 1500));
-
-                toastr.clear();
-                toastr.success('✅ ¡Ticket actualizado exitosamente!', 'Éxito');
-
-                setTimeout(() => {
-                    window.location.href = '/tickets';
-                }, 2000);
-            } catch (error) {
-                toastr.error('❌ Error al actualizar el ticket', 'Error');
-            } finally {
-                setSubmitting(false);
-            }
-        }
-    });
+    if (loading || loadingUbigeo) {
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                <FontAwesomeIcon icon={faSpinner} className="w-10 h-10 text-primary animate-spin" />
+                <span className="ml-3 text-lg">Cargando datos del ticket...</span>
+            </div>
+        );
+    }
 
     return (
         <div>
@@ -405,7 +555,7 @@ const EditarTicket = () => {
                     </div>
 
                     <div className="mb-5">
-                        <form onSubmit={formik.handleSubmit} className="space-y-8">
+                        <form onSubmit={formik.handleSubmit} className="space-y-8" encType="multipart/form-data">
 
                             {/* SECCIÓN 1: DATOS PERSONALES */}
                             <div className="border-l-4 border-primary pl-4 mb-6">
@@ -418,7 +568,7 @@ const EditarTicket = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Nombre Completo */}
                                 <div className="md:col-span-1">
-                                    <label htmlFor="nombreCompleto" className="flex items-center gap-1">
+                                    <label htmlFor="nombreCompleto" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-500" />
                                         Nombre Completo <span className="text-red-500">*</span>
                                     </label>
@@ -431,7 +581,7 @@ const EditarTicket = () => {
                                         value={formik.values.nombreCompleto}
                                         onChange={formik.handleChange}
                                         onBlur={formik.handleBlur}
-                                        disabled={formik.isSubmitting}
+                                        disabled={submitting}
                                     />
                                     {formik.touched.nombreCompleto && formik.errors.nombreCompleto && (
                                         <div className="text-danger text-sm mt-1">{formik.errors.nombreCompleto}</div>
@@ -440,7 +590,7 @@ const EditarTicket = () => {
 
                                 {/* Correo Electrónico */}
                                 <div className="md:col-span-1">
-                                    <label htmlFor="correoElectronico" className="flex items-center gap-1">
+                                    <label htmlFor="correoElectronico" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 text-gray-500" />
                                         Correo Electrónico <span className="text-red-500">*</span>
                                     </label>
@@ -453,7 +603,7 @@ const EditarTicket = () => {
                                         value={formik.values.correoElectronico}
                                         onChange={formik.handleChange}
                                         onBlur={formik.handleBlur}
-                                        disabled={formik.isSubmitting}
+                                        disabled={submitting}
                                     />
                                     {formik.touched.correoElectronico && formik.errors.correoElectronico && (
                                         <div className="text-danger text-sm mt-1">{formik.errors.correoElectronico}</div>
@@ -462,56 +612,56 @@ const EditarTicket = () => {
 
                                 {/* Tipo de Documento */}
                                 <div>
-                                    <label htmlFor="tipoDocumento" className="flex items-center gap-1">
+                                    <label htmlFor="idTipoDocumento" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faIdCard} className="w-4 h-4 text-gray-500" />
                                         Tipo de Documento <span className="text-red-500">*</span>
                                     </label>
                                     <select
-                                        id="tipoDocumento"
-                                        name="tipoDocumento"
-                                        className={`form-select ${formik.touched.tipoDocumento && formik.errors.tipoDocumento ? 'has-error' : ''}`}
-                                        value={formik.values.tipoDocumento}
+                                        id="idTipoDocumento"
+                                        name="idTipoDocumento"
+                                        className={`form-select ${formik.touched.idTipoDocumento && formik.errors.idTipoDocumento ? 'has-error' : ''}`}
+                                        value={formik.values.idTipoDocumento}
                                         onChange={formik.handleChange}
                                         onBlur={formik.handleBlur}
-                                        disabled={formik.isSubmitting}
+                                        disabled={submitting}
                                     >
                                         <option value="">Seleccione tipo</option>
-                                        {tipoDocumentoOptions.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
+                                        {tiposDocumento.map(tipo => (
+                                            <option key={tipo.idTipoDocumento} value={tipo.idTipoDocumento}>
+                                                {tipo.nombre}
                                             </option>
                                         ))}
                                     </select>
-                                    {formik.touched.tipoDocumento && formik.errors.tipoDocumento && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.tipoDocumento}</div>
+                                    {formik.touched.idTipoDocumento && formik.errors.idTipoDocumento && (
+                                        <div className="text-danger text-sm mt-1">{formik.errors.idTipoDocumento}</div>
                                     )}
                                 </div>
 
                                 {/* Número de Documento */}
                                 <div>
-                                    <label htmlFor="dniRucCe" className="flex items-center gap-1">
+                                    <label htmlFor="dni_ruc_ce" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faHashtag} className="w-4 h-4 text-gray-500" />
                                         Número de Documento <span className="text-red-500">*</span>
                                     </label>
                                     <input
-                                        id="dniRucCe"
-                                        name="dniRucCe"
+                                        id="dni_ruc_ce"
+                                        name="dni_ruc_ce"
                                         type="text"
                                         placeholder="Ej: 12345678"
-                                        className={`form-input ${formik.touched.dniRucCe && formik.errors.dniRucCe ? 'has-error' : ''}`}
-                                        value={formik.values.dniRucCe}
+                                        className={`form-input ${formik.touched.dni_ruc_ce && formik.errors.dni_ruc_ce ? 'has-error' : ''}`}
+                                        value={formik.values.dni_ruc_ce}
                                         onChange={formik.handleChange}
                                         onBlur={formik.handleBlur}
-                                        disabled={formik.isSubmitting}
+                                        disabled={submitting}
                                     />
-                                    {formik.touched.dniRucCe && formik.errors.dniRucCe && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.dniRucCe}</div>
+                                    {formik.touched.dni_ruc_ce && formik.errors.dni_ruc_ce && (
+                                        <div className="text-danger text-sm mt-1">{formik.errors.dni_ruc_ce}</div>
                                     )}
                                 </div>
 
                                 {/* Teléfono Fijo */}
                                 <div>
-                                    <label htmlFor="telefonoFijo" className="flex items-center gap-1">
+                                    <label htmlFor="telefonoFijo" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faPhone} className="w-4 h-4 text-gray-500" />
                                         Teléfono Fijo
                                     </label>
@@ -524,13 +674,13 @@ const EditarTicket = () => {
                                         value={formik.values.telefonoFijo}
                                         onChange={formik.handleChange}
                                         onBlur={formik.handleBlur}
-                                        disabled={formik.isSubmitting}
+                                        disabled={submitting}
                                     />
                                 </div>
 
                                 {/* Teléfono Celular */}
                                 <div>
-                                    <label htmlFor="telefonoCelular" className="flex items-center gap-1">
+                                    <label htmlFor="telefonoCelular" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faMobile} className="w-4 h-4 text-gray-500" />
                                         Teléfono Celular <span className="text-red-500">*</span>
                                     </label>
@@ -543,7 +693,7 @@ const EditarTicket = () => {
                                         value={formik.values.telefonoCelular}
                                         onChange={formik.handleChange}
                                         onBlur={formik.handleBlur}
-                                        disabled={formik.isSubmitting}
+                                        disabled={submitting}
                                     />
                                     {formik.touched.telefonoCelular && formik.errors.telefonoCelular && (
                                         <div className="text-danger text-sm mt-1">{formik.errors.telefonoCelular}</div>
@@ -551,7 +701,7 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 2: DIRECCIÓN - ACTUALIZADA */}
+                            {/* SECCIÓN 2: DIRECCIÓN */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faMapMarkerAlt} className="w-5 h-5 text-primary" />
@@ -562,7 +712,7 @@ const EditarTicket = () => {
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label htmlFor="direccionCompleta" className="flex items-center gap-1">
+                                        <label htmlFor="direccionCompleta" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faHome} className="w-4 h-4 text-gray-500" />
                                             Dirección Completa <span className="text-red-500">*</span>
                                         </label>
@@ -575,7 +725,7 @@ const EditarTicket = () => {
                                             value={formik.values.direccionCompleta}
                                             onChange={formik.handleChange}
                                             onBlur={formik.handleBlur}
-                                            disabled={formik.isSubmitting}
+                                            disabled={submitting}
                                         />
                                         {formik.touched.direccionCompleta && formik.errors.direccionCompleta && (
                                             <div className="text-danger text-sm mt-1">{formik.errors.direccionCompleta}</div>
@@ -583,29 +733,28 @@ const EditarTicket = () => {
                                     </div>
 
                                     <div>
-                                        <label htmlFor="referenciaDomicilio" className="flex items-center gap-1">
+                                        <label htmlFor="referenciaDomicilio" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faRoad} className="w-4 h-4 text-gray-500" />
-                                            Referencia del Domicilio
+                                            Referencia
                                         </label>
                                         <input
                                             id="referenciaDomicilio"
                                             name="referenciaDomicilio"
                                             type="text"
-                                            placeholder="Ej: Frente al parque, al costado del mercado"
+                                            placeholder="Ej: Frente al parque"
                                             className="form-input"
                                             value={formik.values.referenciaDomicilio}
                                             onChange={formik.handleChange}
                                             onBlur={formik.handleBlur}
-                                            disabled={formik.isSubmitting}
+                                            disabled={submitting}
                                         />
                                     </div>
                                 </div>
 
-                                {/* DEPARTAMENTO - PROVINCIA - DISTRITO */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     {/* DEPARTAMENTO */}
                                     <div>
-                                        <label htmlFor="departamento" className="flex items-center gap-1">
+                                        <label htmlFor="departamento" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faGlobe} className="w-4 h-4 text-gray-500" />
                                             Departamento <span className="text-red-500">*</span>
                                         </label>
@@ -616,12 +765,12 @@ const EditarTicket = () => {
                                             value={formik.values.departamento}
                                             onChange={formik.handleChange}
                                             onBlur={formik.handleBlur}
-                                            disabled={formik.isSubmitting}
+                                            disabled={submitting}
                                         >
                                             <option value="">Seleccione departamento</option>
-                                            {departamentoOptions.map(option => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
+                                            {departamentos.map(depto => (
+                                                <option key={depto.id_ubigeo} value={depto.id_ubigeo}>
+                                                    {depto.nombre_ubigeo}
                                                 </option>
                                             ))}
                                         </select>
@@ -632,7 +781,7 @@ const EditarTicket = () => {
 
                                     {/* PROVINCIA */}
                                     <div>
-                                        <label htmlFor="provincia" className="flex items-center gap-1">
+                                        <label htmlFor="provincia" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faBuilding} className="w-4 h-4 text-gray-500" />
                                             Provincia <span className="text-red-500">*</span>
                                         </label>
@@ -643,12 +792,16 @@ const EditarTicket = () => {
                                             value={formik.values.provincia}
                                             onChange={formik.handleChange}
                                             onBlur={formik.handleBlur}
-                                            disabled={formik.isSubmitting}
+                                            disabled={!formik.values.departamento || submitting}
                                         >
-                                            <option value="">Seleccione provincia</option>
-                                            {provinciaOptions.map(option => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
+                                            <option value="">
+                                                {!formik.values.departamento 
+                                                    ? 'Primero seleccione departamento' 
+                                                    : 'Seleccione provincia'}
+                                            </option>
+                                            {provinciasFiltradas.map(prov => (
+                                                <option key={prov.id_ubigeo} value={prov.id_ubigeo}>
+                                                    {prov.nombre_ubigeo}
                                                 </option>
                                             ))}
                                         </select>
@@ -659,7 +812,7 @@ const EditarTicket = () => {
 
                                     {/* DISTRITO */}
                                     <div>
-                                        <label htmlFor="distrito" className="flex items-center gap-1">
+                                        <label htmlFor="distrito" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faCity} className="w-4 h-4 text-gray-500" />
                                             Distrito <span className="text-red-500">*</span>
                                         </label>
@@ -670,12 +823,16 @@ const EditarTicket = () => {
                                             value={formik.values.distrito}
                                             onChange={formik.handleChange}
                                             onBlur={formik.handleBlur}
-                                            disabled={formik.isSubmitting}
+                                            disabled={!formik.values.provincia || submitting}
                                         >
-                                            <option value="">Seleccione distrito</option>
-                                            {distritoOptions.map(option => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
+                                            <option value="">
+                                                {!formik.values.provincia 
+                                                    ? 'Primero seleccione provincia' 
+                                                    : 'Seleccione distrito'}
+                                            </option>
+                                            {distritosFiltrados.map(dist => (
+                                                <option key={dist.id_ubigeo} value={dist.id_ubigeo}>
+                                                    {dist.nombre_ubigeo}
                                                 </option>
                                             ))}
                                         </select>
@@ -696,56 +853,65 @@ const EditarTicket = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label htmlFor="tipoProducto" className="flex items-center gap-1">
+                                    <label htmlFor="idCategoria" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faLaptop} className="w-4 h-4 text-gray-500" />
-                                        Tipo de Producto <span className="text-red-500">*</span>
+                                        Categoría <span className="text-red-500">*</span>
                                     </label>
                                     <select
-                                        id="tipoProducto"
-                                        name="tipoProducto"
-                                        className={`form-select ${formik.touched.tipoProducto && formik.errors.tipoProducto ? 'has-error' : ''}`}
-                                        value={formik.values.tipoProducto}
+                                        id="idCategoria"
+                                        name="idCategoria"
+                                        className={`form-select ${formik.touched.idCategoria && formik.errors.idCategoria ? 'has-error' : ''}`}
+                                        value={formik.values.idCategoria}
                                         onChange={formik.handleChange}
                                         onBlur={formik.handleBlur}
-                                        disabled={formik.isSubmitting}
+                                        disabled={submitting}
                                     >
-                                        <option value="">Seleccione tipo</option>
-                                        {tipoProductoOptions.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
+                                        <option value="">Seleccione categoría</option>
+                                        {categorias.map(cat => (
+                                            <option key={cat.idCategoria} value={cat.idCategoria}>
+                                                {cat.nombre}
                                             </option>
                                         ))}
                                     </select>
-                                    {formik.touched.tipoProducto && formik.errors.tipoProducto && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.tipoProducto}</div>
+                                    {formik.touched.idCategoria && formik.errors.idCategoria && (
+                                        <div className="text-danger text-sm mt-1">{formik.errors.idCategoria}</div>
                                     )}
                                 </div>
 
                                 <div>
-                                    <label htmlFor="modeloProducto" className="flex items-center gap-1">
+                                    <label htmlFor="idModelo" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500" />
-                                        Modelo del Producto <span className="text-red-500">*</span>
+                                        Modelo <span className="text-red-500">*</span>
                                     </label>
-                                    <input
-                                        id="modeloProducto"
-                                        name="modeloProducto"
-                                        type="text"
-                                        placeholder="Ej: HP Pavilion 15"
-                                        className={`form-input ${formik.touched.modeloProducto && formik.errors.modeloProducto ? 'has-error' : ''}`}
-                                        value={formik.values.modeloProducto}
+                                    <select
+                                        id="idModelo"
+                                        name="idModelo"
+                                        className={`form-select ${formik.touched.idModelo && formik.errors.idModelo ? 'has-error' : ''}`}
+                                        value={formik.values.idModelo}
                                         onChange={formik.handleChange}
                                         onBlur={formik.handleBlur}
-                                        disabled={formik.isSubmitting}
-                                    />
-                                    {formik.touched.modeloProducto && formik.errors.modeloProducto && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.modeloProducto}</div>
+                                        disabled={!formik.values.idCategoria || submitting || loadingModelos}
+                                    >
+                                        <option value="">
+                                            {loadingModelos ? 'Cargando...' : 
+                                             !formik.values.idCategoria ? 'Primero seleccione categoría' : 
+                                             'Seleccione modelo'}
+                                        </option>
+                                        {modelosFiltrados.map(modelo => (
+                                            <option key={modelo.idModelo} value={modelo.idModelo}>
+                                                {modelo.nombre}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {formik.touched.idModelo && formik.errors.idModelo && (
+                                        <div className="text-danger text-sm mt-1">{formik.errors.idModelo}</div>
                                     )}
                                 </div>
 
                                 <div className="md:col-span-2">
-                                    <label htmlFor="serieProducto" className="flex items-center gap-1">
+                                    <label htmlFor="serieProducto" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faHashtag} className="w-4 h-4 text-gray-500" />
-                                        Serie del Producto <span className="text-red-500">*</span>
+                                        Número de Serie <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         id="serieProducto"
@@ -756,7 +922,7 @@ const EditarTicket = () => {
                                         value={formik.values.serieProducto}
                                         onChange={formik.handleChange}
                                         onBlur={formik.handleBlur}
-                                        disabled={formik.isSubmitting}
+                                        disabled={submitting}
                                     />
                                     {formik.touched.serieProducto && formik.errors.serieProducto && (
                                         <div className="text-danger text-sm mt-1">{formik.errors.serieProducto}</div>
@@ -774,7 +940,7 @@ const EditarTicket = () => {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label htmlFor="detallesFalla" className="flex items-center gap-1">
+                                    <label htmlFor="detallesFalla" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faComment} className="w-4 h-4 text-gray-500" />
                                         Detalles de la Falla <span className="text-red-500">*</span>
                                     </label>
@@ -787,16 +953,19 @@ const EditarTicket = () => {
                                         value={formik.values.detallesFalla}
                                         onChange={formik.handleChange}
                                         onBlur={formik.handleBlur}
-                                        disabled={formik.isSubmitting}
-                                    ></textarea>
+                                        disabled={submitting}
+                                    />
                                     {formik.touched.detallesFalla && formik.errors.detallesFalla && (
                                         <div className="text-danger text-sm mt-1">{formik.errors.detallesFalla}</div>
                                     )}
+                                    <div className="text-xs text-gray-500 mt-1">
+                                        {formik.values.detallesFalla.length}/5000 caracteres
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label htmlFor="fechaCompra" className="flex items-center gap-1">
+                                        <label htmlFor="fechaCompra" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faCalendar} className="w-4 h-4 text-gray-500" />
                                             Fecha de Compra <span className="text-red-500">*</span>
                                         </label>
@@ -809,8 +978,8 @@ const EditarTicket = () => {
                                             value={formik.values.fechaCompra}
                                             onChange={formik.handleChange}
                                             onBlur={formik.handleBlur}
-                                            disabled={formik.isSubmitting}
-                                            placeholder="Seleccione fecha"
+                                            disabled={submitting}
+                                            placeholder="DD/MM/AAAA"
                                             autoComplete="off"
                                         />
                                         {formik.touched.fechaCompra && formik.errors.fechaCompra && (
@@ -819,9 +988,9 @@ const EditarTicket = () => {
                                     </div>
 
                                     <div>
-                                        <label htmlFor="tiendaSedeCompra" className="flex items-center gap-1">
+                                        <label htmlFor="tiendaSedeCompra" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faStore} className="w-4 h-4 text-gray-500" />
-                                            Tienda y Sede de Compra <span className="text-red-500">*</span>
+                                            Tienda de Compra <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             id="tiendaSedeCompra"
@@ -832,7 +1001,7 @@ const EditarTicket = () => {
                                             value={formik.values.tiendaSedeCompra}
                                             onChange={formik.handleChange}
                                             onBlur={formik.handleBlur}
-                                            disabled={formik.isSubmitting}
+                                            disabled={submitting}
                                         />
                                         {formik.touched.tiendaSedeCompra && formik.errors.tiendaSedeCompra && (
                                             <div className="text-danger text-sm mt-1">{formik.errors.tiendaSedeCompra}</div>
@@ -848,264 +1017,237 @@ const EditarTicket = () => {
                                     Archivos Adjuntos
                                 </h2>
                                 <p className="text-sm text-gray-500 mt-1">
-                                    Sube imágenes para una mejor referencia (máx. 5MB por imagen)
+                                    Sube nuevas imágenes para reemplazar las existentes (máx. 5MB por imagen)
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Foto o Video de la Falla */}
-                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                                    <label className="flex items-center gap-2 mb-3 text-gray-700 dark:text-gray-300 font-medium">
-                                        <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full">
-                                            <FontAwesomeIcon icon={faVideo} className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                {/* Foto Falla */}
+                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+                                    <label className="flex items-center gap-2 mb-3 font-medium">
+                                        <div className="bg-blue-100 p-2 rounded-full">
+                                            <FontAwesomeIcon icon={faVideo} className="w-4 h-4 text-blue-600" />
                                         </div>
-                                        <span>📸 🎥 Foto o Video de la Falla</span>
+                                        Foto/Video de la Falla
                                     </label>
 
                                     <div className="flex flex-col items-center gap-3">
                                         {!previewFalla ? (
                                             <div className="w-full">
                                                 <input
+                                                    ref={fileInputFallaRef}
                                                     type="file"
                                                     accept="image/*"
-                                                    onChange={(e) => handleImageChange(e, setPreviewFalla)}
+                                                    onChange={(e) => handleImageChange(e, setFileFalla, setPreviewFalla, 'fotoVideoFalla')}
                                                     className="hidden"
                                                     id="upload-falla"
-                                                    disabled={formik.isSubmitting}
+                                                    disabled={submitting}
                                                 />
                                                 <label
                                                     htmlFor="upload-falla"
-                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-100"
                                                 >
                                                     <FontAwesomeIcon icon={faCamera} className="w-8 h-8 text-gray-400 mb-2" />
-                                                    <span className="text-sm text-gray-500">Haz clic para seleccionar</span>
-                                                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, GIF hasta 5MB</span>
+                                                    <span className="text-sm text-gray-500">Seleccionar archivo</span>
                                                 </label>
                                             </div>
                                         ) : (
                                             <div className="relative w-full">
-                                                <div className="relative rounded-lg overflow-hidden border-2 border-blue-200 dark:border-blue-800">
-                                                    <img
-                                                        src={previewFalla}
-                                                        alt="Preview falla"
-                                                        className="w-full h-48 object-cover cursor-pointer"
-                                                        onClick={() => setModalImage(previewFalla)}
-                                                    />
-                                                    <div
-                                                        className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all flex items-center justify-center cursor-pointer"
-                                                        onClick={() => setModalImage(previewFalla)}
-                                                    >
-                                                        <div className="bg-white bg-opacity-90 rounded-full px-3 py-1 text-sm text-gray-700 shadow-lg">
-                                                            <FontAwesomeIcon icon={faSearch} className="w-3 h-3 mr-1" />
-                                                            Clic para ampliar
-                                                        </div>
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-all transform hover:scale-110 z-10"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setPreviewFalla(null);
-                                                        }}
-                                                    >
-                                                        <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
-                                                    </button>
-                                                    <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-                                                        Vista previa
-                                                    </div>
-                                                </div>
+                                                <img
+                                                    src={previewFalla}
+                                                    alt="Preview"
+                                                    className="w-full h-48 object-cover rounded-lg cursor-pointer"
+                                                    onClick={() => setModalImage(previewFalla)}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8"
+                                                    onClick={() => {
+                                                        setFileFalla(null);
+                                                        setPreviewFalla(null);
+                                                        if (fileInputFallaRef.current) fileInputFallaRef.current.value = '';
+                                                        formik.setFieldValue('fotoVideoFalla', '');
+                                                    }}
+                                                >
+                                                    <FontAwesomeIcon icon={faTimes} />
+                                                </button>
                                             </div>
                                         )}
                                     </div>
+                                    {formik.values.fotoVideoFalla && !previewFalla && (
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            Archivo actual: {formik.values.fotoVideoFalla.split('/').pop()}
+                                        </p>
+                                    )}
                                 </div>
 
-                                {/* Foto de Boleta o Factura */}
-                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                                    <label className="flex items-center gap-2 mb-3 text-gray-700 dark:text-gray-300 font-medium">
-                                        <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full">
-                                            <FontAwesomeIcon icon={faFileInvoice} className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                {/* Foto Boleta */}
+                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+                                    <label className="flex items-center gap-2 mb-3 font-medium">
+                                        <div className="bg-green-100 p-2 rounded-full">
+                                            <FontAwesomeIcon icon={faFileInvoice} className="w-4 h-4 text-green-600" />
                                         </div>
-                                        <span>📸🧾 Foto Nítida de la Boleta o Factura</span>
+                                        Foto de Boleta/Factura
                                     </label>
 
                                     <div className="flex flex-col items-center gap-3">
                                         {!previewBoleta ? (
                                             <div className="w-full">
                                                 <input
+                                                    ref={fileInputBoletaRef}
                                                     type="file"
                                                     accept="image/*"
-                                                    onChange={(e) => handleImageChange(e, setPreviewBoleta)}
+                                                    onChange={(e) => handleImageChange(e, setFileBoleta, setPreviewBoleta, 'fotoBoletaFactura')}
                                                     className="hidden"
                                                     id="upload-boleta"
-                                                    disabled={formik.isSubmitting}
+                                                    disabled={submitting}
                                                 />
                                                 <label
                                                     htmlFor="upload-boleta"
-                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-100"
                                                 >
                                                     <FontAwesomeIcon icon={faFileInvoice} className="w-8 h-8 text-gray-400 mb-2" />
-                                                    <span className="text-sm text-gray-500">Haz clic para seleccionar</span>
-                                                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, PDF hasta 5MB</span>
+                                                    <span className="text-sm text-gray-500">Seleccionar archivo</span>
                                                 </label>
                                             </div>
                                         ) : (
                                             <div className="relative w-full">
-                                                <div className="relative rounded-lg overflow-hidden border-2 border-green-200 dark:border-green-800">
-                                                    <img
-                                                        src={previewBoleta}
-                                                        alt="Preview boleta"
-                                                        className="w-full h-48 object-cover cursor-pointer"
-                                                        onClick={() => setModalImage(previewBoleta)}
-                                                    />
-                                                    <div
-                                                        className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all flex items-center justify-center cursor-pointer"
-                                                        onClick={() => setModalImage(previewBoleta)}
-                                                    >
-                                                        <div className="bg-white bg-opacity-90 rounded-full px-3 py-1 text-sm text-gray-700 shadow-lg">
-                                                            <FontAwesomeIcon icon={faSearch} className="w-3 h-3 mr-1" />
-                                                            Clic para ampliar
-                                                        </div>
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-all transform hover:scale-110 z-10"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setPreviewBoleta(null);
-                                                        }}
-                                                    >
-                                                        <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
-                                                    </button>
-                                                    <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-                                                        Vista previa
-                                                    </div>
-                                                </div>
+                                                <img
+                                                    src={previewBoleta}
+                                                    alt="Preview"
+                                                    className="w-full h-48 object-cover rounded-lg cursor-pointer"
+                                                    onClick={() => setModalImage(previewBoleta)}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8"
+                                                    onClick={() => {
+                                                        setFileBoleta(null);
+                                                        setPreviewBoleta(null);
+                                                        if (fileInputBoletaRef.current) fileInputBoletaRef.current.value = '';
+                                                        formik.setFieldValue('fotoBoletaFactura', '');
+                                                    }}
+                                                >
+                                                    <FontAwesomeIcon icon={faTimes} />
+                                                </button>
                                             </div>
                                         )}
                                     </div>
+                                    {formik.values.fotoBoletaFactura && !previewBoleta && (
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            Archivo actual: {formik.values.fotoBoletaFactura.split('/').pop()}
+                                        </p>
+                                    )}
                                 </div>
 
-                                {/* Foto del Número de Serie */}
-                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 md:col-span-2 lg:col-span-1">
-                                    <label className="flex items-center gap-2 mb-3 text-gray-700 dark:text-gray-300 font-medium">
-                                        <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full">
-                                            <FontAwesomeIcon icon={faImage} className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                {/* Foto Serie */}
+                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+                                    <label className="flex items-center gap-2 mb-3 font-medium">
+                                        <div className="bg-purple-100 p-2 rounded-full">
+                                            <FontAwesomeIcon icon={faImage} className="w-4 h-4 text-purple-600" />
                                         </div>
-                                        <span>📸🔢 Foto del Número de Serie del Equipo</span>
+                                        Foto del Número de Serie
                                     </label>
 
                                     <div className="flex flex-col items-center gap-3">
                                         {!previewSerie ? (
                                             <div className="w-full">
                                                 <input
+                                                    ref={fileInputSerieRef}
                                                     type="file"
                                                     accept="image/*"
-                                                    onChange={(e) => handleImageChange(e, setPreviewSerie)}
+                                                    onChange={(e) => handleImageChange(e, setFileSerie, setPreviewSerie, 'fotoNumeroSerie')}
                                                     className="hidden"
                                                     id="upload-serie"
-                                                    disabled={formik.isSubmitting}
+                                                    disabled={submitting}
                                                 />
                                                 <label
                                                     htmlFor="upload-serie"
-                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-100"
                                                 >
                                                     <FontAwesomeIcon icon={faImage} className="w-8 h-8 text-gray-400 mb-2" />
-                                                    <span className="text-sm text-gray-500">Haz clic para seleccionar</span>
-                                                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, GIF hasta 5MB</span>
+                                                    <span className="text-sm text-gray-500">Seleccionar archivo</span>
                                                 </label>
                                             </div>
                                         ) : (
                                             <div className="relative w-full">
-                                                <div className="relative rounded-lg overflow-hidden border-2 border-purple-200 dark:border-purple-800">
-                                                    <img
-                                                        src={previewSerie}
-                                                        alt="Preview serie"
-                                                        className="w-full h-48 object-cover cursor-pointer"
-                                                        onClick={() => setModalImage(previewSerie)}
-                                                    />
-                                                    <div
-                                                        className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all flex items-center justify-center cursor-pointer"
-                                                        onClick={() => setModalImage(previewSerie)}
-                                                    >
-                                                        <div className="bg-white bg-opacity-90 rounded-full px-3 py-1 text-sm text-gray-700 shadow-lg">
-                                                            <FontAwesomeIcon icon={faSearch} className="w-3 h-3 mr-1" />
-                                                            Clic para ampliar
-                                                        </div>
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-all transform hover:scale-110 z-10"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setPreviewSerie(null);
-                                                        }}
-                                                    >
-                                                        <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
-                                                    </button>
-                                                    <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-                                                        Vista previa
-                                                    </div>
-                                                </div>
+                                                <img
+                                                    src={previewSerie}
+                                                    alt="Preview"
+                                                    className="w-full h-48 object-cover rounded-lg cursor-pointer"
+                                                    onClick={() => setModalImage(previewSerie)}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8"
+                                                    onClick={() => {
+                                                        setFileSerie(null);
+                                                        setPreviewSerie(null);
+                                                        if (fileInputSerieRef.current) fileInputSerieRef.current.value = '';
+                                                        formik.setFieldValue('fotoNumeroSerie', '');
+                                                    }}
+                                                >
+                                                    <FontAwesomeIcon icon={faTimes} />
+                                                </button>
                                             </div>
                                         )}
                                     </div>
+                                    {formik.values.fotoNumeroSerie && !previewSerie && (
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            Archivo actual: {formik.values.fotoNumeroSerie.split('/').pop()}
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Ubicación Google Maps */}
-                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 md:col-span-2 lg:col-span-1">
-                                    <label htmlFor="ubicacionGoogleMaps" className="flex items-center gap-2 mb-3 text-gray-700 dark:text-gray-300 font-medium">
-                                        <div className="bg-orange-100 dark:bg-orange-900/30 p-2 rounded-full">
-                                            <FontAwesomeIcon icon={faMap} className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+                                    <label htmlFor="ubicacionGoogleMaps" className="flex items-center gap-2 mb-3 font-medium">
+                                        <div className="bg-orange-100 p-2 rounded-full">
+                                            <FontAwesomeIcon icon={faMap} className="w-4 h-4 text-orange-600" />
                                         </div>
-                                        <span>📍🗺️ Ubicación Exacta del Domicilio</span>
+                                        Ubicación Google Maps
                                     </label>
-                                    <div className="relative">
-                                        <FontAwesomeIcon icon={faMap} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                        <input
-                                            id="ubicacionGoogleMaps"
-                                            name="ubicacionGoogleMaps"
-                                            type="url"
-                                            placeholder="https://maps.google.com/?q=..."
-                                            className="form-input pl-10 w-full"
-                                            value={formik.values.ubicacionGoogleMaps}
-                                            onChange={formik.handleChange}
-                                            onBlur={formik.handleBlur}
-                                            disabled={formik.isSubmitting}
-                                        />
-                                    </div>
-                                    {formik.touched.ubicacionGoogleMaps && formik.errors.ubicacionGoogleMaps && (
-                                        <div className="text-danger text-sm mt-2">{formik.errors.ubicacionGoogleMaps}</div>
-                                    )}
-                                    <p className="text-xs text-gray-400 mt-2">
+                                    <input
+                                        id="ubicacionGoogleMaps"
+                                        name="ubicacionGoogleMaps"
+                                        type="url"
+                                        placeholder="https://maps.google.com/?q=..."
+                                        className="form-input w-full"
+                                        value={formik.values.ubicacionGoogleMaps}
+                                        onChange={formik.handleChange}
+                                        onBlur={formik.handleBlur}
+                                        disabled={submitting}
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">
                                         Ejemplo: https://maps.google.com/?q=-12.046374,-77.042793
                                     </p>
                                 </div>
                             </div>
 
                             {/* BOTONES */}
-                            <div className="flex items-center justify-end space-x-3 pt-5 border-t border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center justify-end space-x-3 pt-5 border-t">
                                 <button
                                     type="button"
                                     className="btn btn-outline-danger flex items-center gap-2"
-                                    onClick={() => window.location.href = '/tickets'}
-                                    disabled={formik.isSubmitting}
+                                    onClick={() => navigate('/tickets')}
+                                    disabled={submitting}
                                 >
-                                    <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
+                                    <FontAwesomeIcon icon={faTimes} />
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="btn btn-primary flex items-center gap-2 min-w-[140px] justify-center"
-                                    disabled={!formik.isValid || formik.isSubmitting}
+                                    className="btn btn-primary flex items-center gap-2 min-w-[160px] justify-center"
+                                    disabled={submitting || !formik.isValid}
                                 >
-                                    {formik.isSubmitting ? (
+                                    {submitting ? (
                                         <>
-                                            <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                                            <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
                                             Actualizando...
                                         </>
                                     ) : (
                                         <>
-                                            <FontAwesomeIcon icon={faSave} className="w-4 h-4" />
+                                            <FontAwesomeIcon icon={faSave} />
                                             Actualizar Ticket
                                         </>
                                     )}
