@@ -43,7 +43,7 @@ import {
     faImage,
     faSearch,
     faCheckCircle,
-    faInfoCircle
+    faInfoCircle,
 } from '@fortawesome/free-solid-svg-icons';
 
 const CrearTicket = () => {
@@ -61,7 +61,7 @@ const CrearTicket = () => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [loadingModelos, setLoadingModelos] = useState(false);
-    
+
     // Estados para ubigeo
     const [departamentos, setDepartamentos] = useState([]);
     const [provincias, setProvincias] = useState({});
@@ -108,110 +108,73 @@ const CrearTicket = () => {
             fotoVideoFalla: '',
             fotoBoletaFactura: '',
             fotoNumeroSerie: '',
-            ubicacionGoogleMaps: ''
+            ubicacionGoogleMaps: '',
         },
         validationSchema: Yup.object({
-            nombreCompleto: Yup.string()
-                .required('El nombre completo es requerido')
-                .min(3, 'Mínimo 3 caracteres')
-                .max(255, 'Máximo 255 caracteres'),
-            
-            correoElectronico: Yup.string()
-                .email('Correo electrónico inválido')
-                .required('El correo electrónico es requerido')
-                .max(255, 'Máximo 255 caracteres'),
-            
-            idTipoDocumento: Yup.number()
-                .required('El tipo de documento es requerido')
-                .positive('Seleccione un tipo de documento válido'),
-            
+            nombreCompleto: Yup.string().required('El nombre completo es requerido').min(3, 'Mínimo 3 caracteres').max(255, 'Máximo 255 caracteres'),
+
+            correoElectronico: Yup.string().email('Correo electrónico inválido').required('El correo electrónico es requerido').max(255, 'Máximo 255 caracteres'),
+
+            idTipoDocumento: Yup.number().required('El tipo de documento es requerido').positive('Seleccione un tipo de documento válido'),
+
             dni_ruc_ce: Yup.string()
                 .required('El número de documento es requerido')
                 .min(8, 'Mínimo 8 caracteres')
                 .max(20, 'Máximo 20 caracteres')
                 .matches(/^[0-9]+$/, 'Solo se permiten números'),
-            
+
             telefonoCelular: Yup.string()
                 .required('El teléfono celular es requerido')
                 .min(9, 'Mínimo 9 dígitos')
                 .max(20, 'Máximo 20 dígitos')
                 .matches(/^[0-9]+$/, 'Solo se permiten números'),
-            
+
             telefonoFijo: Yup.string()
                 .nullable()
                 .matches(/^[0-9-]+$/, 'Formato inválido'),
 
-            direccionCompleta: Yup.string()
-                .required('La dirección completa es requerida')
-                .max(500, 'Máximo 500 caracteres'),
-            
-            referenciaDomicilio: Yup.string()
-                .nullable()
-                .max(500, 'Máximo 500 caracteres'),
-            
-            departamento: Yup.string()
-                .required('El departamento es requerido'),
-            
-            provincia: Yup.string()
-                .required('La provincia es requerida'),
-            
-            distrito: Yup.string()
-                .required('El distrito es requerido'),
+            direccionCompleta: Yup.string().required('La dirección completa es requerida').max(500, 'Máximo 500 caracteres'),
 
-            idCategoria: Yup.number()
-                .required('La categoría del producto es requerida')
-                .positive('Seleccione una categoría válida'),
-            
-            idModelo: Yup.number()
-                .required('El modelo del producto es requerido')
-                .positive('Seleccione un modelo válido'),
-            
-            serieProducto: Yup.string()
-                .required('El número de serie es requerido')
-                .max(100, 'Máximo 100 caracteres'),
+            referenciaDomicilio: Yup.string().nullable().max(500, 'Máximo 500 caracteres'),
 
-            detallesFalla: Yup.string()
-                .required('Los detalles de la falla son requeridos')
-                .min(10, 'Describe la falla con más detalle (mínimo 10 caracteres)')
-                .max(5000, 'Máximo 5000 caracteres'),
-            
-            fechaCompra: Yup.date()
-                .required('La fecha de compra es requerida')
-                .max(new Date(), 'La fecha no puede ser futura')
-                .typeError('Fecha inválida - Use el formato DD/MM/AAAA'),
-            
-            tiendaSedeCompra: Yup.string()
-                .required('La tienda y sede de compra es requerida')
-                .max(255, 'Máximo 255 caracteres'),
+            departamento: Yup.string().required('El departamento es requerido'),
 
-            fotoVideoFalla: Yup.string()
-                .nullable()
-                .url('Debe ser una URL válida'),
-            
-            fotoBoletaFactura: Yup.string()
-                .nullable()
-                .url('Debe ser una URL válida'),
-            
-            fotoNumeroSerie: Yup.string()
-                .nullable()
-                .url('Debe ser una URL válida'),
-            
-            ubicacionGoogleMaps: Yup.string()
-                .nullable()
-                .url('Debe ser una URL válida de Google Maps')
+            provincia: Yup.string().required('La provincia es requerida'),
+
+            distrito: Yup.string().required('El distrito es requerido'),
+
+            idCategoria: Yup.number().required('La categoría del producto es requerida').positive('Seleccione una categoría válida'),
+
+            idModelo: Yup.number().required('El modelo del producto es requerido').positive('Seleccione un modelo válido'),
+
+            serieProducto: Yup.string().required('El número de serie es requerido').max(100, 'Máximo 100 caracteres'),
+
+            detallesFalla: Yup.string().required('Los detalles de la falla son requeridos').min(10, 'Describe la falla con más detalle (mínimo 10 caracteres)').max(5000, 'Máximo 5000 caracteres'),
+
+            fechaCompra: Yup.date().required('La fecha de compra es requerida').max(new Date(), 'La fecha no puede ser futura').typeError('Fecha inválida - Use el formato DD/MM/AAAA'),
+
+            tiendaSedeCompra: Yup.string().required('La tienda y sede de compra es requerida').max(255, 'Máximo 255 caracteres'),
+
+            fotoVideoFalla: Yup.string().nullable().url('Debe ser una URL válida'),
+
+            fotoBoletaFactura: Yup.string().nullable().url('Debe ser una URL válida'),
+
+            fotoNumeroSerie: Yup.string().nullable().url('Debe ser una URL válida'),
+
+            ubicacionGoogleMaps: Yup.string().nullable().url('Debe ser una URL válida de Google Maps'),
         }),
         onSubmit: async (values, { setSubmitting, resetForm }) => {
             setSubmitting(true);
-            
+
             try {
                 toastr.info('Creando ticket...', 'Procesando');
 
                 const token = localStorage.getItem('token');
 
                 const formData = new FormData();
-                
+
                 // Agregar todos los campos del formulario
-                Object.keys(values).forEach(key => {
+                Object.keys(values).forEach((key) => {
                     if (values[key] !== null && values[key] !== undefined && values[key] !== '') {
                         formData.append(key, values[key]);
                     }
@@ -224,24 +187,24 @@ const CrearTicket = () => {
 
                 const response = await axios.post(`${API_URL}/tickets`, formData, {
                     headers: {
-                        'Authorization': token ? `Bearer ${token}` : '',
-                        'Content-Type': 'multipart/form-data'
-                    }
+                        Authorization: token ? `Bearer ${token}` : '',
+                        'Content-Type': 'multipart/form-data',
+                    },
                 });
 
                 if (response.data.success) {
                     toastr.clear();
                     toastr.success('✅ ¡Ticket creado exitosamente!', 'Éxito');
-                    
+
                     resetForm();
-                    
+
                     setFileFalla(null);
                     setFileBoleta(null);
                     setFileSerie(null);
                     setPreviewFalla(null);
                     setPreviewBoleta(null);
                     setPreviewSerie(null);
-                    
+
                     if (fileInputFallaRef.current) fileInputFallaRef.current.value = '';
                     if (fileInputBoletaRef.current) fileInputBoletaRef.current.value = '';
                     if (fileInputSerieRef.current) fileInputSerieRef.current.value = '';
@@ -250,14 +213,13 @@ const CrearTicket = () => {
                         window.location.href = '/tickets';
                     }, 2000);
                 }
-
             } catch (error) {
                 console.error('Error al crear ticket:', error);
-                
+
                 if (error.response) {
                     if (error.response.status === 422) {
                         const errors = error.response.data.errors;
-                        Object.keys(errors).forEach(key => {
+                        Object.keys(errors).forEach((key) => {
                             toastr.error(errors[key][0], 'Error de validación');
                         });
                     } else if (error.response.status === 401) {
@@ -273,7 +235,7 @@ const CrearTicket = () => {
             } finally {
                 setSubmitting(false);
             }
-        }
+        },
     });
 
     // TERCERO: Todos los useEffect después de useFormik
@@ -310,7 +272,6 @@ const CrearTicket = () => {
                 const distsResponse = await fetch('/assets/ubigeos/distritos.json');
                 const distsData = await distsResponse.json();
                 setDistritos(distsData);
-
             } catch (error) {
                 console.error('Error cargando ubigeos:', error);
                 toastr.error('Error al cargar los datos de ubicación', 'Error');
@@ -322,27 +283,45 @@ const CrearTicket = () => {
         cargarUbigeos();
     }, []);
 
-    // Inicializar flatpickr con formato español
-    useEffect(() => {
-        if (fechaCompraRef.current) {
-            flatpickr(fechaCompraRef.current, {
-                locale: Spanish,
-                dateFormat: 'd/m/Y',
-                altInput: true,
-                altFormat: 'd/m/Y',
-                maxDate: 'today',
-                onChange: (selectedDates, dateStr) => {
-                    if (selectedDates[0]) {
-                        const year = selectedDates[0].getFullYear();
-                        const month = String(selectedDates[0].getMonth() + 1).padStart(2, '0');
-                        const day = String(selectedDates[0].getDate()).padStart(2, '0');
-                        const fechaFormatoDB = `${year}-${month}-${day}`;
-                        formik.setFieldValue('fechaCompra', fechaFormatoDB);
-                    }
+useEffect(() => {
+    console.log("Inicializando flatpickr...");
+    console.log("Elemento ref:", fechaCompraRef.current);
+    
+    if (!fechaCompraRef.current) {
+        console.log("El elemento ref es null - esperando a que se renderice");
+        return;
+    }
+
+    console.log("Inicializando flatpickr en elemento:", fechaCompraRef.current);
+
+    try {
+        const fp = flatpickr(fechaCompraRef.current, {
+            locale: Spanish,
+            dateFormat: "d/m/Y",
+            maxDate: "today",
+            allowInput: true,
+            clickOpens: true,
+            onChange: (selectedDates, dateStr) => {
+                console.log("Fecha seleccionada:", dateStr);
+                if (selectedDates.length) {
+                    const date = selectedDates[0];
+                    const fechaDB = date.toISOString().split('T')[0];
+                    console.log("Fecha para DB:", fechaDB);
+                    formik.setFieldValue("fechaCompra", fechaDB);
                 }
-            });
-        }
-    }, []);
+            }
+        });
+
+        console.log("Flatpickr inicializado correctamente");
+
+        return () => {
+            console.log("Destruyendo flatpickr");
+            fp.destroy();
+        };
+    } catch (error) {
+        console.error("Error al inicializar flatpickr:", error);
+    }
+}, [fechaCompraRef.current]); // <-- AÑADE LA DEPENDENCIA AQUÍ
 
     // Filtrar provincias cuando se selecciona un departamento
     useEffect(() => {
@@ -385,9 +364,9 @@ const CrearTicket = () => {
             const token = localStorage.getItem('token');
             const response = await axios.get(`${API_URL}/tickets-form-data`, {
                 headers: {
-                    'Authorization': token ? `Bearer ${token}` : '',
-                    'Accept': 'application/json'
-                }
+                    Authorization: token ? `Bearer ${token}` : '',
+                    Accept: 'application/json',
+                },
             });
 
             if (response.data.success) {
@@ -398,13 +377,13 @@ const CrearTicket = () => {
         } catch (error) {
             console.error('Error cargando datos:', error);
             toastr.error('No se pudieron cargar los datos del formulario', 'Error');
-            
+
             setTiposDocumento([
                 { idTipoDocumento: 1, nombre: 'DNI' },
                 { idTipoDocumento: 2, nombre: 'RUC' },
-                { idTipoDocumento: 3, nombre: 'Carnet de Extranjería' }
+                { idTipoDocumento: 3, nombre: 'Carnet de Extranjería' },
             ]);
-            
+
             setCategorias([
                 { idCategoria: 1, nombre: 'Laptop' },
                 { idCategoria: 2, nombre: 'Desktop' },
@@ -412,7 +391,7 @@ const CrearTicket = () => {
                 { idCategoria: 4, nombre: 'Celular' },
                 { idCategoria: 5, nombre: 'Impresora' },
                 { idCategoria: 6, nombre: 'Monitor' },
-                { idCategoria: 7, nombre: 'Otro' }
+                { idCategoria: 7, nombre: 'Otro' },
             ]);
         } finally {
             setLoading(false);
@@ -425,9 +404,9 @@ const CrearTicket = () => {
             const token = localStorage.getItem('token');
             const response = await axios.get(`${API_URL}/modelos-por-categoria/${categoriaId}`, {
                 headers: {
-                    'Authorization': token ? `Bearer ${token}` : '',
-                    'Accept': 'application/json'
-                }
+                    Authorization: token ? `Bearer ${token}` : '',
+                    Accept: 'application/json',
+                },
             });
 
             if (response.data.success) {
@@ -435,7 +414,7 @@ const CrearTicket = () => {
             }
         } catch (error) {
             console.error('Error cargando modelos:', error);
-            const filtrados = modelos.filter(m => m.idCategoria === parseInt(categoriaId));
+            const filtrados = modelos.filter((m) => m.idCategoria === parseInt(categoriaId));
             setModelosFiltrados(filtrados);
         } finally {
             setLoadingModelos(false);
@@ -458,7 +437,7 @@ const CrearTicket = () => {
             }
 
             setFile(file);
-            
+
             const reader = new FileReader();
             reader.onloadend = () => {
                 setPreview(reader.result);
@@ -475,10 +454,7 @@ const CrearTicket = () => {
         if (!image) return null;
 
         return (
-            <div
-                className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
-                onClick={onClose}
-            >
+            <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onClick={onClose}>
                 <div className="relative max-w-4xl w-full max-h-[90vh] flex items-center justify-center">
                     <button
                         onClick={onClose}
@@ -486,12 +462,7 @@ const CrearTicket = () => {
                     >
                         <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
                     </button>
-                    <img
-                        src={image}
-                        alt="Vista ampliada"
-                        className="max-w-full max-h-[90vh] object-contain rounded-lg"
-                        onClick={(e) => e.stopPropagation()}
-                    />
+                    <img src={image} alt="Vista ampliada" className="max-w-full max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
                 </div>
             </div>
         );
@@ -522,9 +493,7 @@ const CrearTicket = () => {
                             <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-full">
                                 <FontAwesomeIcon icon={faTicket} className="w-8 h-8 text-gray-500 dark:text-gray-400" />
                             </div>
-                            <h1 className="text-3xl font-bold text-gray-800 dark:text-white-light">
-                                Crear Nuevo Ticket de Servicio
-                            </h1>
+                            <h1 className="text-3xl font-bold text-gray-800 dark:text-white-light">Crear Nuevo Ticket de Servicio</h1>
                         </div>
                         <p className="text-gray-600 dark:text-gray-400 text-base flex items-center gap-2">
                             <FontAwesomeIcon icon={faComment} className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -565,9 +534,7 @@ const CrearTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={submitting}
                                         />
-                                        {formik.touched.nombreCompleto && formik.errors.nombreCompleto && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.nombreCompleto}</div>
-                                        )}
+                                        {formik.touched.nombreCompleto && formik.errors.nombreCompleto && <div className="text-danger text-sm mt-1">{formik.errors.nombreCompleto}</div>}
                                     </div>
 
                                     <div>
@@ -586,9 +553,7 @@ const CrearTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={submitting}
                                         />
-                                        {formik.touched.correoElectronico && formik.errors.correoElectronico && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.correoElectronico}</div>
-                                        )}
+                                        {formik.touched.correoElectronico && formik.errors.correoElectronico && <div className="text-danger text-sm mt-1">{formik.errors.correoElectronico}</div>}
                                     </div>
 
                                     <div>
@@ -606,15 +571,13 @@ const CrearTicket = () => {
                                             disabled={submitting}
                                         >
                                             <option value="">Seleccione tipo</option>
-                                            {tiposDocumento.map(tipo => (
+                                            {tiposDocumento.map((tipo) => (
                                                 <option key={tipo.idTipoDocumento} value={tipo.idTipoDocumento}>
                                                     {tipo.nombre}
                                                 </option>
                                             ))}
                                         </select>
-                                        {formik.touched.idTipoDocumento && formik.errors.idTipoDocumento && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.idTipoDocumento}</div>
-                                        )}
+                                        {formik.touched.idTipoDocumento && formik.errors.idTipoDocumento && <div className="text-danger text-sm mt-1">{formik.errors.idTipoDocumento}</div>}
                                     </div>
 
                                     <div>
@@ -633,9 +596,7 @@ const CrearTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={submitting}
                                         />
-                                        {formik.touched.dni_ruc_ce && formik.errors.dni_ruc_ce && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.dni_ruc_ce}</div>
-                                        )}
+                                        {formik.touched.dni_ruc_ce && formik.errors.dni_ruc_ce && <div className="text-danger text-sm mt-1">{formik.errors.dni_ruc_ce}</div>}
                                     </div>
 
                                     <div>
@@ -672,9 +633,7 @@ const CrearTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={submitting}
                                         />
-                                        {formik.touched.telefonoCelular && formik.errors.telefonoCelular && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.telefonoCelular}</div>
-                                        )}
+                                        {formik.touched.telefonoCelular && formik.errors.telefonoCelular && <div className="text-danger text-sm mt-1">{formik.errors.telefonoCelular}</div>}
                                     </div>
                                 </div>
 
@@ -704,9 +663,7 @@ const CrearTicket = () => {
                                                 onBlur={formik.handleBlur}
                                                 disabled={submitting}
                                             />
-                                            {formik.touched.direccionCompleta && formik.errors.direccionCompleta && (
-                                                <div className="text-danger text-sm mt-1">{formik.errors.direccionCompleta}</div>
-                                            )}
+                                            {formik.touched.direccionCompleta && formik.errors.direccionCompleta && <div className="text-danger text-sm mt-1">{formik.errors.direccionCompleta}</div>}
                                         </div>
 
                                         <div>
@@ -745,15 +702,13 @@ const CrearTicket = () => {
                                                 disabled={submitting}
                                             >
                                                 <option value="">Seleccione departamento</option>
-                                                {departamentos.map(depto => (
+                                                {departamentos.map((depto) => (
                                                     <option key={depto.id_ubigeo} value={depto.id_ubigeo}>
                                                         {depto.nombre_ubigeo}
                                                     </option>
                                                 ))}
                                             </select>
-                                            {formik.touched.departamento && formik.errors.departamento && (
-                                                <div className="text-danger text-sm mt-1">{formik.errors.departamento}</div>
-                                            )}
+                                            {formik.touched.departamento && formik.errors.departamento && <div className="text-danger text-sm mt-1">{formik.errors.departamento}</div>}
                                         </div>
 
                                         {/* PROVINCIA */}
@@ -771,20 +726,14 @@ const CrearTicket = () => {
                                                 onBlur={formik.handleBlur}
                                                 disabled={!formik.values.departamento || submitting}
                                             >
-                                                <option value="">
-                                                    {!formik.values.departamento 
-                                                        ? 'Primero seleccione departamento' 
-                                                        : 'Seleccione provincia'}
-                                                </option>
-                                                {provinciasFiltradas.map(prov => (
+                                                <option value="">{!formik.values.departamento ? 'Primero seleccione departamento' : 'Seleccione provincia'}</option>
+                                                {provinciasFiltradas.map((prov) => (
                                                     <option key={prov.id_ubigeo} value={prov.id_ubigeo}>
                                                         {prov.nombre_ubigeo}
                                                     </option>
                                                 ))}
                                             </select>
-                                            {formik.touched.provincia && formik.errors.provincia && (
-                                                <div className="text-danger text-sm mt-1">{formik.errors.provincia}</div>
-                                            )}
+                                            {formik.touched.provincia && formik.errors.provincia && <div className="text-danger text-sm mt-1">{formik.errors.provincia}</div>}
                                         </div>
 
                                         {/* DISTRITO */}
@@ -802,20 +751,14 @@ const CrearTicket = () => {
                                                 onBlur={formik.handleBlur}
                                                 disabled={!formik.values.provincia || submitting}
                                             >
-                                                <option value="">
-                                                    {!formik.values.provincia 
-                                                        ? 'Primero seleccione provincia' 
-                                                        : 'Seleccione distrito'}
-                                                </option>
-                                                {distritosFiltrados.map(dist => (
+                                                <option value="">{!formik.values.provincia ? 'Primero seleccione provincia' : 'Seleccione distrito'}</option>
+                                                {distritosFiltrados.map((dist) => (
                                                     <option key={dist.id_ubigeo} value={dist.id_ubigeo}>
                                                         {dist.nombre_ubigeo}
                                                     </option>
                                                 ))}
                                             </select>
-                                            {formik.touched.distrito && formik.errors.distrito && (
-                                                <div className="text-danger text-sm mt-1">{formik.errors.distrito}</div>
-                                            )}
+                                            {formik.touched.distrito && formik.errors.distrito && <div className="text-danger text-sm mt-1">{formik.errors.distrito}</div>}
                                         </div>
                                     </div>
                                 </div>
@@ -844,15 +787,13 @@ const CrearTicket = () => {
                                             disabled={submitting}
                                         >
                                             <option value="">Seleccione categoría</option>
-                                            {categorias.map(cat => (
+                                            {categorias.map((cat) => (
                                                 <option key={cat.idCategoria} value={cat.idCategoria}>
                                                     {cat.nombre}
                                                 </option>
                                             ))}
                                         </select>
-                                        {formik.touched.idCategoria && formik.errors.idCategoria && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.idCategoria}</div>
-                                        )}
+                                        {formik.touched.idCategoria && formik.errors.idCategoria && <div className="text-danger text-sm mt-1">{formik.errors.idCategoria}</div>}
                                     </div>
 
                                     <div>
@@ -869,20 +810,14 @@ const CrearTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={!formik.values.idCategoria || submitting || loadingModelos}
                                         >
-                                            <option value="">
-                                                {loadingModelos ? 'Cargando...' : 
-                                                 !formik.values.idCategoria ? 'Primero seleccione categoría' : 
-                                                 'Seleccione modelo'}
-                                            </option>
-                                            {modelosFiltrados.map(modelo => (
+                                            <option value="">{loadingModelos ? 'Cargando...' : !formik.values.idCategoria ? 'Primero seleccione categoría' : 'Seleccione modelo'}</option>
+                                            {modelosFiltrados.map((modelo) => (
                                                 <option key={modelo.idModelo} value={modelo.idModelo}>
                                                     {modelo.nombre}
                                                 </option>
                                             ))}
                                         </select>
-                                        {formik.touched.idModelo && formik.errors.idModelo && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.idModelo}</div>
-                                        )}
+                                        {formik.touched.idModelo && formik.errors.idModelo && <div className="text-danger text-sm mt-1">{formik.errors.idModelo}</div>}
                                     </div>
 
                                     <div className="md:col-span-2">
@@ -901,9 +836,7 @@ const CrearTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={submitting}
                                         />
-                                        {formik.touched.serieProducto && formik.errors.serieProducto && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.serieProducto}</div>
-                                        )}
+                                        {formik.touched.serieProducto && formik.errors.serieProducto && <div className="text-danger text-sm mt-1">{formik.errors.serieProducto}</div>}
                                     </div>
                                 </div>
 
@@ -932,12 +865,8 @@ const CrearTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={submitting}
                                         />
-                                        {formik.touched.detallesFalla && formik.errors.detallesFalla && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.detallesFalla}</div>
-                                        )}
-                                        <div className="text-xs text-gray-500 mt-1">
-                                            {formik.values.detallesFalla.length}/5000 caracteres
-                                        </div>
+                                        {formik.touched.detallesFalla && formik.errors.detallesFalla && <div className="text-danger text-sm mt-1">{formik.errors.detallesFalla}</div>}
+                                        <div className="text-xs text-gray-500 mt-1">{formik.values.detallesFalla.length}/5000 caracteres</div>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -951,17 +880,17 @@ const CrearTicket = () => {
                                                 id="fechaCompra"
                                                 name="fechaCompra"
                                                 type="text"
-                                                className={`form-input ${formik.touched.fechaCompra && formik.errors.fechaCompra ? 'has-error' : ''}`}
-                                                value={formik.values.fechaCompra}
-                                                onChange={formik.handleChange}
-                                                onBlur={formik.handleBlur}
-                                                disabled={submitting}
                                                 placeholder="DD/MM/AAAA"
+                                                className={`form-input ${formik.touched.fechaCompra && formik.errors.fechaCompra ? 'has-error' : ''}`}
+                                                style={{
+                                                    cursor: 'pointer',
+                                                    backgroundColor: 'white',
+                                                    position: 'relative',
+                                                    zIndex: 1,
+                                                }}
                                                 autoComplete="off"
                                             />
-                                            {formik.touched.fechaCompra && formik.errors.fechaCompra && (
-                                                <div className="text-danger text-sm mt-1">{formik.errors.fechaCompra}</div>
-                                            )}
+                                            {formik.touched.fechaCompra && formik.errors.fechaCompra && <div className="text-danger text-sm mt-1">{formik.errors.fechaCompra}</div>}
                                         </div>
 
                                         <div>
@@ -980,9 +909,7 @@ const CrearTicket = () => {
                                                 onBlur={formik.handleBlur}
                                                 disabled={submitting}
                                             />
-                                            {formik.touched.tiendaSedeCompra && formik.errors.tiendaSedeCompra && (
-                                                <div className="text-danger text-sm mt-1">{formik.errors.tiendaSedeCompra}</div>
-                                            )}
+                                            {formik.touched.tiendaSedeCompra && formik.errors.tiendaSedeCompra && <div className="text-danger text-sm mt-1">{formik.errors.tiendaSedeCompra}</div>}
                                         </div>
                                     </div>
                                 </div>
@@ -993,9 +920,7 @@ const CrearTicket = () => {
                                         <FontAwesomeIcon icon={faCamera} className="w-5 h-5 text-primary" />
                                         Archivos Adjuntos
                                     </h2>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Sube imágenes (máx. 5MB por imagen, formatos: JPG, PNG, GIF)
-                                    </p>
+                                    <p className="text-sm text-gray-500 mt-1">Sube imágenes (máx. 5MB por imagen, formatos: JPG, PNG, GIF)</p>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1030,12 +955,7 @@ const CrearTicket = () => {
                                                 </div>
                                             ) : (
                                                 <div className="relative w-full">
-                                                    <img
-                                                        src={previewFalla}
-                                                        alt="Preview"
-                                                        className="w-full h-48 object-cover rounded-lg cursor-pointer"
-                                                        onClick={() => setModalImage(previewFalla)}
-                                                    />
+                                                    <img src={previewFalla} alt="Preview" className="w-full h-48 object-cover rounded-lg cursor-pointer" onClick={() => setModalImage(previewFalla)} />
                                                     <button
                                                         type="button"
                                                         className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8"
@@ -1136,12 +1056,7 @@ const CrearTicket = () => {
                                                 </div>
                                             ) : (
                                                 <div className="relative w-full">
-                                                    <img
-                                                        src={previewSerie}
-                                                        alt="Preview"
-                                                        className="w-full h-48 object-cover rounded-lg cursor-pointer"
-                                                        onClick={() => setModalImage(previewSerie)}
-                                                    />
+                                                    <img src={previewSerie} alt="Preview" className="w-full h-48 object-cover rounded-lg cursor-pointer" onClick={() => setModalImage(previewSerie)} />
                                                     <button
                                                         type="button"
                                                         className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8"
@@ -1177,29 +1092,19 @@ const CrearTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={submitting}
                                         />
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            Ejemplo: https://maps.google.com/?q=-12.046374,-77.042793
-                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">Ejemplo: https://maps.google.com/?q=-12.046374,-77.042793</p>
                                     </div>
                                 </div>
 
                                 {/* BOTONES */}
                                 <div className="flex items-center justify-end space-x-3 pt-5 border-t">
                                     <Link to="/tickets">
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline-danger flex items-center gap-2"
-                                            disabled={submitting}
-                                        >
+                                        <button type="button" className="btn btn-outline-danger flex items-center gap-2" disabled={submitting}>
                                             <FontAwesomeIcon icon={faTimes} />
                                             Cancelar
                                         </button>
                                     </Link>
-                                    <button
-                                        type="submit"
-                                        className="btn btn-primary flex items-center gap-2 min-w-[140px] justify-center"
-                                        disabled={submitting || !formik.isValid}
-                                    >
+                                    <button type="submit" className="btn btn-primary flex items-center gap-2 min-w-[140px] justify-center" disabled={submitting || !formik.isValid}>
                                         {submitting ? (
                                             <>
                                                 <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
