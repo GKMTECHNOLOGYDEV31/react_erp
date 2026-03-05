@@ -46,7 +46,7 @@ class TicketClienteGeneral extends Model
     protected $casts = [
         'fechaCompra' => 'date',
         'fechaCreacion' => 'datetime',
-        'estado' => 'boolean'
+        'estado' => 'integer'
     ];
 
     // Relaciones

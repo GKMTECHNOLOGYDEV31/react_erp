@@ -25,7 +25,10 @@ import {
     faHashtag,
     faMapMarkerAlt,
     faTag,
-    faBuilding
+    faBuilding,
+    faSearchLocation,
+    faTools,
+    faCheckDouble
 } from '@fortawesome/free-solid-svg-icons';
 import DataTable from 'react-data-table-component';
 import toastr from 'toastr';
@@ -71,84 +74,83 @@ const ListaTickets = () => {
         }
     }, []);
 
-    // Cargar tickets desde el backend
-    const cargarTickets = async () => {
-        setLoading(true);
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_URL}/tickets`, {
-                headers: {
-                    'Authorization': token ? `Bearer ${token}` : '',
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (response.data.success) {
-                // Transformar datos para el frontend
-                const ticketsTransformados = response.data.data.map(ticket => ({
-                    id: ticket.idTicket,
-                    numeroTicket: ticket.numero_ticket,
-                    // Datos cliente
-                    nombreCompleto: ticket.nombreCompleto,
-                    correoElectronico: ticket.correoElectronico,
-                    telefonoCelular: ticket.telefonoCelular,
-                    telefonoFijo: ticket.telefonoFijo || '',
-                    tipoDocumento: ticket.tipoDocumento?.nombre || '',
-                    dni_ruc_ce: ticket.dni_ruc_ce,
-                    
-                    // Datos producto
-                    tipoProducto: ticket.categoria?.nombre || 'N/A',
-                    marca: ticket.modelo?.marca?.nombre || 'N/A',
-                    modelo: ticket.modelo?.nombre || 'N/A',
-                    serie: ticket.serieProducto,
-                    
-                    // Falla
-                    detallesFalla: ticket.detallesFalla,
-                    
-                    // Fechas
-                    fechaCreacion: new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    }),
-                    fechaCompra: ticket.fechaCompra,
-                    tiendaSedeCompra: ticket.tiendaSedeCompra,
-                    
-                    // Estado (1: abierto, 2: en_proceso, 3: cerrado)
-                    estado: ticket.estado === 1 ? 'abierto' : 
-                            ticket.estado === 2 ? 'en_proceso' : 'cerrado',
-                    
-                    // Ubicación
-                    departamento: ticket.departamento,
-                    provincia: ticket.provincia,
-                    distrito: ticket.distrito,
-                    direccionCompleta: ticket.direccionCompleta,
-                    referenciaDomicilio: ticket.referenciaDomicilio,
-                    ubicacionGoogleMaps: ticket.ubicacionGoogleMaps,
-                    
-                    // Evidencias
-                    fotoVideoFalla: ticket.fotoVideoFalla,
-                    fotoBoletaFactura: ticket.fotoBoletaFactura,
-                    fotoNumeroSerie: ticket.fotoNumeroSerie,
-                    
-                    // Información adicional
-                    idUsuarioCreador: ticket.idUsuarioCreador,
-                    idClienteGeneral: ticket.idClienteGeneral,
-                    usuarioCreador: ticket.usuario_creador ? 
-                        `${ticket.usuario_creador.Nombre} ${ticket.usuario_creador.apellidoPaterno}` : 'N/A'
-                }));
-                
-                setTicketsData(ticketsTransformados);
+   // Cargar tickets desde el backend
+const cargarTickets = async () => {
+    setLoading(true);
+    try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/tickets`, {
+            headers: {
+                'Authorization': token ? `Bearer ${token}` : '',
+                'Accept': 'application/json'
             }
-        } catch (error) {
-            console.error('Error cargando tickets:', error);
-            toastr.error('Error al cargar los tickets', 'Error');
-        } finally {
-            setLoading(false);
+        });
+
+        if (response.data.success) {
+            // Transformar datos para el frontend
+            const ticketsTransformados = response.data.data.map(ticket => ({
+                id: ticket.idTicket,
+                numeroTicket: ticket.numero_ticket,
+                // Datos cliente
+                nombreCompleto: ticket.nombreCompleto,
+                correoElectronico: ticket.correoElectronico,
+                telefonoCelular: ticket.telefonoCelular,
+                telefonoFijo: ticket.telefonoFijo || '',
+                tipoDocumento: ticket.tipoDocumento?.nombre || '',
+                dni_ruc_ce: ticket.dni_ruc_ce,
+                
+                // Datos producto
+                tipoProducto: ticket.categoria?.nombre || 'N/A',
+                modelo: ticket.modelo?.nombre || 'N/A',
+                serie: ticket.serieProducto,
+                
+                // Falla
+                detallesFalla: ticket.detallesFalla,
+                
+                // Fechas
+                fechaCreacion: new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }),
+                fechaCompra: ticket.fechaCompra,
+                tiendaSedeCompra: ticket.tiendaSedeCompra,
+                
+                // Estado (1: evaluando, 2: gestionando, 3: finalizado)
+                estado: ticket.estado === 1 ? 'evaluando' : 
+                        ticket.estado === 2 ? 'gestionando' : 'finalizado',
+                
+                // Ubicación
+                departamento: ticket.departamento,
+                provincia: ticket.provincia,
+                distrito: ticket.distrito,
+                direccionCompleta: ticket.direccionCompleta,
+                referenciaDomicilio: ticket.referenciaDomicilio,
+                ubicacionGoogleMaps: ticket.ubicacionGoogleMaps,
+                
+                // Evidencias
+                fotoVideoFalla: ticket.fotoVideoFalla,
+                fotoBoletaFactura: ticket.fotoBoletaFactura,
+                fotoNumeroSerie: ticket.fotoNumeroSerie,
+                
+                // Información adicional
+                idUsuarioCreador: ticket.idUsuarioCreador,
+                idClienteGeneral: ticket.idClienteGeneral,
+                usuarioCreador: ticket.usuario_creador ? 
+                    `${ticket.usuario_creador.Nombre} ${ticket.usuario_creador.apellidoPaterno}` : 'N/A'
+            }));
+            
+            setTicketsData(ticketsTransformados);
         }
-    };
+    } catch (error) {
+        console.error('Error cargando tickets:', error);
+        toastr.error('Error al cargar los tickets', 'Error');
+    } finally {
+        setLoading(false);
+    }
+};
 
     useEffect(() => {
         dispatch(setPageTitle('Lista de Tickets'));
@@ -210,27 +212,27 @@ const ListaTickets = () => {
         return isSystemDark;
     });
 
-    // Función para obtener el badge de estado
+    // Función para obtener el badge de estado - ACTUALIZADO con los nuevos estados
     const getStatusBadge = (estado) => {
         const statusConfig = {
-            abierto: {
+            evaluando: {
+                color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+                icon: faSearchLocation,
+                text: 'Evaluando',
+            },
+            gestionando: {
                 color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-                icon: faExclamationCircle,
-                text: 'Abierto',
+                icon: faTools,
+                text: 'Gestionando',
             },
-            en_proceso: {
-                color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-                icon: faSpinner,
-                text: 'En Proceso',
-            },
-            cerrado: {
+            finalizado: {
                 color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                icon: faCheckCircle,
-                text: 'Cerrado',
+                icon: faCheckDouble,
+                text: 'Finalizado',
             },
         };
 
-        const config = statusConfig[estado] || statusConfig.abierto;
+        const config = statusConfig[estado] || statusConfig.evaluando;
 
         return (
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>
@@ -264,7 +266,7 @@ const ListaTickets = () => {
         }
     };
 
-    // Definir columnas para DataTable - VERSIÓN CORREGIDA
+    // Definir columnas para DataTable
     const columns = [
         {
             name: 'N° Ticket',
@@ -331,9 +333,6 @@ const ListaTickets = () => {
                     <div className="flex items-center gap-1 mb-1">
                         <span className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
                             {row.tipoProducto}
-                        </span>
-                        <span className="text-xs bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded-full text-blue-800 dark:text-blue-300">
-                            {row.marca}
                         </span>
                     </div>
                     <span className="text-sm font-medium truncate" title={row.modelo}>
@@ -428,7 +427,7 @@ const ListaTickets = () => {
         },
     ];
 
-    // Filtrar datos por estado, búsqueda y fecha
+    // Filtrar datos por estado, búsqueda y fecha - ACTUALIZADO con los nuevos estados
     const filteredData = useMemo(() => {
         let data = ticketsData;
 
@@ -447,7 +446,6 @@ const ListaTickets = () => {
                     item.correoElectronico.toLowerCase().includes(searchLower) ||
                     item.telefonoCelular.includes(filterText) ||
                     item.dni_ruc_ce.includes(filterText) ||
-                    item.marca.toLowerCase().includes(searchLower) ||
                     item.modelo.toLowerCase().includes(searchLower) ||
                     item.serie.toLowerCase().includes(searchLower) ||
                     item.distrito.toLowerCase().includes(searchLower) ||
@@ -474,7 +472,7 @@ const ListaTickets = () => {
         return data;
     }, [ticketsData, selectedStatus, filterText, dateRange]);
 
-    // Componente de filtros y búsqueda combinados
+    // Componente de filtros y búsqueda combinados - ACTUALIZADO con los nuevos estados
     const subHeaderComponent = useMemo(() => {
         return (
             <div className="flex flex-wrap items-center gap-4 w-full">
@@ -494,32 +492,32 @@ const ListaTickets = () => {
                     </button>
                     <button
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
-                            selectedStatus === 'abierto' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800'
+                            selectedStatus === 'evaluando' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800'
                         }`}
-                        onClick={() => setSelectedStatus('abierto')}
+                        onClick={() => setSelectedStatus('evaluando')}
                     >
-                        <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3" />
-                        Abiertos
+                        <FontAwesomeIcon icon={faSearchLocation} className="w-3 h-3" />
+                        Evaluando
                     </button>
                     <button
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
-                            selectedStatus === 'en_proceso'
-                                ? 'bg-yellow-600 text-white'
-                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-800'
+                            selectedStatus === 'gestionando'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800'
                         }`}
-                        onClick={() => setSelectedStatus('en_proceso')}
+                        onClick={() => setSelectedStatus('gestionando')}
                     >
-                        <FontAwesomeIcon icon={faSpinner} className="w-3 h-3" />
-                        En Proceso
+                        <FontAwesomeIcon icon={faTools} className="w-3 h-3" />
+                        Gestionando
                     </button>
                     <button
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
-                            selectedStatus === 'cerrado' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800'
+                            selectedStatus === 'finalizado' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800'
                         }`}
-                        onClick={() => setSelectedStatus('cerrado')}
+                        onClick={() => setSelectedStatus('finalizado')}
                     >
-                        <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3" />
-                        Cerrados
+                        <FontAwesomeIcon icon={faCheckDouble} className="w-3 h-3" />
+                        Finalizado
                     </button>
                 </div>
 
@@ -638,10 +636,8 @@ const ListaTickets = () => {
                         {usuarioActual ? (
                             <span className="flex items-center gap-2">
                                 <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
-                                Bienvenido, {usuarioActual.Nombre} {usuarioActual.apellidoPaterno}
-                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                    ID Cliente: {usuarioActual.idClienteGeneral}
-                                </span>
+                                Bienvenido {usuarioActual.Nombre} {usuarioActual.apellidoPaterno}
+                               
                             </span>
                         ) : (
                             'Administra todos los tickets de soporte técnico'
