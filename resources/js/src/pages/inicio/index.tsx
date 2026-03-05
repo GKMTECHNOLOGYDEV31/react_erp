@@ -40,7 +40,7 @@ const InicioPage: React.FC = () => {
 
             setTimeout(() => {
                 navigate('/analytics');
-            }, 1200);
+            }, 1200);   
 
         } catch (error: any) {
             toast.dismiss(loadingToast);
