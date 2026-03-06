@@ -28,7 +28,7 @@ import {
     faBuilding,
     faSearchLocation,
     faTools,
-    faCheckDouble
+    faCheckDouble,
 } from '@fortawesome/free-solid-svg-icons';
 import DataTable from 'react-data-table-component';
 import toastr from 'toastr';
@@ -74,83 +74,81 @@ const ListaTickets = () => {
         }
     }, []);
 
-   // Cargar tickets desde el backend
-const cargarTickets = async () => {
-    setLoading(true);
-    try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${API_URL}/tickets`, {
-            headers: {
-                'Authorization': token ? `Bearer ${token}` : '',
-                'Accept': 'application/json'
-            }
-        });
+    // Cargar tickets desde el backend
+    const cargarTickets = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_URL}/tickets`, {
+                headers: {
+                    Authorization: token ? `Bearer ${token}` : '',
+                    Accept: 'application/json',
+                },
+            });
 
-        if (response.data.success) {
-            // Transformar datos para el frontend
-            const ticketsTransformados = response.data.data.map(ticket => ({
-                id: ticket.idTicket,
-                numeroTicket: ticket.numero_ticket,
-                // Datos cliente
-                nombreCompleto: ticket.nombreCompleto,
-                correoElectronico: ticket.correoElectronico,
-                telefonoCelular: ticket.telefonoCelular,
-                telefonoFijo: ticket.telefonoFijo || '',
-                tipoDocumento: ticket.tipoDocumento?.nombre || '',
-                dni_ruc_ce: ticket.dni_ruc_ce,
-                
-                // Datos producto
-                tipoProducto: ticket.categoria?.nombre || 'N/A',
-                modelo: ticket.modelo?.nombre || 'N/A',
-                serie: ticket.serieProducto,
-                
-                // Falla
-                detallesFalla: ticket.detallesFalla,
-                
-                // Fechas
-                fechaCreacion: new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                }),
-                fechaCompra: ticket.fechaCompra,
-                tiendaSedeCompra: ticket.tiendaSedeCompra,
-                
-                // Estado (1: evaluando, 2: gestionando, 3: finalizado)
-                estado: ticket.estado === 1 ? 'evaluando' : 
-                        ticket.estado === 2 ? 'gestionando' : 'finalizado',
-                
-                // Ubicación
-                departamento: ticket.departamento,
-                provincia: ticket.provincia,
-                distrito: ticket.distrito,
-                direccionCompleta: ticket.direccionCompleta,
-                referenciaDomicilio: ticket.referenciaDomicilio,
-                ubicacionGoogleMaps: ticket.ubicacionGoogleMaps,
-                
-                // Evidencias
-                fotoVideoFalla: ticket.fotoVideoFalla,
-                fotoBoletaFactura: ticket.fotoBoletaFactura,
-                fotoNumeroSerie: ticket.fotoNumeroSerie,
-                
-                // Información adicional
-                idUsuarioCreador: ticket.idUsuarioCreador,
-                idClienteGeneral: ticket.idClienteGeneral,
-                usuarioCreador: ticket.usuario_creador ? 
-                    `${ticket.usuario_creador.Nombre} ${ticket.usuario_creador.apellidoPaterno}` : 'N/A'
-            }));
-            
-            setTicketsData(ticketsTransformados);
+            if (response.data.success) {
+                // Transformar datos para el frontend
+                const ticketsTransformados = response.data.data.map((ticket) => ({
+                    id: ticket.idTicket,
+                    numeroTicket: ticket.numero_ticket,
+                    // Datos cliente
+                    nombreCompleto: ticket.nombreCompleto,
+                    correoElectronico: ticket.correoElectronico,
+                    telefonoCelular: ticket.telefonoCelular,
+                    telefonoFijo: ticket.telefonoFijo || '',
+                    tipoDocumento: ticket.tipoDocumento?.nombre || '',
+                    dni_ruc_ce: ticket.dni_ruc_ce,
+
+                    // Datos producto
+                    tipoProducto: ticket.categoria?.nombre || 'N/A',
+                    modelo: ticket.modelo?.nombre || 'N/A',
+                    serie: ticket.serieProducto,
+
+                    // Falla
+                    detallesFalla: ticket.detallesFalla,
+
+                    // Fechas
+                    fechaCreacion: new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                    }),
+                    fechaCompra: ticket.fechaCompra,
+                    tiendaSedeCompra: ticket.tiendaSedeCompra,
+
+                    // Estado (1: evaluando, 2: gestionando, 3: finalizado)
+                    estado: ticket.estado === 1 ? 'evaluando' : ticket.estado === 2 ? 'gestionando' : 'finalizado',
+
+                    // Ubicación
+                    departamento: ticket.departamento,
+                    provincia: ticket.provincia,
+                    distrito: ticket.distrito,
+                    direccionCompleta: ticket.direccionCompleta,
+                    referenciaDomicilio: ticket.referenciaDomicilio,
+                    ubicacionGoogleMaps: ticket.ubicacionGoogleMaps,
+
+                    // Evidencias
+                    fotoVideoFalla: ticket.fotoVideoFalla,
+                    fotoBoletaFactura: ticket.fotoBoletaFactura,
+                    fotoNumeroSerie: ticket.fotoNumeroSerie,
+
+                    // Información adicional
+                    idUsuarioCreador: ticket.idUsuarioCreador,
+                    idClienteGeneral: ticket.idClienteGeneral,
+                    usuarioCreador: ticket.usuario_creador ? `${ticket.usuario_creador.Nombre} ${ticket.usuario_creador.apellidoPaterno}` : 'N/A',
+                }));
+
+                setTicketsData(ticketsTransformados);
+            }
+        } catch (error) {
+            console.error('Error cargando tickets:', error);
+            toastr.error('Error al cargar los tickets', 'Error');
+        } finally {
+            setLoading(false);
         }
-    } catch (error) {
-        console.error('Error cargando tickets:', error);
-        toastr.error('Error al cargar los tickets', 'Error');
-    } finally {
-        setLoading(false);
-    }
-};
+    };
 
     useEffect(() => {
         dispatch(setPageTitle('Lista de Tickets'));
@@ -249,8 +247,8 @@ const cargarTickets = async () => {
             const token = localStorage.getItem('token');
             const response = await axios.delete(`${API_URL}/tickets/${id}`, {
                 headers: {
-                    'Authorization': token ? `Bearer ${token}` : '',
-                }
+                    Authorization: token ? `Bearer ${token}` : '',
+                },
             });
 
             if (response.data.success) {
@@ -275,9 +273,18 @@ const cargarTickets = async () => {
             minWidth: '120px',
             cell: (row) => (
                 <div className="flex items-center justify-center w-full">
-                    <span className="font-mono font-bold text-primary text-sm">
-                        {row.numeroTicket}
-                    </span>
+                    <button
+                        onClick={() => {
+                            navigator.clipboard.writeText(row.numeroTicket);
+                            toastr.success(`Ticket ${row.numeroTicket} copiado al portapapeles`, 'Copiado');
+                        }}
+                        className="font-mono font-bold text-gray text-sm hover:text-primary transition-colors cursor-pointer group relative"
+                    >
+                        <span>{row.numeroTicket}</span>
+                        <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            Copiar número
+                        </span>
+                    </button>
                 </div>
             ),
         },
@@ -287,16 +294,12 @@ const cargarTickets = async () => {
             sortable: true,
             minWidth: '200px',
             cell: (row) => (
-                <div className="flex flex-col w-full py-2">
-                    <span className="font-medium text-sm truncate" title={row.nombreCompleto}>
+                <div className="flex flex-col w-full py-2 items-center">
+                    <span className="font-medium text-sm truncate w-full text-center" title={row.nombreCompleto}>
                         <FontAwesomeIcon icon={faUser} className="w-3 h-3 text-gray-500 mr-1" />
                         {row.nombreCompleto}
                     </span>
-                    <span className="text-xs text-gray-500 truncate flex items-center" title={row.correoElectronico}>
-                        <FontAwesomeIcon icon={faEnvelope} className="w-2 h-2 text-gray-400 mr-1" />
-                        {row.correoElectronico}
-                    </span>
-                    <span className="text-xs text-gray-500 flex items-center">
+                    <span className="text-xs text-gray-500 truncate w-full flex items-center justify-center" title={`${row.tipoDocumento}: ${row.dni_ruc_ce}`}>
                         <FontAwesomeIcon icon={faHashtag} className="w-2 h-2 text-gray-400 mr-1" />
                         {row.tipoDocumento}: {row.dni_ruc_ce}
                     </span>
@@ -309,13 +312,13 @@ const cargarTickets = async () => {
             sortable: true,
             minWidth: '130px',
             cell: (row) => (
-                <div className="flex flex-col w-full py-2">
-                    <span className="text-sm flex items-center">
+                <div className="flex flex-col w-full py-2 items-center">
+                    <span className="text-sm flex items-center justify-center">
                         <FontAwesomeIcon icon={faMobile} className="w-3 h-3 text-gray-500 mr-1" />
                         {row.telefonoCelular}
                     </span>
                     {row.telefonoFijo && (
-                        <span className="text-xs text-gray-500 flex items-center">
+                        <span className="text-xs text-gray-500 flex items-center justify-center">
                             <FontAwesomeIcon icon={faPhone} className="w-2 h-2 text-gray-400 mr-1" />
                             {row.telefonoFijo}
                         </span>
@@ -329,16 +332,15 @@ const cargarTickets = async () => {
             sortable: true,
             minWidth: '180px',
             cell: (row) => (
-                <div className="flex flex-col w-full py-2">
-                    <div className="flex items-center gap-1 mb-1">
-                        <span className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
-                            {row.tipoProducto}
-                        </span>
+                <div className="flex flex-col w-full py-2 items-center">
+                    <div className="flex items-center gap-1 mb-1 justify-center">
+                        <span className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">{row.tipoProducto}</span>
                     </div>
-                    <span className="text-sm font-medium truncate" title={row.modelo}>
+                    <span className="text-sm font-medium truncate text-center w-full" title={row.modelo}>
+                        <FontAwesomeIcon icon={faLaptop} className="w-3 h-3 text-gray-500 mr-1" />
                         {row.modelo}
                     </span>
-                    <span className="text-xs text-gray-400 flex items-center">
+                    <span className="text-xs text-gray-400 flex items-center justify-center">
                         <FontAwesomeIcon icon={faHashtag} className="w-2 h-2 mr-1" />
                         Serie: {row.serie}
                     </span>
@@ -351,14 +353,25 @@ const cargarTickets = async () => {
             sortable: true,
             minWidth: '140px',
             cell: (row) => (
-                <div className="flex flex-col w-full py-2">
-                    <span className="text-sm flex items-center truncate" title={row.distrito}>
-                        <FontAwesomeIcon icon={faMapMarkerAlt} className="w-3 h-3 text-gray-500 mr-1 flex-shrink-0" />
-                        <span className="truncate">{row.distrito}</span>
-                    </span>
-                    <span className="text-xs text-gray-500 truncate">
-                        {row.provincia}, {row.departamento}
-                    </span>
+                <div className="flex flex-col w-full py-2 items-center">
+                    {/* Botón de ubicación */}
+                    {row.ubicacionGoogleMaps ? (
+                        <a
+                            href={row.ubicacionGoogleMaps}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-full transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                            title="Abrir en Google Maps"
+                        >
+                            <FontAwesomeIcon icon={faMapMarkerAlt} className="w-3 h-3" />
+                            Ver ubicación
+                        </a>
+                    ) : (
+                        <span className="mt-1 text-xs text-gray-400 dark:text-gray-600 flex items-center gap-1">
+                            <FontAwesomeIcon icon={faMapMarkerAlt} className="w-3 h-3" />
+                            Sin ubicación
+                        </span>
+                    )}
                 </div>
             ),
         },
@@ -369,13 +382,11 @@ const cargarTickets = async () => {
             minWidth: '130px',
             cell: (row) => (
                 <div className="flex flex-col items-center w-full py-2">
-                    <span className="text-sm flex items-center">
+                    <span className="text-sm flex items-center justify-center">
                         <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-500 w-3 h-3 mr-1" />
                         {row.fechaCreacion?.split(' ')[0]}
                     </span>
-                    <span className="text-xs text-gray-500">
-                        {row.fechaCreacion?.split(' ')[1]}
-                    </span>
+                    <span className="text-xs text-gray-500">{row.fechaCreacion?.split(' ')[1]}</span>
                 </div>
             ),
         },
@@ -384,11 +395,7 @@ const cargarTickets = async () => {
             selector: (row) => row.estado,
             sortable: true,
             minWidth: '110px',
-            cell: (row) => (
-                <div className="flex items-center justify-center w-full py-2">
-                    {getStatusBadge(row.estado)}
-                </div>
-            ),
+            cell: (row) => <div className="flex items-center justify-center w-full py-2">{getStatusBadge(row.estado)}</div>,
         },
         {
             name: 'Acciones',
@@ -492,7 +499,9 @@ const cargarTickets = async () => {
                     </button>
                     <button
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
-                            selectedStatus === 'evaluando' ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800'
+                            selectedStatus === 'evaluando'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800'
                         }`}
                         onClick={() => setSelectedStatus('evaluando')}
                     >
@@ -501,9 +510,7 @@ const cargarTickets = async () => {
                     </button>
                     <button
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
-                            selectedStatus === 'gestionando'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800'
+                            selectedStatus === 'gestionando' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800'
                         }`}
                         onClick={() => setSelectedStatus('gestionando')}
                     >
@@ -527,15 +534,12 @@ const cargarTickets = async () => {
                     <input
                         type="text"
                         className="form-input border-0 focus:ring-0 p-0 text-sm w-64"
-                        placeholder="Buscar por ticket, cliente, documento..."
+                        placeholder="Buscar por ticket, cliente, producto..."
                         value={filterText}
                         onChange={(e) => setFilterText(e.target.value)}
                     />
                     {filterText && (
-                        <button
-                            onClick={() => setFilterText('')}
-                            className="text-gray-400 hover:text-gray-600 mr-1"
-                        >
+                        <button onClick={() => setFilterText('')} className="text-gray-400 hover:text-gray-600 mr-1">
                             ×
                         </button>
                     )}
@@ -560,8 +564,8 @@ const cargarTickets = async () => {
         },
         cells: {
             style: {
-                justifyContent: 'flex-start',
-                textAlign: 'left',
+                justifyContent: 'center',
+                textAlign: 'center',
                 color: isDark ? '#cbd5e1' : '#4b5563',
                 backgroundColor: isDark ? '#0f172a' : 'transparent',
                 paddingTop: '4px',
@@ -637,7 +641,6 @@ const cargarTickets = async () => {
                             <span className="flex items-center gap-2">
                                 <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
                                 Bienvenido {usuarioActual.Nombre} {usuarioActual.apellidoPaterno}
-                               
                             </span>
                         ) : (
                             'Administra todos los tickets de soporte técnico'
@@ -675,9 +678,7 @@ const cargarTickets = async () => {
                             <FontAwesomeIcon icon={faTimes} className="w-3 h-3" />
                             Limpiar fechas
                         </button>
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                            Filtro por fechas activo
-                        </span>
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Filtro por fechas activo</span>
                     </>
                 )}
             </div>
@@ -709,9 +710,7 @@ const cargarTickets = async () => {
                         <div className="py-10 text-center text-gray-500">
                             <FontAwesomeIcon icon={faTicket} className="w-12 h-12 mb-3 text-gray-300" />
                             <p>No hay tickets para mostrar</p>
-                            <p className="text-sm text-gray-400 mt-2">
-                                Haz clic en "Nuevo Ticket" para crear el primero
-                            </p>
+                            <p className="text-sm text-gray-400 mt-2">Haz clic en "Nuevo Ticket" para crear el primero</p>
                         </div>
                     }
                     customStyles={customStyles}
@@ -719,18 +718,9 @@ const cargarTickets = async () => {
             </div>
 
             {/* Modales */}
-            <ModalVerTicket
-                modal={modalVer}
-                setModal={setModalVer}
-                ticketData={selectedTicket}
-            />
+            <ModalVerTicket modal={modalVer} setModal={setModalVer} ticketData={selectedTicket} />
 
-            <ModalEliminarTicket
-                modal={modalEliminar}
-                setModal={setModalEliminar}
-                ticketData={selectedTicket}
-                onConfirm={handleConfirmDelete}
-            />
+            <ModalEliminarTicket modal={modalEliminar} setModal={setModalEliminar} ticketData={selectedTicket} onConfirm={handleConfirmDelete} />
         </div>
     );
 };

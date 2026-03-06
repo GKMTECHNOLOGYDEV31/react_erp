@@ -1,13 +1,25 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTicket, faSearch, faFilePdf, faDownload } from '@fortawesome/free-solid-svg-icons';
+import { faTicket, faSearch, faFilePdf, faDownload, faCopy } from '@fortawesome/free-solid-svg-icons';
+import toastr from 'toastr';
+import 'toastr/build/toastr.min.css';
 
 const ConsultarTicket = () => {
     const [ticketId, setTicketId] = useState('');
     const [ticket, setTicket] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // Configurar toastr
+    toastr.options = {
+        closeButton: true,
+        progressBar: true,
+        positionClass: 'toast-top-right',
+        timeOut: 3000,
+        showDuration: 300,
+        hideDuration: 500,
+    };
 
     // Datos estáticos de ejemplo
     const ticketsData = {
@@ -94,7 +106,7 @@ const ConsultarTicket = () => {
 
     const handleConsultar = async () => {
         if (!ticketId) {
-            setError('Por favor ingresa un ID de ticket');
+            toastr.warning('Por favor ingresa un ID de ticket', 'Campo requerido');
             return;
         }
         
@@ -107,12 +119,19 @@ const ConsultarTicket = () => {
             
             if (ticketEncontrado) {
                 setTicket(ticketEncontrado);
+                toastr.success(`Ticket ${ticketId.toUpperCase()} encontrado`, 'Éxito');
             } else {
                 setError('Ticket no encontrado. IDs disponibles: TICKET-001, TICKET-002, TICKET-003');
+                toastr.error('Ticket no encontrado', 'Error');
                 setTicket(null);
             }
             setLoading(false);
         }, 1000);
+    };
+
+    const handleCopyTicket = (numeroTicket) => {
+        navigator.clipboard.writeText(numeroTicket);
+        toastr.success(`Ticket ${numeroTicket} copiado al portapapeles`, 'Copiado');
     };
 
     const getEstadoBadge = (estado) => {
@@ -221,9 +240,14 @@ const ConsultarTicket = () => {
                         <div className="flex justify-between items-start">
                             <div>
                                 <div className="flex items-center gap-3 mb-3">
-                                    <span className="px-3 py-1 bg-blue-500 bg-opacity-20 rounded-full text-sm font-semibold text-blue-200">
+                                    <button
+                                        onClick={() => handleCopyTicket(ticket.id)}
+                                        className="px-3 py-1 bg-blue-500 bg-opacity-20 rounded-full text-sm font-semibold text-blue-200 hover:bg-blue-500 hover:bg-opacity-30 transition-all flex items-center gap-2 group"
+                                        title="Copiar número de ticket"
+                                    >
                                         #{ticket.id}
-                                    </span>
+                                        <FontAwesomeIcon icon={faCopy} className="w-3 h-3 text-blue-200 opacity-70 group-hover:opacity-100 transition-opacity" />
+                                    </button>
                                     <span className="text-gray-400">|</span>
                                     <span className="text-gray-300">{ticket.tiempoTotal} de atención</span>
                                 </div>
@@ -349,7 +373,12 @@ const ConsultarTicket = () => {
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {ticket.archivos.map((archivo, index) => (
-                                    <a key={index} href={archivo.url} className="flex items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all hover:shadow-md border border-gray-200">
+                                    <a 
+                                        key={index} 
+                                        href={archivo.url} 
+                                        className="flex items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all hover:shadow-md border border-gray-200"
+                                        onClick={() => toastr.info(`Descargando ${archivo.nombre}`, 'Descarga')}
+                                    >
                                         <svg className="w-6 h-6 text-gray-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                         </svg>
@@ -365,11 +394,17 @@ const ConsultarTicket = () => {
 
                     {/* Botones de Acción */}
                     <div className="flex justify-end gap-4 mt-8">
-                        <button className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl">
+                        <button 
+                            className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
+                            onClick={() => toastr.info('Generando PDF...', 'PDF')}
+                        >
                             <FontAwesomeIcon icon={faFilePdf} className="w-5 h-5" />
                             GENERAR PDF
                         </button>
-                        <button className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl">
+                        <button 
+                            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
+                            onClick={() => toastr.success('Ticket exportado correctamente', 'Exportar')}
+                        >
                             <FontAwesomeIcon icon={faDownload} className="w-5 h-5" />
                             EXPORTAR
                         </button>
