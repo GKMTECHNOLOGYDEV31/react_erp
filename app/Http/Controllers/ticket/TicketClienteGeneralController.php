@@ -15,6 +15,7 @@ use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class TicketClienteGeneralController extends Controller
 {
@@ -206,74 +207,109 @@ class TicketClienteGeneralController extends Controller
         }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, $id)
-    {
-        try {
-            $ticket = TicketClienteGeneral::find($id);
+ /**
+ * Update the specified resource in storage.
+ */
+public function update(Request $request, $id)
+{
+    try {
+        $ticket = TicketClienteGeneral::find($id);
 
-            if (!$ticket) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ticket no encontrado'
-                ], 404);
-            }
-
-            // Validar los datos
-            $validator = Validator::make($request->all(), [
-                'nombreCompleto' => 'sometimes|required|string|max:255',
-                'correoElectronico' => 'sometimes|required|email|max:255',
-                'idTipoDocumento' => 'sometimes|required|exists:tipodocumento,idTipoDocumento',
-                'dni_ruc_ce' => 'sometimes|required|string|max:20',
-                'telefonoCelular' => 'sometimes|required|string|max:20',
-                'telefonoFijo' => 'nullable|string|max:20',
-                'direccionCompleta' => 'sometimes|required|string',
-                'referenciaDomicilio' => 'nullable|string',
-                'departamento' => 'sometimes|required|string|max:100',
-                'provincia' => 'sometimes|required|string|max:100',
-                'distrito' => 'sometimes|required|string|max:100',
-                'idCategoria' => 'sometimes|required|exists:categoria,idCategoria',
-                'idModelo' => 'sometimes|required|exists:modelo,idModelo',
-                'serieProducto' => 'sometimes|required|string|max:100',
-                'detallesFalla' => 'sometimes|required|string',
-                'fechaCompra' => 'sometimes|required|date|before_or_equal:today',
-                'tiendaSedeCompra' => 'sometimes|required|string|max:255',
-                'fotoVideoFalla' => 'nullable|url|max:500',
-                'fotoBoletaFactura' => 'nullable|url|max:500',
-                'fotoNumeroSerie' => 'nullable|url|max:500',
-                'ubicacionGoogleMaps' => 'nullable|url|max:500',
-                'estado' => 'sometimes|boolean'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Actualizar el ticket
-            $ticket->update($request->all());
-
-            // Cargar relaciones para la respuesta
-            $ticket->load(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Ticket actualizado exitosamente',
-                'data' => $ticket
-            ], 200);
-
-        } catch (\Exception $e) {
+        if (!$ticket) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar el ticket',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Ticket no encontrado'
+            ], 404);
         }
+
+        // Validar los datos - CAMBIADO para aceptar archivos
+        $validator = Validator::make($request->all(), [
+            'nombreCompleto' => 'sometimes|required|string|max:255',
+            'correoElectronico' => 'sometimes|required|email|max:255',
+            'idTipoDocumento' => 'sometimes|required|exists:tipodocumento,idTipoDocumento',
+            'dni_ruc_ce' => 'sometimes|required|string|max:20',
+            'telefonoCelular' => 'sometimes|required|string|max:20',
+            'telefonoFijo' => 'nullable|string|max:20',
+            'direccionCompleta' => 'sometimes|required|string',
+            'referenciaDomicilio' => 'nullable|string',
+            'departamento' => 'sometimes|required|string|max:100',
+            'provincia' => 'sometimes|required|string|max:100',
+            'distrito' => 'sometimes|required|string|max:100',
+            'idCategoria' => 'sometimes|required|exists:categoria,idCategoria',
+            'idModelo' => 'sometimes|required|exists:modelo,idModelo',
+            'serieProducto' => 'sometimes|required|string|max:100',
+            'detallesFalla' => 'sometimes|required|string',
+            'fechaCompra' => 'sometimes|required|date|before_or_equal:today',
+            'tiendaSedeCompra' => 'sometimes|required|string|max:255',
+            // CAMBIADO: aceptar archivos o URLs
+            'fotoVideoFalla' => 'nullable',
+            'fotoBoletaFactura' => 'nullable',
+            'fotoNumeroSerie' => 'nullable',
+            'ubicacionGoogleMaps' => 'nullable|url|max:500',
+            'estado' => 'sometimes|integer'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Preparar datos para actualizar
+        $data = $request->except(['_method', 'fotoVideoFalla', 'fotoBoletaFactura', 'fotoNumeroSerie']);
+
+        // Procesar nuevas imágenes si se subieron
+        if ($request->hasFile('fotoVideoFalla')) {
+            // Eliminar imagen anterior si existe
+            if ($ticket->fotoVideoFalla) {
+                $oldPath = str_replace(asset('storage'), 'public', $ticket->fotoVideoFalla);
+                Storage::delete($oldPath);
+            }
+            $data['fotoVideoFalla'] = $this->subirImagen($request->file('fotoVideoFalla'), 'fallas');
+        }
+
+        if ($request->hasFile('fotoBoletaFactura')) {
+            if ($ticket->fotoBoletaFactura) {
+                $oldPath = str_replace(asset('storage'), 'public', $ticket->fotoBoletaFactura);
+                Storage::delete($oldPath);
+            }
+            $data['fotoBoletaFactura'] = $this->subirImagen($request->file('fotoBoletaFactura'), 'boletas');
+        }
+
+        if ($request->hasFile('fotoNumeroSerie')) {
+            if ($ticket->fotoNumeroSerie) {
+                $oldPath = str_replace(asset('storage'), 'public', $ticket->fotoNumeroSerie);
+                Storage::delete($oldPath);
+            }
+            $data['fotoNumeroSerie'] = $this->subirImagen($request->file('fotoNumeroSerie'), 'series');
+        }
+
+        // Actualizar el ticket
+        $ticket->update($data);
+
+        // Cargar relaciones para la respuesta
+        $ticket->load(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ticket actualizado exitosamente',
+            'data' => $ticket
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Error al actualizar ticket:', [
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al actualizar el ticket',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Remove the specified resource from storage.
@@ -640,4 +676,37 @@ public function getFormData()
             ], 500);
         }
     }
+
+/**
+ * Get modelos by marca
+ */
+public function getModelosByMarca($idMarca)
+{
+    try {
+        $user = auth()->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Usuario no autenticado'
+            ], 401);
+        }
+
+        $modelos = Modelo::where('idMarca', $idMarca)
+            ->where('estado', 1)
+            ->select('idModelo', 'nombre', 'idMarca', 'idCategoria', 'estado')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $modelos
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al obtener modelos',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }

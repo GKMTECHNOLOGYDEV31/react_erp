@@ -4,6 +4,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\login\AuthController;
 use App\Http\Controllers\ticket\TicketClienteGeneralController;
+use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\ModeloController;
+use App\Http\Controllers\MarcaController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -34,9 +38,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('modelos-por-categoria/{idCategoria}', [TicketClienteGeneralController::class, 'getModelosByCategoria']);
 });
 
-use App\Http\Controllers\CategoriaController;
-use App\Http\Controllers\ModeloController;
-use App\Http\Controllers\MarcaController;
 
 // Rutas protegidas con autenticación
 Route::middleware('auth:sanctum')->group(function () {
