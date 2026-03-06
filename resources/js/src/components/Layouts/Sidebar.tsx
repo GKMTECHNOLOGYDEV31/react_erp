@@ -128,6 +128,33 @@ const Sidebar = () => {
                                     </div>
                                 </NavLink>
                             </li>
+
+                            {/* CONSULTAR TICKET */}
+                            <li className="nav-item">
+                                <NavLink to="/tickets/consultar" className="group">
+                                    <div className="flex items-center">
+                                        <svg className="group-hover:!text-primary shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path
+                                                opacity="0.5"
+                                                d="M15.7164 16.2234H8.2832C7.80877 16.2234 7.33597 16.3977 6.96297 16.7103C6.48921 17.1092 5.95163 17.5009 5.46102 17.8642C4.615 18.4919 4.19199 18.8058 3.98802 18.8494C3.8511 18.8789 3.71018 18.8652 3.58185 18.8101C3.38497 18.7271 3.29753 18.4708 3.12264 17.9582C2.54147 16.3141 2.19336 13.8155 2.19336 11.9898C2.19336 7.07441 6.0918 4.05078 11.9998 4.05078C17.9078 4.05078 21.8062 7.07441 21.8062 11.9898C21.8062 16.9053 17.9078 19.9289 11.9998 19.9289C11.4929 19.9289 10.9904 19.8937 10.4937 19.8236"
+                                                stroke="currentColor"
+                                                strokeWidth="1.5"
+                                                strokeLinecap="round"
+                                                fill="none"
+                                            />
+                                            <path
+                                                d="M11.2002 11.25C11.2002 10.4216 11.8577 9.75 12.6502 9.75C13.4427 9.75 14.1002 10.4216 14.1002 11.25C14.1002 12.0784 13.4427 12.75 12.6502 12.75C12.2462 12.75 11.8863 12.5625 11.6475 12.27"
+                                                stroke="currentColor"
+                                                strokeWidth="1.5"
+                                                strokeLinecap="round"
+                                                fill="none"
+                                            />
+                                            <path d="M11.1992 14.25H11.2082" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                        </svg>
+                                        <span className="ltr:pl-3 rtl:pr-3 text-black dark:text-[#506690] dark:group-hover:text-white-dark">Consultar Ticket</span>
+                                    </div>
+                                </NavLink>
+                            </li>
                         </ul>
                     </PerfectScrollbar>
                 </div>

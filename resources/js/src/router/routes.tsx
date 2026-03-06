@@ -103,6 +103,7 @@ const Clipboard = lazy(() => import('../pages/Forms/Clipboard'));
 const ListaTickets = lazy(() => import('../pages/tickets/index'));  // index.jsx es la lista
 const CrearTicket = lazy(() => import('../pages/tickets/CrearTicket'));
 const EditarTicket = lazy(() => import('../pages/tickets/EditarTicket'));
+const ConsultarTicket = lazy(() => import('../pages/tickets/ConsultarTicket'));
 
 const routes = [
     // dashboard
@@ -133,6 +134,11 @@ const routes = [
     {
         path: '/tickets/editar/:id',
         element: <EditarTicket />,
+    },
+
+    {
+        path: '/tickets/consultar',
+        element: <ConsultarTicket />,
     },
     // finance page
     // {
