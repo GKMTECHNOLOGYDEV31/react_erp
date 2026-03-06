@@ -33,3 +33,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('tickets-form-data', [TicketClienteGeneralController::class, 'getFormData']);
     Route::get('modelos-por-categoria/{idCategoria}', [TicketClienteGeneralController::class, 'getModelosByCategoria']);
 });
+
+use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\ModeloController;
+use App\Http\Controllers\MarcaController;
+
+// Rutas protegidas con autenticación
+Route::middleware('auth:sanctum')->group(function () {
+ 
+    Route::apiResource('categorias', CategoriaController::class)->only(['index', 'store']);
+    Route::apiResource('modelos', ModeloController::class)->only(['index', 'store']);
+    Route::get('marcas', [MarcaController::class, 'index']);
+    Route::get('marcas', [TicketClienteGeneralController::class, 'getMarcas']);
+});

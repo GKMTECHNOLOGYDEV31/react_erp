@@ -10,6 +10,10 @@ import { Spanish } from 'flatpickr/dist/l10n/es.js';
 import 'flatpickr/dist/flatpickr.css';
 import axios from 'axios';
 
+// Importar modales
+import ModalCategoria from './components/ModalCategoria';
+import ModalModelo from './components/ModalModelo';
+
 // Importaciones de FontAwesome
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -58,6 +62,7 @@ const CrearTicket = () => {
     const [categorias, setCategorias] = useState([]);
     const [modelos, setModelos] = useState([]);
     const [modelosFiltrados, setModelosFiltrados] = useState([]);
+    const [marcas, setMarcas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [loadingModelos, setLoadingModelos] = useState(false);
@@ -80,6 +85,10 @@ const CrearTicket = () => {
 
     // Estado para el modal de imagen ampliada
     const [modalImage, setModalImage] = useState(null);
+
+    // Estados para modales de categoría y modelo
+    const [modalCategoria, setModalCategoria] = useState(false);
+    const [modalModelo, setModalModelo] = useState(false);
 
     // URL base de la API
     const API_URL = 'http://127.0.0.1:8000/api';
@@ -242,6 +251,7 @@ const CrearTicket = () => {
     useEffect(() => {
         dispatch(setPageTitle('Crear Ticket'));
         cargarDatosFormulario();
+        cargarMarcas();
 
         toastr.options = {
             closeButton: true,
@@ -283,45 +293,45 @@ const CrearTicket = () => {
         cargarUbigeos();
     }, []);
 
-useEffect(() => {
-    console.log("Inicializando flatpickr...");
-    console.log("Elemento ref:", fechaCompraRef.current);
-    
-    if (!fechaCompraRef.current) {
-        console.log("El elemento ref es null - esperando a que se renderice");
-        return;
-    }
+    useEffect(() => {
+        console.log("Inicializando flatpickr...");
+        console.log("Elemento ref:", fechaCompraRef.current);
+        
+        if (!fechaCompraRef.current) {
+            console.log("El elemento ref es null - esperando a que se renderice");
+            return;
+        }
 
-    console.log("Inicializando flatpickr en elemento:", fechaCompraRef.current);
+        console.log("Inicializando flatpickr en elemento:", fechaCompraRef.current);
 
-    try {
-        const fp = flatpickr(fechaCompraRef.current, {
-            locale: Spanish,
-            dateFormat: "d/m/Y",
-            maxDate: "today",
-            allowInput: true,
-            clickOpens: true,
-            onChange: (selectedDates, dateStr) => {
-                console.log("Fecha seleccionada:", dateStr);
-                if (selectedDates.length) {
-                    const date = selectedDates[0];
-                    const fechaDB = date.toISOString().split('T')[0];
-                    console.log("Fecha para DB:", fechaDB);
-                    formik.setFieldValue("fechaCompra", fechaDB);
+        try {
+            const fp = flatpickr(fechaCompraRef.current, {
+                locale: Spanish,
+                dateFormat: "d/m/Y",
+                maxDate: "today",
+                allowInput: true,
+                clickOpens: true,
+                onChange: (selectedDates, dateStr) => {
+                    console.log("Fecha seleccionada:", dateStr);
+                    if (selectedDates.length) {
+                        const date = selectedDates[0];
+                        const fechaDB = date.toISOString().split('T')[0];
+                        console.log("Fecha para DB:", fechaDB);
+                        formik.setFieldValue("fechaCompra", fechaDB);
+                    }
                 }
-            }
-        });
+            });
 
-        console.log("Flatpickr inicializado correctamente");
+            console.log("Flatpickr inicializado correctamente");
 
-        return () => {
-            console.log("Destruyendo flatpickr");
-            fp.destroy();
-        };
-    } catch (error) {
-        console.error("Error al inicializar flatpickr:", error);
-    }
-}, [fechaCompraRef.current]); // <-- AÑADE LA DEPENDENCIA AQUÍ
+            return () => {
+                console.log("Destruyendo flatpickr");
+                fp.destroy();
+            };
+        } catch (error) {
+            console.error("Error al inicializar flatpickr:", error);
+        }
+    }, [fechaCompraRef.current]);
 
     // Filtrar provincias cuando se selecciona un departamento
     useEffect(() => {
@@ -398,6 +408,23 @@ useEffect(() => {
         }
     };
 
+    const cargarMarcas = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_URL}/marcas`, {
+                headers: {
+                    Authorization: token ? `Bearer ${token}` : '',
+                    Accept: 'application/json'
+                }
+            });
+            if (response.data.success) {
+                setMarcas(response.data.data);
+            }
+        } catch (error) {
+            console.error('Error cargando marcas:', error);
+        }
+    };
+
     const cargarModelosPorCategoria = async (categoriaId) => {
         setLoadingModelos(true);
         try {
@@ -448,6 +475,23 @@ useEffect(() => {
                 formik.setFieldValue(fieldName, '');
             }
         }
+    };
+
+    const handleCategoriaCreada = (nuevaCategoria) => {
+        setCategorias(prev => [...prev, nuevaCategoria]);
+        formik.setFieldValue('idCategoria', nuevaCategoria.idCategoria);
+        // Opcional: recargar modelos para esta nueva categoría
+        cargarModelosPorCategoria(nuevaCategoria.idCategoria);
+        toastr.success('Categoría creada exitosamente');
+    };
+
+    const handleModeloCreado = (nuevoModelo) => {
+        setModelos(prev => [...prev, nuevoModelo]);
+        if (nuevoModelo.idCategoria === formik.values.idCategoria) {
+            setModelosFiltrados(prev => [...prev, nuevoModelo]);
+        }
+        formik.setFieldValue('idModelo', nuevoModelo.idModelo);
+        toastr.success('Modelo creado exitosamente');
     };
 
     const ImageModal = ({ image, onClose }) => {
@@ -763,7 +807,7 @@ useEffect(() => {
                                     </div>
                                 </div>
 
-                                {/* SECCIÓN 3: DATOS DEL PRODUCTO */}
+                                {/* SECCIÓN 3: DATOS DEL PRODUCTO - CON BOTONES PARA CREAR */}
                                 <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                     <h2 className="text-xl font-semibold flex items-center gap-2">
                                         <FontAwesomeIcon icon={faLaptop} className="w-5 h-5 text-primary" />
@@ -772,11 +816,22 @@ useEffect(() => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Categoría con botón + */}
                                     <div>
-                                        <label htmlFor="idCategoria" className="flex items-center gap-1 font-medium">
-                                            <FontAwesomeIcon icon={faLaptop} className="w-4 h-4 text-gray-500" />
-                                            Categoría <span className="text-red-500">*</span>
-                                        </label>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label htmlFor="idCategoria" className="flex items-center gap-1 font-medium">
+                                                <FontAwesomeIcon icon={faLaptop} className="w-4 h-4 text-gray-500" />
+                                                Categoría <span className="text-red-500">*</span>
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setModalCategoria(true)}
+                                                className="text-xs bg-primary text-white px-2 py-1 rounded-full hover:bg-primary/80 transition-colors flex items-center gap-1"
+                                            >
+                                                <FontAwesomeIcon icon={faPlus} className="w-3 h-3" />
+                                                Nueva
+                                            </button>
+                                        </div>
                                         <select
                                             id="idCategoria"
                                             name="idCategoria"
@@ -796,29 +851,42 @@ useEffect(() => {
                                         {formik.touched.idCategoria && formik.errors.idCategoria && <div className="text-danger text-sm mt-1">{formik.errors.idCategoria}</div>}
                                     </div>
 
-                                    <div>
-                                        <label htmlFor="idModelo" className="flex items-center gap-1 font-medium">
-                                            <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500" />
-                                            Modelo <span className="text-red-500">*</span>
-                                        </label>
-                                        <select
-                                            id="idModelo"
-                                            name="idModelo"
-                                            className={`form-select ${formik.touched.idModelo && formik.errors.idModelo ? 'has-error' : ''}`}
-                                            value={formik.values.idModelo}
-                                            onChange={formik.handleChange}
-                                            onBlur={formik.handleBlur}
-                                            disabled={!formik.values.idCategoria || submitting || loadingModelos}
-                                        >
-                                            <option value="">{loadingModelos ? 'Cargando...' : !formik.values.idCategoria ? 'Primero seleccione categoría' : 'Seleccione modelo'}</option>
-                                            {modelosFiltrados.map((modelo) => (
-                                                <option key={modelo.idModelo} value={modelo.idModelo}>
-                                                    {modelo.nombre}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {formik.touched.idModelo && formik.errors.idModelo && <div className="text-danger text-sm mt-1">{formik.errors.idModelo}</div>}
-                                    </div>
+                                  {/* Modelo con botón + */}
+<div>
+    <div className="flex items-center justify-between mb-2">
+        <label htmlFor="idModelo" className="flex items-center gap-1 font-medium">
+            <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500" />
+            Modelo <span className="text-red-500">*</span>
+        </label>
+        <button
+            type="button"
+            onClick={() => setModalModelo(true)}
+            className="text-xs bg-primary text-white px-2 py-1 rounded-full hover:bg-primary/80 transition-colors flex items-center gap-1"
+            // ELIMINA ESTA LÍNEA: disabled={!formik.values.idCategoria}
+            // ELIMINA ESTA LÍNEA: title={!formik.values.idCategoria ? "Primero seleccione una categoría" : ""}
+        >
+            <FontAwesomeIcon icon={faPlus} className="w-3 h-3" />
+            Nuevo
+        </button>
+    </div>
+    <select
+        id="idModelo"
+        name="idModelo"
+        className={`form-select ${formik.touched.idModelo && formik.errors.idModelo ? 'has-error' : ''}`}
+        value={formik.values.idModelo}
+        onChange={formik.handleChange}
+        onBlur={formik.handleBlur}
+        disabled={!formik.values.idCategoria || submitting || loadingModelos}
+    >
+        <option value="">{loadingModelos ? 'Cargando...' : !formik.values.idCategoria ? 'Primero seleccione categoría' : 'Seleccione modelo'}</option>
+        {modelosFiltrados.map((modelo) => (
+            <option key={modelo.idModelo} value={modelo.idModelo}>
+                {modelo.nombre}
+            </option>
+        ))}
+    </select>
+    {formik.touched.idModelo && formik.errors.idModelo && <div className="text-danger text-sm mt-1">{formik.errors.idModelo}</div>}
+</div>
 
                                     <div className="md:col-span-2">
                                         <label htmlFor="serieProducto" className="flex items-center gap-1 font-medium">
@@ -1123,6 +1191,23 @@ useEffect(() => {
                     )}
                 </div>
             </div>
+
+            {/* Modales */}
+            <ModalCategoria
+                modal={modalCategoria}
+                setModal={setModalCategoria}
+                onCategoriaCreada={handleCategoriaCreada}
+                API_URL={API_URL}
+            />
+
+            <ModalModelo
+                modal={modalModelo}
+                setModal={setModalModelo}
+                onModeloCreado={handleModeloCreado}
+                categorias={categorias}
+                marcas={marcas}
+                API_URL={API_URL}
+            />
         </div>
     );
 };

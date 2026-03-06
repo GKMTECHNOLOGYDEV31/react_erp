@@ -65,7 +65,7 @@ class Clientegeneral extends Model
 
 	public function tickets_cliente_generals()
 	{
-		return $this->hasMany(TicketsClienteGeneral::class, 'idClienteGeneral');
+		return $this->hasMany(TicketClienteGeneral::class, 'idClienteGeneral');
 	}
 
 	public function usuarios()

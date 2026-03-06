@@ -48,8 +48,26 @@ class Marca extends Model
 	{
 		return $this->hasMany(TicketClienteGeneral::class, 'idMarca');
 	}
-	    public function modelos()
+	 // Relación con Modelos
+    public function modelos()
     {
         return $this->hasMany(Modelo::class, 'idMarca', 'idMarca');
     }
+
+    // Relación con ClientesGenerales a través de la tabla pivote - CORREGIDA
+    public function clientesGenerales()
+    {
+        return $this->belongsToMany(
+            ClienteGeneral::class,
+            'marca_clientegeneral',
+            'idMarca',          // columna en tabla pivote que referencia a Marca
+            'idClienteGeneral'   // columna en tabla pivote que referencia a ClienteGeneral
+        );
+    }
+
+	// app/Models/Marca.php - Agrega esta relación
+public function clienteGeneralRelations()
+{
+    return $this->hasMany(MarcaClienteGeneral::class, 'idMarca', 'idMarca');
+}
 }

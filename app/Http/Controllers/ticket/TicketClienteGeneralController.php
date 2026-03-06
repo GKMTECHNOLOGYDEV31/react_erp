@@ -10,6 +10,7 @@ use App\Models\Categoria;
 use App\Models\Categorium;
 use App\Models\Modelo;
 use App\Models\Marca;
+use App\Models\MarcaClientegeneral;
 use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -306,54 +307,211 @@ class TicketClienteGeneralController extends Controller
         }
     }
 
-    /**
-     * Get data for form selects (categorías, modelos, tipos de documento)
-     */
-    public function getFormData()
-    {
-        try {
-            $data = [
-                'tiposDocumento' => TipoDocumento::all(),
-                'categorias' => Categorium::where('estado', 1)->get(),
-                'modelos' => Modelo::where('estado', 1)->get()
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $data
-            ], 200);
-        } catch (\Exception $e) {
+public function getFormData()
+{
+    try {
+        $user = auth()->user();
+        
+        \Log::info('=== INICIO getFormData ===');
+        \Log::info('Usuario autenticado:', [
+            'idUsuario' => $user ? $user->idUsuario : null,
+            'nombre' => $user ? $user->Nombre : null,
+            'idClienteGeneral' => $user ? $user->idClienteGeneral : null
+        ]);
+        
+        if (!$user) {
+            \Log::error('Usuario no autenticado en getFormData');
             return response()->json([
                 'success' => false,
-                'message' => 'Error al obtener datos del formulario',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Usuario no autenticado'
+            ], 401);
         }
-    }
 
-    /**
-     * Get modelos by categoria
-     */
-    public function getModelosByCategoria($idCategoria)
-    {
-        try {
-            $modelos = Modelo::where('idCategoria', $idCategoria)
-                ->where('estado', 1)
-                ->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => $modelos
-            ], 200);
-        } catch (\Exception $e) {
+        // Verificar que el usuario tenga idClienteGeneral
+        if (!$user->idClienteGeneral) {
+            \Log::error('Usuario sin idClienteGeneral:', [
+                'idUsuario' => $user->idUsuario,
+                'nombre' => $user->Nombre
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Error al obtener modelos',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'El usuario no tiene un cliente general asignado'
+            ], 400);
         }
-    }
 
+        // Obtener todas las marcas asociadas al cliente general del usuario
+        \Log::info('Buscando marcas para cliente general:', [
+            'idClienteGeneral' => $user->idClienteGeneral
+        ]);
+        
+        $marcasCliente = MarcaClienteGeneral::where('idClienteGeneral', $user->idClienteGeneral)
+            ->pluck('idMarca')
+            ->toArray();
+
+        \Log::info('Marcas encontradas:', [
+            'cantidad' => count($marcasCliente),
+            'marcas' => $marcasCliente
+        ]);
+
+        // Obtener tipos de documento (seleccionando solo campos necesarios)
+        $tiposDocumento = TipoDocumento::select('idTipoDocumento', 'nombre')->get();
+        \Log::info('Tipos de documento:', [
+            'cantidad' => $tiposDocumento->count()
+        ]);
+
+        // Obtener categorías (seleccionando solo campos necesarios)
+        $categorias = Categorium::where('estado', 1)
+            ->select('idCategoria', 'nombre', 'estado')
+            ->get();
+        \Log::info('Categorías activas:', [
+            'cantidad' => $categorias->count()
+        ]);
+
+        // Obtener los modelos que pertenecen a esas marcas, excluyendo campos BLOB
+        if (!empty($marcasCliente)) {
+            $modelos = Modelo::with(['marca' => function($query) {
+                $query->select('idMarca', 'nombre', 'estado'); // Excluir 'foto'
+            }])
+            ->whereIn('idMarca', $marcasCliente)
+            ->where('estado', 1)
+            ->select('idModelo', 'nombre', 'idMarca', 'idCategoria', 'estado')
+            ->get();
+        } else {
+            $modelos = collect(); // Colección vacía
+        }
+
+        \Log::info('Modelos encontrados:', [
+            'cantidad' => $modelos->count()
+        ]);
+
+        $data = [
+            'tiposDocumento' => $tiposDocumento,
+            'categorias' => $categorias,
+            'modelos' => $modelos
+        ];
+
+        \Log::info('=== FIN getFormData - ÉXITO ===');
+        
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('=== ERROR en getFormData ===');
+        \Log::error('Mensaje: ' . $e->getMessage());
+        \Log::error('Archivo: ' . $e->getFile() . ':' . $e->getLine());
+        \Log::error('Trace: ' . $e->getTraceAsString());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al obtener datos del formulario',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+ public function getModelosByCategoria($idCategoria)
+{
+    try {
+        $user = auth()->user();
+        
+        \Log::info('=== INICIO getModelosByCategoria ===');
+        \Log::info('Parámetros recibidos:', [
+            'idCategoria' => $idCategoria,
+            'usuario' => $user ? $user->idUsuario : null,
+            'idClienteGeneral' => $user ? $user->idClienteGeneral : null
+        ]);
+        
+        if (!$user) {
+            \Log::error('Usuario no autenticado en getModelosByCategoria');
+            return response()->json([
+                'success' => false,
+                'message' => 'Usuario no autenticado'
+            ], 401);
+        }
+
+        // Verificar que el usuario tenga idClienteGeneral
+        if (!$user->idClienteGeneral) {
+            \Log::error('Usuario sin idClienteGeneral:', [
+                'idUsuario' => $user->idUsuario,
+                'nombre' => $user->Nombre
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'El usuario no tiene un cliente general asignado'
+            ], 400);
+        }
+
+        // Verificar que la categoría existe
+        $categoria = Categorium::select('idCategoria', 'nombre')->find($idCategoria);
+        if (!$categoria) {
+            \Log::error('Categoría no encontrada:', [
+                'idCategoria' => $idCategoria
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Categoría no encontrada'
+            ], 404);
+        }
+
+        \Log::info('Categoría encontrada:', [
+            'idCategoria' => $categoria->idCategoria,
+            'nombre' => $categoria->nombre
+        ]);
+
+        // Obtener todas las marcas asociadas al cliente general del usuario
+        \Log::info('Buscando marcas para cliente general:', [
+            'idClienteGeneral' => $user->idClienteGeneral
+        ]);
+        
+        $marcasCliente = MarcaClienteGeneral::where('idClienteGeneral', $user->idClienteGeneral)
+            ->pluck('idMarca')
+            ->toArray();
+
+        \Log::info('Marcas encontradas:', [
+            'cantidad' => count($marcasCliente),
+            'marcas' => $marcasCliente
+        ]);
+
+        // Obtener los modelos de esa categoría que pertenecen a las marcas del cliente
+        $modelos = collect(); // Colección vacía por defecto
+        
+        if (!empty($marcasCliente)) {
+            $modelos = Modelo::with(['marca' => function($query) {
+                $query->select('idMarca', 'nombre', 'estado'); // Excluir 'foto'
+            }])
+            ->where('idCategoria', $idCategoria)
+            ->whereIn('idMarca', $marcasCliente)
+            ->where('estado', 1)
+            ->select('idModelo', 'nombre', 'idMarca', 'idCategoria', 'estado')
+            ->get();
+        }
+
+        \Log::info('Modelos encontrados:', [
+            'cantidad' => $modelos->count()
+        ]);
+
+        \Log::info('=== FIN getModelosByCategoria - ÉXITO ===');
+
+        return response()->json([
+            'success' => true,
+            'data' => $modelos
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('=== ERROR en getModelosByCategoria ===');
+        \Log::error('Mensaje: ' . $e->getMessage());
+        \Log::error('Archivo: ' . $e->getFile() . ':' . $e->getLine());
+        \Log::error('Trace: ' . $e->getTraceAsString());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al obtener modelos',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
     /**
      * Upload images endpoint
      */
@@ -410,5 +568,76 @@ class TicketClienteGeneralController extends Controller
         $ruta = $file->storeAs("public/tickets/{$carpeta}", $nombre);
         
         return asset(str_replace('public', 'storage', $ruta));
+    }
+
+    public function getMarcas()
+    {
+        try {
+            $user = auth()->user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no autenticado'
+                ], 401);
+            }
+
+            \Log::info('getMarcas - Usuario:', [
+                'idUsuario' => $user->idUsuario,
+                'idClienteGeneral' => $user->idClienteGeneral
+            ]);
+
+            // Verificar que el modelo MarcaClienteGeneral existe
+            if (!class_exists('App\\Models\\MarcaClienteGeneral')) {
+                \Log::error('Modelo MarcaClienteGeneral no encontrado');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error de configuración del servidor'
+                ], 500);
+            }
+
+            // Obtener IDs de marcas desde la tabla pivote
+            $marcasIds = MarcaClienteGeneral::where('idClienteGeneral', $user->idClienteGeneral)
+                ->pluck('idMarca');
+
+            \Log::info('getMarcas - IDs encontrados:', [
+                'cantidad' => $marcasIds->count(),
+                'ids' => $marcasIds->toArray()
+            ]);
+
+            // Si no hay marcas, devolver array vacío
+            if ($marcasIds->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'data' => []
+                ], 200);
+            }
+
+            // Obtener las marcas
+            $marcas = Marca::whereIn('idMarca', $marcasIds)
+                ->where('estado', 1)
+                ->select('idMarca', 'nombre', 'estado')
+                ->get();
+
+            \Log::info('getMarcas - Marcas encontradas:', [
+                'cantidad' => $marcas->count()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $marcas
+            ], 200);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error en getMarcas: ' . $e->getMessage());
+            \Log::error('Archivo: ' . $e->getFile() . ':' . $e->getLine());
+            \Log::error('Trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener marcas',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
