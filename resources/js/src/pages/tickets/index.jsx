@@ -270,7 +270,9 @@ const ListaTickets = () => {
             name: 'N° Ticket',
             selector: (row) => row.numeroTicket,
             sortable: true,
-            minWidth: '120px',
+            style: {
+                minWidth: '120px',
+            },
             cell: (row) => (
                 <div className="flex items-center justify-center w-full">
                     <button
@@ -292,7 +294,9 @@ const ListaTickets = () => {
             name: 'Cliente',
             selector: (row) => row.nombreCompleto,
             sortable: true,
-            minWidth: '200px',
+            style: {
+                minWidth: '200px',
+            },
             cell: (row) => (
                 <div className="flex flex-col w-full py-2 items-center">
                     <span className="font-medium text-sm truncate w-full text-center" title={row.nombreCompleto}>
@@ -310,7 +314,9 @@ const ListaTickets = () => {
             name: 'Contacto',
             selector: (row) => row.telefonoCelular,
             sortable: true,
-            minWidth: '130px',
+            style: {
+                minWidth: '130px',
+            },
             cell: (row) => (
                 <div className="flex flex-col w-full py-2 items-center">
                     <span className="text-sm flex items-center justify-center">
@@ -330,7 +336,9 @@ const ListaTickets = () => {
             name: 'Producto',
             selector: (row) => row.modelo,
             sortable: true,
-            minWidth: '180px',
+            style: {
+                minWidth: '180px',
+            },
             cell: (row) => (
                 <div className="flex flex-col w-full py-2 items-center">
                     <div className="flex items-center gap-1 mb-1 justify-center">
@@ -351,10 +359,11 @@ const ListaTickets = () => {
             name: 'Ubicación',
             selector: (row) => row.distrito,
             sortable: true,
-            minWidth: '140px',
+            style: {
+                minWidth: '140px',
+            },
             cell: (row) => (
                 <div className="flex flex-col w-full py-2 items-center">
-                    {/* Botón de ubicación */}
                     {row.ubicacionGoogleMaps ? (
                         <a
                             href={row.ubicacionGoogleMaps}
@@ -379,7 +388,9 @@ const ListaTickets = () => {
             name: 'Fecha',
             selector: (row) => row.fechaCreacion,
             sortable: true,
-            minWidth: '130px',
+            style: {
+                minWidth: '130px',
+            },
             cell: (row) => (
                 <div className="flex flex-col items-center w-full py-2">
                     <span className="text-sm flex items-center justify-center">
@@ -394,12 +405,16 @@ const ListaTickets = () => {
             name: 'Estado',
             selector: (row) => row.estado,
             sortable: true,
-            minWidth: '110px',
+            style: {
+                minWidth: '110px',
+            },
             cell: (row) => <div className="flex items-center justify-center w-full py-2">{getStatusBadge(row.estado)}</div>,
         },
         {
             name: 'Acciones',
-            minWidth: '150px',
+            style: {
+                minWidth: '150px',
+            },
             cell: (row) => (
                 <div className="flex items-center justify-center gap-1 py-2">
                     <button
