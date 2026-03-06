@@ -349,10 +349,6 @@ const EditarTicket = () => {
     // Inicializar flatpickr
     useEffect(() => {
         if (fechaCompraRef.current && !loading) {
-            // Formatear fecha para mostrarla en el input
-            const fechaValue = formik.values.fechaCompra ? 
-                new Date(formik.values.fechaCompra).toLocaleDateString('es-PE') : '';
-
             const fp = flatpickr(fechaCompraRef.current, {
                 locale: Spanish,
                 dateFormat: 'd/m/Y',
@@ -541,7 +537,7 @@ const EditarTicket = () => {
                         onClick={(e) => e.stopPropagation()}
                         onError={(e) => {
                             e.target.onerror = null;
-                            e.target.src = 'https://placehold.co/300x200?text=Imagen+no+disponible';
+                            e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Imagen+no+disponible';
                         }}
                     />
                 </div>
@@ -605,8 +601,139 @@ const EditarTicket = () => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* ... (todos los campos de datos personales igual que antes) ... */}
-                                {/* Mantén el mismo código de los inputs que ya tenías */}
+                                {/* Nombre Completo */}
+                                <div className="md:col-span-1">
+                                    <label htmlFor="nombreCompleto" className="flex items-center gap-1 font-medium">
+                                        <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-500" />
+                                        Nombre Completo <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="nombreCompleto"
+                                        name="nombreCompleto"
+                                        type="text"
+                                        placeholder="Ej: Juan Carlos Pérez Rodríguez"
+                                        className={`form-input ${formik.touched.nombreCompleto && formik.errors.nombreCompleto ? 'has-error' : ''}`}
+                                        value={formik.values.nombreCompleto}
+                                        onChange={formik.handleChange}
+                                        onBlur={formik.handleBlur}
+                                        disabled={submitting}
+                                    />
+                                    {formik.touched.nombreCompleto && formik.errors.nombreCompleto && (
+                                        <div className="text-danger text-sm mt-1">{formik.errors.nombreCompleto}</div>
+                                    )}
+                                </div>
+
+                                {/* Correo Electrónico */}
+                                <div className="md:col-span-1">
+                                    <label htmlFor="correoElectronico" className="flex items-center gap-1 font-medium">
+                                        <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 text-gray-500" />
+                                        Correo Electrónico <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="correoElectronico"
+                                        name="correoElectronico"
+                                        type="email"
+                                        placeholder="ejemplo@correo.com"
+                                        className={`form-input ${formik.touched.correoElectronico && formik.errors.correoElectronico ? 'has-error' : ''}`}
+                                        value={formik.values.correoElectronico}
+                                        onChange={formik.handleChange}
+                                        onBlur={formik.handleBlur}
+                                        disabled={submitting}
+                                    />
+                                    {formik.touched.correoElectronico && formik.errors.correoElectronico && (
+                                        <div className="text-danger text-sm mt-1">{formik.errors.correoElectronico}</div>
+                                    )}
+                                </div>
+
+                                {/* Tipo de Documento */}
+                                <div>
+                                    <label htmlFor="idTipoDocumento" className="flex items-center gap-1 font-medium">
+                                        <FontAwesomeIcon icon={faIdCard} className="w-4 h-4 text-gray-500" />
+                                        Tipo de Documento <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        id="idTipoDocumento"
+                                        name="idTipoDocumento"
+                                        className={`form-select ${formik.touched.idTipoDocumento && formik.errors.idTipoDocumento ? 'has-error' : ''}`}
+                                        value={formik.values.idTipoDocumento}
+                                        onChange={formik.handleChange}
+                                        onBlur={formik.handleBlur}
+                                        disabled={submitting}
+                                    >
+                                        <option value="">Seleccione tipo</option>
+                                        {tiposDocumento.map(tipo => (
+                                            <option key={tipo.idTipoDocumento} value={tipo.idTipoDocumento}>
+                                                {tipo.nombre}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {formik.touched.idTipoDocumento && formik.errors.idTipoDocumento && (
+                                        <div className="text-danger text-sm mt-1">{formik.errors.idTipoDocumento}</div>
+                                    )}
+                                </div>
+
+                                {/* Número de Documento */}
+                                <div>
+                                    <label htmlFor="dni_ruc_ce" className="flex items-center gap-1 font-medium">
+                                        <FontAwesomeIcon icon={faHashtag} className="w-4 h-4 text-gray-500" />
+                                        Número de Documento <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="dni_ruc_ce"
+                                        name="dni_ruc_ce"
+                                        type="text"
+                                        placeholder="Ej: 12345678"
+                                        className={`form-input ${formik.touched.dni_ruc_ce && formik.errors.dni_ruc_ce ? 'has-error' : ''}`}
+                                        value={formik.values.dni_ruc_ce}
+                                        onChange={formik.handleChange}
+                                        onBlur={formik.handleBlur}
+                                        disabled={submitting}
+                                    />
+                                    {formik.touched.dni_ruc_ce && formik.errors.dni_ruc_ce && (
+                                        <div className="text-danger text-sm mt-1">{formik.errors.dni_ruc_ce}</div>
+                                    )}
+                                </div>
+
+                                {/* Teléfono Fijo */}
+                                <div>
+                                    <label htmlFor="telefonoFijo" className="flex items-center gap-1 font-medium">
+                                        <FontAwesomeIcon icon={faPhone} className="w-4 h-4 text-gray-500" />
+                                        Teléfono Fijo
+                                    </label>
+                                    <input
+                                        id="telefonoFijo"
+                                        name="telefonoFijo"
+                                        type="tel"
+                                        placeholder="Ej: 01-1234567"
+                                        className="form-input"
+                                        value={formik.values.telefonoFijo}
+                                        onChange={formik.handleChange}
+                                        onBlur={formik.handleBlur}
+                                        disabled={submitting}
+                                    />
+                                </div>
+
+                                {/* Teléfono Celular */}
+                                <div>
+                                    <label htmlFor="telefonoCelular" className="flex items-center gap-1 font-medium">
+                                        <FontAwesomeIcon icon={faMobile} className="w-4 h-4 text-gray-500" />
+                                        Teléfono Celular <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        id="telefonoCelular"
+                                        name="telefonoCelular"
+                                        type="tel"
+                                        placeholder="Ej: 987654321"
+                                        className={`form-input ${formik.touched.telefonoCelular && formik.errors.telefonoCelular ? 'has-error' : ''}`}
+                                        value={formik.values.telefonoCelular}
+                                        onChange={formik.handleChange}
+                                        onBlur={formik.handleBlur}
+                                        disabled={submitting}
+                                    />
+                                    {formik.touched.telefonoCelular && formik.errors.telefonoCelular && (
+                                        <div className="text-danger text-sm mt-1">{formik.errors.telefonoCelular}</div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* SECCIÓN 2: DIRECCIÓN */}
@@ -618,8 +745,137 @@ const EditarTicket = () => {
                             </div>
 
                             <div className="space-y-4">
-                                {/* ... (campos de dirección igual que antes) ... */}
-                                {/* Mantén el mismo código de dirección que ya tenías */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="direccionCompleta" className="flex items-center gap-1 font-medium">
+                                            <FontAwesomeIcon icon={faHome} className="w-4 h-4 text-gray-500" />
+                                            Dirección Completa <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            id="direccionCompleta"
+                                            name="direccionCompleta"
+                                            type="text"
+                                            placeholder="Ej: Av. Principal 123, Urbanización Las Flores"
+                                            className={`form-input ${formik.touched.direccionCompleta && formik.errors.direccionCompleta ? 'has-error' : ''}`}
+                                            value={formik.values.direccionCompleta}
+                                            onChange={formik.handleChange}
+                                            onBlur={formik.handleBlur}
+                                            disabled={submitting}
+                                        />
+                                        {formik.touched.direccionCompleta && formik.errors.direccionCompleta && (
+                                            <div className="text-danger text-sm mt-1">{formik.errors.direccionCompleta}</div>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="referenciaDomicilio" className="flex items-center gap-1 font-medium">
+                                            <FontAwesomeIcon icon={faRoad} className="w-4 h-4 text-gray-500" />
+                                            Referencia
+                                        </label>
+                                        <input
+                                            id="referenciaDomicilio"
+                                            name="referenciaDomicilio"
+                                            type="text"
+                                            placeholder="Ej: Frente al parque"
+                                            className="form-input"
+                                            value={formik.values.referenciaDomicilio}
+                                            onChange={formik.handleChange}
+                                            onBlur={formik.handleBlur}
+                                            disabled={submitting}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* DEPARTAMENTO */}
+                                    <div>
+                                        <label htmlFor="departamento" className="flex items-center gap-1 font-medium">
+                                            <FontAwesomeIcon icon={faGlobe} className="w-4 h-4 text-gray-500" />
+                                            Departamento <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            id="departamento"
+                                            name="departamento"
+                                            className={`form-select ${formik.touched.departamento && formik.errors.departamento ? 'has-error' : ''}`}
+                                            value={formik.values.departamento}
+                                            onChange={formik.handleChange}
+                                            onBlur={formik.handleBlur}
+                                            disabled={submitting}
+                                        >
+                                            <option value="">Seleccione departamento</option>
+                                            {departamentos.map(depto => (
+                                                <option key={depto.id_ubigeo} value={depto.id_ubigeo}>
+                                                    {depto.nombre_ubigeo}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {formik.touched.departamento && formik.errors.departamento && (
+                                            <div className="text-danger text-sm mt-1">{formik.errors.departamento}</div>
+                                        )}
+                                    </div>
+
+                                    {/* PROVINCIA */}
+                                    <div>
+                                        <label htmlFor="provincia" className="flex items-center gap-1 font-medium">
+                                            <FontAwesomeIcon icon={faBuilding} className="w-4 h-4 text-gray-500" />
+                                            Provincia <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            id="provincia"
+                                            name="provincia"
+                                            className={`form-select ${formik.touched.provincia && formik.errors.provincia ? 'has-error' : ''}`}
+                                            value={formik.values.provincia}
+                                            onChange={formik.handleChange}
+                                            onBlur={formik.handleBlur}
+                                            disabled={!formik.values.departamento || submitting}
+                                        >
+                                            <option value="">
+                                                {!formik.values.departamento 
+                                                    ? 'Primero seleccione departamento' 
+                                                    : 'Seleccione provincia'}
+                                            </option>
+                                            {provinciasFiltradas.map(prov => (
+                                                <option key={prov.id_ubigeo} value={prov.id_ubigeo}>
+                                                    {prov.nombre_ubigeo}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {formik.touched.provincia && formik.errors.provincia && (
+                                            <div className="text-danger text-sm mt-1">{formik.errors.provincia}</div>
+                                        )}
+                                    </div>
+
+                                    {/* DISTRITO */}
+                                    <div>
+                                        <label htmlFor="distrito" className="flex items-center gap-1 font-medium">
+                                            <FontAwesomeIcon icon={faCity} className="w-4 h-4 text-gray-500" />
+                                            Distrito <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            id="distrito"
+                                            name="distrito"
+                                            className={`form-select ${formik.touched.distrito && formik.errors.distrito ? 'has-error' : ''}`}
+                                            value={formik.values.distrito}
+                                            onChange={formik.handleChange}
+                                            onBlur={formik.handleBlur}
+                                            disabled={!formik.values.provincia || submitting}
+                                        >
+                                            <option value="">
+                                                {!formik.values.provincia 
+                                                    ? 'Primero seleccione provincia' 
+                                                    : 'Seleccione distrito'}
+                                            </option>
+                                            {distritosFiltrados.map(dist => (
+                                                <option key={dist.id_ubigeo} value={dist.id_ubigeo}>
+                                                    {dist.nombre_ubigeo}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {formik.touched.distrito && formik.errors.distrito && (
+                                            <div className="text-danger text-sm mt-1">{formik.errors.distrito}</div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
 
                             {/* SECCIÓN 3: DATOS DEL PRODUCTO */}
@@ -845,7 +1101,7 @@ const EditarTicket = () => {
                                                     onClick={() => setModalImage(formik.values.fotoVideoFalla)}
                                                     onError={(e) => {
                                                         e.target.onerror = null;
-                                                        e.target.src = 'https://placehold.co/300x200?text=Imagen+no+disponible';
+                                                        e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Imagen+no+disponible';
                                                     }}
                                                 />
                                                 <button
@@ -927,9 +1183,9 @@ const EditarTicket = () => {
                                                     alt="Foto boleta actual"
                                                     className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-gray-300"
                                                     onClick={() => setModalImage(formik.values.fotoBoletaFactura)}
-                                                   onError={(e) => {
+                                                    onError={(e) => {
                                                         e.target.onerror = null;
-                                                        e.target.src = 'https://placehold.co/300x200?text=Imagen+no+disponible';
+                                                        e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Imagen+no+disponible';
                                                     }}
                                                 />
                                                 <button
@@ -1012,7 +1268,7 @@ const EditarTicket = () => {
                                                     onClick={() => setModalImage(formik.values.fotoNumeroSerie)}
                                                     onError={(e) => {
                                                         e.target.onerror = null;
-                                                        e.target.src = 'https://placehold.co/300x200?text=Imagen+no+disponible';
+                                                        e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Imagen+no+disponible';
                                                     }}
                                                 />
                                                 <button
