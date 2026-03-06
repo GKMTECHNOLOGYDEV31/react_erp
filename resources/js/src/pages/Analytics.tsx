@@ -1,340 +1,679 @@
 import { Link } from 'react-router-dom';
-import ReactApexChart from 'react-apexcharts';
 import { useDispatch, useSelector } from 'react-redux';
 import { IRootState } from '../store';
 import PerfectScrollbar from 'react-perfect-scrollbar';
 import Dropdown from '../components/Dropdown';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { setPageTitle } from '../store/themeConfigSlice';
+import ReactECharts from 'echarts-for-react';
+import * as echarts from 'echarts';
 
 const Analytics = () => {
     const dispatch = useDispatch();
+    const [selectedPeriod, setSelectedPeriod] = useState('month');
+
     useEffect(() => {
-        dispatch(setPageTitle('Analytics Admin'));
-    });
+        dispatch(setPageTitle('Analytics Tickets'));
+
+        // Registrar tema personalizado para ECharts
+        echarts.registerTheme('tickets-theme', {
+            backgroundColor: 'transparent',
+            textStyle: { color: '#e2e8f0' },
+            color: ['#60a5fa', '#34d399', '#f87171', '#fbbf24', '#c084fc', '#f472b6', '#94a3b8'],
+        });
+    }, [dispatch]);
 
     const isDark = useSelector((state: IRootState) => state.themeConfig.theme === 'dark' || state.themeConfig.isDarkMode);
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
 
-    // totalVisitOptions
-    const totalVisit: any = {
-        series: [{ data: [21, 9, 36, 12, 44, 25, 59, 41, 66, 25] }],
-        options: {
-            chart: {
-                height: 58,
-                type: 'line',
-                fontFamily: 'Nunito, sans-serif',
-                sparkline: {
-                    enabled: true,
-                },
-                dropShadow: {
-                    enabled: true,
-                    blur: 3,
-                    color: '#009688',
-                    opacity: 0.4,
-                },
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2,
-            },
-            colors: ['#009688'],
-            grid: {
-                padding: {
-                    top: 5,
-                    bottom: 5,
-                    left: 5,
-                    right: 5,
-                },
-            },
-            tooltip: {
-                x: {
-                    show: false,
-                },
-                y: {
-                    title: {
-                        formatter: () => {
-                            return '';
-                        },
-                    },
-                },
-            },
-        },
+    // ==============================================
+    // DATOS ESTÁTICOS PARA LOS KPIs
+    // ==============================================
+
+    // 1. Tickets por período (día, semana, mes, año)
+    const ticketsPorPeriodo = {
+        diario: [45, 52, 38, 41, 64, 58, 47, 53, 49, 61, 55, 48, 42, 39, 51, 44, 57, 63, 49, 52, 46, 38, 41, 35, 44, 51, 48, 42, 39, 37],
+        semanal: [245, 312, 298, 341, 364, 321, 289, 305, 318, 334, 298, 312],
+        mensual: [1245, 1352, 1438, 1541, 1624, 1589, 1498, 1523, 1487, 1532, 1498, 1623],
+        anual: [12458, 14532, 16238, 17894, 19234],
     };
-    // paidVisitOptions
-    const paidVisit: any = {
-        series: [{ data: [22, 19, 30, 47, 32, 44, 34, 55, 41, 69] }],
-        options: {
-            chart: {
-                height: 58,
-                type: 'line',
-                fontFamily: 'Nunito, sans-serif',
-                sparkline: {
-                    enabled: true,
-                },
-                dropShadow: {
-                    enabled: true,
-                    blur: 3,
-                    color: '#e2a03f',
-                    opacity: 0.4,
-                },
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2,
-            },
-            colors: ['#e2a03f'],
-            grid: {
-                padding: {
-                    top: 5,
-                    bottom: 5,
-                    left: 5,
-                    right: 5,
-                },
-            },
-            tooltip: {
-                x: {
-                    show: false,
-                },
-                y: {
-                    title: {
-                        formatter: () => {
-                            return '';
-                        },
-                    },
-                },
-            },
-        },
+
+    // 2. Tickets por distrito y provincia
+    const ticketsPorUbicacion = [
+        { value: 1245, name: 'Lima Cercado' },
+        { value: 987, name: 'San Isidro' },
+        { value: 876, name: 'Miraflores' },
+        { value: 754, name: 'Surco' },
+        { value: 654, name: 'La Molina' },
+        { value: 543, name: 'San Borja' },
+        { value: 432, name: 'Arequipa' },
+        { value: 321, name: 'Trujillo' },
+        { value: 298, name: 'Chiclayo' },
+        { value: 276, name: 'Piura' },
+        { value: 245, name: 'Cusco' },
+        { value: 198, name: 'Huancayo' },
+    ];
+
+    // 3. Tickets por tipo de falla
+    const ticketsPorFalla = {
+        tipos: ['Panel', 'Mainboard', 'Power', 'Limpieza Interna', 'Software', 'NTF', 'Falla Externa'],
+        valores: [345, 278, 412, 189, 567, 234, 321],
     };
-    // uniqueVisitorSeriesOptions
-    const uniqueVisitorSeries: any = {
+
+    // 4. Tickets por estado
+    const ticketsPorEstado = {
+        estados: ['Diagnóstico', 'Visita Finalizada', 'Pendiente Recojo', 'Ingreso a Laboratorio', 'Cerrado'],
+        valores: [234, 456, 178, 312, 654],
+    };
+
+    // 5. Tiempos promedio (en horas)
+    const tiemposPromedio = {
+        coordinacion: 4.2, // horas
+        solucionOnSite: 8.5,
+        solucionLaboratorio: 24.3,
+        resolucionTotal: 36.8,
+    };
+
+    // 6. Reincidencias
+    const reincidencias = {
+        total: 187,
+        porcentaje: 12.4,
+        historial: [12, 15, 18, 22, 19, 24, 21, 18, 16, 14, 17, 19],
+    };
+
+    // 7. Tickets por técnico
+    const ticketsPorTecnico = {
+        nombres: ['Carlos R.', 'Ana M.', 'Luis G.', 'María P.', 'Jorge L.', 'Patricia V.'],
+        diario: [8, 12, 9, 11, 7, 10],
+        semanal: [42, 48, 45, 51, 38, 44],
+        mensual: [168, 185, 172, 194, 156, 178],
+    };
+
+    // 8. Tickets por personal total
+    const ticketsPersonalTotal = {
+        diario: 57,
+        semanal: 268,
+        mensual: 1053,
+    };
+
+    // ==============================================
+    // NUEVOS DATOS PARA LAS MEJORAS
+    // ==============================================
+
+    // SLAs y distribución de tiempos
+    const sla = {
+        coordinacion: { meta: 4, cumplimiento: 92 },
+        onSite: { meta: 8, cumplimiento: 78 },
+        laboratorio: { meta: 24, cumplimiento: 65 },
+    };
+
+    const distribucionTiempos = {
+        rangos: ['0-12h', '12-24h', '24-48h', '+48h'],
+        porcentajes: [24, 42, 28, 6],
+        colores: ['#60a5fa', '#34d399', '#fbbf24', '#f87171'],
+    };
+
+    const evolucionTiempos = {
+        coordinacion: [4.5, 4.3, 4.1, 4.4, 4.2, 4.0, 4.1, 4.3, 4.2, 4.4, 4.1, 4.2],
+        onSite: [8.8, 8.6, 8.4, 8.7, 8.5, 8.3, 8.4, 8.6, 8.5, 8.7, 8.4, 8.5],
+        laboratorio: [25.1, 24.8, 24.5, 24.9, 24.3, 24.0, 24.2, 24.4, 24.3, 24.6, 24.2, 24.3],
+    };
+
+    const reincidenciasDetalle = {
+        porTecnico: [18, 12, 24, 8, 15, 22],
+        porFalla: [15, 22, 18, 8, 12, 5, 20],
+    };
+
+    // ==============================================
+    // CONFIGURACIONES DE GRÁFICOS ECHARTS - CORREGIDAS PARA SER RESPONSIVES
+    // ==============================================
+
+    // Función para obtener el tamaño de fuente responsive
+    const getResponsiveFontSize = (baseSize) => {
+        if (typeof window !== 'undefined') {
+            if (window.innerWidth < 640) return baseSize * 0.7;
+            if (window.innerWidth < 1024) return baseSize * 0.85;
+        }
+        return baseSize;
+    };
+
+    // Gráfico 1: Tickets por período (Línea con área) - RESPONSIVE
+    const ticketPeriodoOption = {
+        title: {
+            text: 'Tickets por Día',
+            left: 'center',
+            top: 5,
+            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' },
+            formatter: '{b}<br/>📊 Tickets: {c}',
+        },
+        grid: { left: '8%', right: '5%', top: '15%', bottom: '8%', containLabel: true },
+        xAxis: {
+            type: 'category',
+            data: Array.from({ length: 30 }, (_, i) => `Día ${i + 1}`),
+            axisLabel: { rotate: 30, interval: 5, fontSize: getResponsiveFontSize(10) },
+        },
+        yAxis: { 
+            type: 'value', 
+            name: 'Cantidad',
+            nameTextStyle: { fontSize: getResponsiveFontSize(11) },
+            axisLabel: { fontSize: getResponsiveFontSize(10) }
+        },
         series: [
             {
-                name: 'Direct',
-                data: [58, 44, 55, 57, 56, 61, 58, 63, 60, 66, 56, 63],
-            },
-            {
-                name: 'Organic',
-                data: [91, 76, 85, 101, 98, 87, 105, 91, 114, 94, 66, 70],
+                name: 'Tickets',
+                type: 'line',
+                data: ticketsPorPeriodo.diario,
+                smooth: true,
+                symbol: 'circle',
+                symbolSize: 6,
+                lineStyle: { width: 2, color: '#60a5fa' },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: 'rgba(96, 165, 250, 0.3)' },
+                        { offset: 1, color: 'rgba(96, 165, 250, 0.05)' },
+                    ]),
+                },
             },
         ],
-        options: {
-            chart: {
-                height: 360,
+    };
+
+    // Gráfico 2: Tickets por ubicación (Mapa de árbol - Treemap) - RESPONSIVE
+    const ubicacionOption = {
+        title: {
+            text: 'Tickets por Distrito/Provincia',
+            left: 'center',
+            top: 5,
+            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+        },
+        tooltip: {
+            formatter: '{b}<br/>Tickets: {c}',
+        },
+        series: [
+            {
+                name: 'Ubicaciones',
+                type: 'treemap',
+                data: ticketsPorUbicacion,
+                width: '100%',
+                height: '85%',
+                breadcrumb: { show: false },
+                label: {
+                    show: true,
+                    position: 'insideTopLeft',
+                    fontSize: getResponsiveFontSize(10),
+                    color: '#fff',
+                },
+                itemStyle: {
+                    borderRadius: 6,
+                    borderColor: isDark ? '#334155' : '#e2e8f0',
+                    borderWidth: 1,
+                },
+                top: '12%',
+                bottom: '3%',
+            },
+        ],
+    };
+
+    // Gráfico 3: Tickets por tipo de falla (Radar) - RESPONSIVE
+    const fallaOption = {
+        title: {
+            text: 'Tickets por Tipo de Falla',
+            left: 'center',
+            top: 5,
+            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+        },
+        tooltip: { trigger: 'item' },
+        radar: {
+            indicator: ticketsPorFalla.tipos.map((tipo) => ({ name: tipo, max: 600 })),
+            shape: 'circle',
+            center: ['50%', '50%'],
+            radius: '65%',
+            name: { 
+                textStyle: { 
+                    color: isDark ? '#94a3b8' : '#475569',
+                    fontSize: getResponsiveFontSize(10)
+                } 
+            },
+        },
+        series: [
+            {
+                name: 'Fallas',
+                type: 'radar',
+                data: [{ value: ticketsPorFalla.valores, name: 'Cantidad' }],
+                lineStyle: { color: '#34d399', width: 2 },
+                itemStyle: { color: '#10b981' },
+                areaStyle: { color: 'rgba(52, 211, 153, 0.1)' },
+            },
+        ],
+    };
+
+    // Gráfico 4: Tickets por estado - RESPONSIVE
+    const estadoOption = {
+        title: {
+            text: 'Tickets por Estado',
+            left: 'center',
+            top: 5,
+            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+        },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '15%', right: '5%', top: '15%', bottom: '5%', containLabel: true },
+        xAxis: { 
+            type: 'value',
+            axisLabel: { fontSize: getResponsiveFontSize(10) },
+            name: 'Cantidad',
+            nameTextStyle: { fontSize: getResponsiveFontSize(11) }
+        },
+        yAxis: { 
+            type: 'category', 
+            data: ticketsPorEstado.estados, 
+            axisLabel: { fontSize: getResponsiveFontSize(11) } 
+        },
+        series: [
+            {
+                name: 'Tickets',
                 type: 'bar',
-                fontFamily: 'Nunito, sans-serif',
-                toolbar: {
-                    show: false,
+                data: ticketsPorEstado.valores,
+                barWidth: '60%',
+                label: { 
+                    show: true, 
+                    position: 'right', 
+                    fontWeight: 'bold',
+                    fontSize: getResponsiveFontSize(10)
+                },
+                itemStyle: {
+                    borderRadius: [0, 6, 6, 0],
+                    color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                        { offset: 0, color: '#f87171' },
+                        { offset: 0.5, color: '#fbbf24' },
+                        { offset: 1, color: '#34d399' },
+                    ]),
                 },
             },
-            dataLabels: {
-                enabled: false,
+        ],
+    };
+
+    // Gráfico 5: Tiempos promedio - GAUGES RESPONSIVES
+    const tiemposOption = {
+        title: {
+            text: 'Tiempos Promedio (Horas)',
+            left: 'center',
+            top: 5,
+            textStyle: {
+                fontSize: getResponsiveFontSize(14),
+                fontWeight: 'bold',
+                color: isDark ? '#f1f5f9' : '#0f172a',
             },
-            stroke: {
-                width: 2,
-                colors: ['transparent'],
+        },
+        tooltip: {
+            formatter: '{a} <br/>{b}: {c} horas',
+        },
+        series: [
+            {
+                name: 'Coordinación',
+                type: 'gauge',
+                center: ['12.5%', '55%'],
+                radius: '65%',
+                startAngle: 0,
+                endAngle: 360,
+                min: 0,
+                max: 24,
+                progress: {
+                    show: true,
+                    width: 12,
+                    roundCap: true,
+                    itemStyle: { color: '#60a5fa' },
+                },
+                axisLine: {
+                    lineStyle: {
+                        width: 12,
+                        color: [[0.75, isDark ? '#334155' : '#e2e8f0']],
+                    },
+                },
+                axisTick: { show: false },
+                splitLine: { show: false },
+                axisLabel: { show: false },
+                anchor: { show: false },
+                title: {
+                    show: true,
+                    fontSize: getResponsiveFontSize(10),
+                    color: isDark ? '#e2e8f0' : '#1e293b',
+                    offsetCenter: [0, '-35%'],
+                },
+                detail: {
+                    valueAnimation: true,
+                    fontSize: getResponsiveFontSize(12),
+                    color: '#60a5fa',
+                    formatter: '{value}h',
+                    offsetCenter: [0, '40%'],
+                },
+                data: [{ value: tiemposPromedio.coordinacion, name: 'Coord.' }],
             },
-            colors: ['#5c1ac3', '#ffbb44'],
-            dropShadow: {
-                enabled: true,
-                blur: 3,
-                color: '#515365',
-                opacity: 0.4,
+            {
+                name: 'On Site',
+                type: 'gauge',
+                center: ['37.5%', '55%'],
+                radius: '65%',
+                startAngle: 0,
+                endAngle: 360,
+                min: 0,
+                max: 48,
+                progress: {
+                    show: true,
+                    width: 12,
+                    roundCap: true,
+                    itemStyle: { color: '#34d399' },
+                },
+                axisLine: {
+                    lineStyle: {
+                        width: 12,
+                        color: [[0.75, isDark ? '#334155' : '#e2e8f0']],
+                    },
+                },
+                axisTick: { show: false },
+                splitLine: { show: false },
+                axisLabel: { show: false },
+                anchor: { show: false },
+                title: {
+                    show: true,
+                    fontSize: getResponsiveFontSize(10),
+                    color: isDark ? '#e2e8f0' : '#1e293b',
+                    offsetCenter: [0, '-35%'],
+                },
+                detail: {
+                    valueAnimation: true,
+                    fontSize: getResponsiveFontSize(12),
+                    color: '#34d399',
+                    formatter: '{value}h',
+                    offsetCenter: [0, '40%'],
+                },
+                data: [{ value: tiemposPromedio.solucionOnSite, name: 'On Site' }],
             },
-            plotOptions: {
-                bar: {
-                    horizontal: false,
-                    columnWidth: '55%',
+            {
+                name: 'Laboratorio',
+                type: 'gauge',
+                center: ['62.5%', '55%'],
+                radius: '65%',
+                startAngle: 0,
+                endAngle: 360,
+                min: 0,
+                max: 72,
+                progress: {
+                    show: true,
+                    width: 12,
+                    roundCap: true,
+                    itemStyle: { color: '#fbbf24' },
+                },
+                axisLine: {
+                    lineStyle: {
+                        width: 12,
+                        color: [[0.75, isDark ? '#334155' : '#e2e8f0']],
+                    },
+                },
+                axisTick: { show: false },
+                splitLine: { show: false },
+                axisLabel: { show: false },
+                anchor: { show: false },
+                title: {
+                    show: true,
+                    fontSize: getResponsiveFontSize(10),
+                    color: isDark ? '#e2e8f0' : '#1e293b',
+                    offsetCenter: [0, '-35%'],
+                },
+                detail: {
+                    valueAnimation: true,
+                    fontSize: getResponsiveFontSize(12),
+                    color: '#fbbf24',
+                    formatter: '{value}h',
+                    offsetCenter: [0, '40%'],
+                },
+                data: [{ value: tiemposPromedio.solucionLaboratorio, name: 'Lab.' }],
+            },
+            {
+                name: 'Total',
+                type: 'gauge',
+                center: ['87.5%', '55%'],
+                radius: '65%',
+                startAngle: 0,
+                endAngle: 360,
+                min: 0,
+                max: 100,
+                progress: {
+                    show: true,
+                    width: 12,
+                    roundCap: true,
+                    itemStyle: { color: '#f87171' },
+                },
+                axisLine: {
+                    lineStyle: {
+                        width: 12,
+                        color: [[0.75, isDark ? '#334155' : '#e2e8f0']],
+                    },
+                },
+                axisTick: { show: false },
+                splitLine: { show: false },
+                axisLabel: { show: false },
+                anchor: { show: false },
+                title: {
+                    show: true,
+                    fontSize: getResponsiveFontSize(10),
+                    color: isDark ? '#e2e8f0' : '#1e293b',
+                    offsetCenter: [0, '-35%'],
+                },
+                detail: {
+                    valueAnimation: true,
+                    fontSize: getResponsiveFontSize(12),
+                    color: '#f87171',
+                    formatter: '{value}h',
+                    offsetCenter: [0, '40%'],
+                },
+                data: [{ value: tiemposPromedio.resolucionTotal, name: 'Total' }],
+            },
+        ],
+    };
+
+    // Gráfico 6: Reincidencias (Pie con rosquilla) - RESPONSIVE
+    const reincidenciasOption = {
+        title: {
+            text: 'Reincidencias',
+            left: 'center',
+            top: 5,
+            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+        },
+        tooltip: { trigger: 'item' },
+        series: [
+            {
+                name: 'Reincidencias',
+                type: 'pie',
+                radius: ['55%', '70%'],
+                center: ['50%', '55%'],
+                avoidLabelOverlap: false,
+                label: { 
+                    show: true, 
+                    position: 'outside', 
+                    formatter: '{b}: {d}%',
+                    fontSize: getResponsiveFontSize(10)
+                },
+                emphasis: { scale: false },
+                data: [
+                    { value: reincidencias.total, name: 'Con Reincidencia' },
+                    { value: ticketsPersonalTotal.mensual - reincidencias.total, name: 'Sin Reincidencia' },
+                ],
+                itemStyle: {
                     borderRadius: 8,
-                    borderRadiusApplication: 'end',
+                    borderColor: isDark ? '#1e293b' : '#fff',
+                    borderWidth: 2,
                 },
-            },
-            legend: {
-                position: 'bottom',
-                horizontalAlign: 'center',
-                fontSize: '14px',
-                itemMargin: {
-                    horizontal: 8,
-                    vertical: 8,
-                },
-            },
-            grid: {
-                borderColor: isDark ? '#191e3a' : '#e0e6ed',
-                padding: {
-                    left: 20,
-                    right: 20,
-                },
-                xaxis: {
-                    lines: {
-                        show: false,
-                    },
-                },
-            },
-            xaxis: {
-                categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                axisBorder: {
-                    show: true,
-                    color: isDark ? '#3b3f5c' : '#e0e6ed',
-                },
-            },
-            yaxis: {
-                tickAmount: 6,
-                opposite: isRtl ? true : false,
-                labels: {
-                    offsetX: isRtl ? -10 : 0,
-                },
-            },
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shade: isDark ? 'dark' : 'light',
-                    type: 'vertical',
-                    shadeIntensity: 0.3,
-                    inverseColors: false,
-                    opacityFrom: 1,
-                    opacityTo: 0.8,
-                    stops: [0, 100],
-                },
-            },
-            tooltip: {
-                marker: {
-                    show: true,
-                },
-            },
-        },
-    };
-    // followersOptions
-    const followers: any = {
-        series: [
-            {
-                data: [38, 60, 38, 52, 36, 40, 28],
             },
         ],
-        options: {
-            chart: {
-                height: 160,
-                type: 'area',
-                fontFamily: 'Nunito, sans-serif',
-                sparkline: {
-                    enabled: true,
-                },
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2,
-            },
-            colors: ['#4361ee'],
-            grid: {
-                padding: {
-                    top: 5,
-                },
-            },
-            yaxis: {
-                show: false,
-            },
-            tooltip: {
-                x: {
-                    show: false,
-                },
-                y: {
-                    title: {
-                        formatter: () => {
-                            return '';
-                        },
-                    },
-                },
-            },
-        },
     };
-    // referralOptions
-    const referral: any = {
+
+    // NUEVO Gráfico: Evolución de tiempos - RESPONSIVE
+    const evolucionTiemposOption = {
+        title: {
+            text: 'Evolución de Tiempos (12 meses)',
+            left: 'center',
+            top: 5,
+            textStyle: { fontSize: getResponsiveFontSize(13), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+        },
+        tooltip: { trigger: 'axis' },
+        legend: { 
+            data: ['Coordinación', 'On Site', 'Laboratorio'], 
+            bottom: 0,
+            itemWidth: 8,
+            itemHeight: 8,
+            textStyle: { fontSize: getResponsiveFontSize(9) }
+        },
+        grid: { left: '8%', right: '5%', top: '15%', bottom: '15%', containLabel: true },
+        xAxis: {
+            type: 'category',
+            data: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+            axisLabel: { fontSize: getResponsiveFontSize(9) }
+        },
+        yAxis: { 
+            type: 'value', 
+            name: 'Horas',
+            nameTextStyle: { fontSize: getResponsiveFontSize(10) },
+            axisLabel: { fontSize: getResponsiveFontSize(9) }
+        },
         series: [
             {
-                data: [60, 28, 52, 38, 40, 36, 38],
+                name: 'Coordinación',
+                type: 'line',
+                data: evolucionTiempos.coordinacion,
+                smooth: true,
+                lineStyle: { width: 2, color: '#60a5fa' },
+                symbol: 'circle',
+                symbolSize: 4,
+            },
+            {
+                name: 'On Site',
+                type: 'line',
+                data: evolucionTiempos.onSite,
+                smooth: true,
+                lineStyle: { width: 2, color: '#34d399' },
+                symbol: 'circle',
+                symbolSize: 4,
+            },
+            {
+                name: 'Laboratorio',
+                type: 'line',
+                data: evolucionTiempos.laboratorio,
+                smooth: true,
+                lineStyle: { width: 2, color: '#fbbf24' },
+                symbol: 'circle',
+                symbolSize: 4,
             },
         ],
-        options: {
-            chart: {
-                height: 160,
-                type: 'area',
-                fontFamily: 'Nunito, sans-serif',
-                sparkline: {
-                    enabled: true,
-                },
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2,
-            },
-            colors: ['#e7515a'],
-            grid: {
-                padding: {
-                    top: 5,
-                },
-            },
-            yaxis: {
-                show: false,
-            },
-            tooltip: {
-                x: {
-                    show: false,
-                },
-                y: {
-                    title: {
-                        formatter: () => {
-                            return '';
-                        },
-                    },
-                },
-            },
-        },
     };
-    // engagementOptions
-    const engagement: any = {
+
+    // Gráfico 7: Tickets por técnico (Barras agrupadas) - RESPONSIVE
+    const tecnicosOption = {
+        title: {
+            text: 'Tickets por Técnico (Mensual)',
+            left: 'center',
+            top: 5,
+            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+        },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        legend: { 
+            data: ['Tickets', '% Reincidencias'], 
+            bottom: 0,
+            itemWidth: 8,
+            itemHeight: 8,
+            textStyle: { fontSize: getResponsiveFontSize(9) }
+        },
+        grid: { left: '8%', right: '8%', top: '15%', bottom: '15%', containLabel: true },
+        xAxis: { 
+            type: 'category', 
+            data: ticketsPorTecnico.nombres, 
+            axisLabel: { rotate: 15, fontSize: getResponsiveFontSize(9) } 
+        },
+        yAxis: [
+            { 
+                type: 'value', 
+                name: 'Tickets',
+                nameTextStyle: { fontSize: getResponsiveFontSize(10) },
+                axisLabel: { fontSize: getResponsiveFontSize(9) }
+            },
+            { 
+                type: 'value', 
+                name: '% Reinc.',
+                nameTextStyle: { fontSize: getResponsiveFontSize(10) },
+                max: 30,
+                axisLabel: { fontSize: getResponsiveFontSize(9) }
+            },
+        ],
         series: [
             {
-                name: 'Sales',
-                data: [28, 50, 36, 60, 38, 52, 38],
+                name: 'Tickets',
+                type: 'bar',
+                data: ticketsPorTecnico.mensual,
+                barWidth: '40%',
+                itemStyle: {
+                    borderRadius: [6, 6, 0, 0],
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: '#c084fc' },
+                        { offset: 1, color: '#8b5cf6' },
+                    ]),
+                },
+                label: { 
+                    show: true, 
+                    position: 'top',
+                    fontSize: getResponsiveFontSize(8),
+                    rotate: 0
+                },
+            },
+            {
+                name: '% Reincidencias',
+                type: 'line',
+                yAxisIndex: 1,
+                data: reincidenciasDetalle.porTecnico,
+                lineStyle: { width: 2, color: '#f87171' },
+                symbol: 'circle',
+                symbolSize: 4,
             },
         ],
-        options: {
-            chart: {
-                height: 160,
-                type: 'area',
-                fontFamily: 'Nunito, sans-serif',
-                sparkline: {
-                    enabled: true,
-                },
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2,
-            },
-            colors: ['#1abc9c'],
-            grid: {
-                padding: {
-                    top: 5,
-                },
-            },
-            yaxis: {
-                show: false,
-            },
-            tooltip: {
-                x: {
-                    show: false,
-                },
-                y: {
-                    title: {
-                        formatter: () => {
-                            return '';
-                        },
-                    },
-                },
-            },
-        },
     };
+
+    // Gráfico 8: Tendencia de reincidencias (Línea) - RESPONSIVE
+    const tendenciaReincidenciasOption = {
+        title: {
+            text: 'Tendencia Reincidencias (12 meses)',
+            left: 'center',
+            top: 5,
+            textStyle: { fontSize: getResponsiveFontSize(13), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+        },
+        tooltip: { trigger: 'axis' },
+        grid: { left: '8%', right: '5%', top: '15%', bottom: '8%', containLabel: true },
+        xAxis: { 
+            type: 'category', 
+            data: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+            axisLabel: { fontSize: getResponsiveFontSize(9) }
+        },
+        yAxis: { 
+            type: 'value', 
+            name: 'Reincidencias',
+            nameTextStyle: { fontSize: getResponsiveFontSize(10) },
+            axisLabel: { fontSize: getResponsiveFontSize(9) }
+        },
+        series: [
+            {
+                data: reincidencias.historial,
+                type: 'line',
+                smooth: true,
+                lineStyle: { width: 2, color: '#f87171' },
+                areaStyle: { color: 'rgba(248, 113, 113, 0.1)' },
+                symbol: 'circle',
+                symbolSize: 4,
+            },
+        ],
+    };
+
     return (
-        <div>
+        <div className="overflow-x-hidden w-full">
             <ul className="flex space-x-2 rtl:space-x-reverse">
                 <li>
                     <Link to="/" className="text-primary hover:underline">
@@ -342,724 +681,353 @@ const Analytics = () => {
                     </Link>
                 </li>
                 <li className="before:content-['/'] ltr:before:mr-2 rtl:before:ml-2">
-                    <span>Analytics</span>
+                    <span>Analytics Tickets</span>
                 </li>
             </ul>
-            <div className="pt-5">
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                    <div className="panel h-full sm:col-span-2 lg:col-span-1">
-                        {/* statistics */}
-                        <div className="flex justify-between dark:text-white-light mb-5">
-                            <h5 className="font-semibold text-lg ">Statistics</h5>
-                            <div className="dropdown">
-                                <Dropdown
-                                    offset={[0, 5]}
-                                    placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
-                                    btnClassName="hover:text-primary"
-                                    button={
-                                        <svg className="w-5 h-5 text-black/70 dark:text-white/70 hover:!text-primary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="5" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                            <circle opacity="0.5" cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                            <circle cx="19" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                        </svg>
-                                    }
-                                >
-                                    <ul>
-                                        <li>
-                                            <button type="button">This Week</button>
-                                        </li>
-                                        <li>
-                                            <button type="button">Last Week</button>
-                                        </li>
-                                        <li>
-                                            <button type="button">This Month</button>
-                                        </li>
-                                        <li>
-                                            <button type="button">Last Month</button>
-                                        </li>
-                                    </ul>
-                                </Dropdown>
+
+            <div className="pt-5 w-full">
+                {/* Fila 1: KPIs principales */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6">
+                    <div className="panel bg-gradient-to-r from-blue-500 to-blue-600 p-4">
+                        <div className="flex justify-between items-center">
+                            <div className="min-w-0">
+                                <p className="text-white/70 text-xs sm:text-sm truncate">Total Tickets (Hoy)</p>
+                                <h3 className="text-white text-2xl sm:text-3xl font-bold">{ticketsPersonalTotal.diario}</h3>
+                                <span className="text-white/80 text-xs">+12% vs ayer</span>
+                            </div>
+                            <div className="bg-white/20 p-2 sm:p-3 rounded-full flex-shrink-0">
+                                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
                             </div>
                         </div>
-                        <div className="grid sm:grid-cols-2 gap-8 text-sm text-[#515365] font-bold">
+                    </div>
+
+                    <div className="panel bg-gradient-to-r from-purple-500 to-purple-600 p-4">
+                        <div className="flex justify-between items-center">
+                            <div className="min-w-0">
+                                <p className="text-white/70 text-xs sm:text-sm truncate">Reincidencias</p>
+                                <h3 className="text-white text-2xl sm:text-3xl font-bold">{reincidencias.porcentaje}%</h3>
+                                <span className="text-white/80 text-xs">{reincidencias.total} tickets</span>
+                            </div>
+                            <div className="bg-white/20 p-2 sm:p-3 rounded-full flex-shrink-0">
+                                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="panel bg-gradient-to-r from-amber-500 to-amber-600 p-4">
+                        <div className="flex justify-between items-center">
+                            <div className="min-w-0">
+                                <p className="text-white/70 text-xs sm:text-sm truncate">Técnico del Mes</p>
+                                <h3 className="text-white text-2xl sm:text-3xl font-bold truncate">María P.</h3>
+                                <span className="text-white/80 text-xs">194 tickets</span>
+                            </div>
+                            <div className="bg-white/20 p-2 sm:p-3 rounded-full flex-shrink-0">
+                                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="panel bg-gradient-to-r from-emerald-500 to-emerald-600 p-4">
+                        <div className="flex justify-between items-center">
+                            <div className="min-w-0">
+                                <p className="text-white/70 text-xs sm:text-sm truncate">Tiempo Promedio</p>
+                                <h3 className="text-white text-2xl sm:text-3xl font-bold">{tiemposPromedio.resolucionTotal}h</h3>
+                                <span className="text-white/80 text-xs">Resolución total</span>
+                            </div>
+                            <div className="bg-white/20 p-2 sm:p-3 rounded-full flex-shrink-0">
+                                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Fila 2: Gráficos principales */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6">
+                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
+                        <ReactECharts option={ticketPeriodoOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
+                    </div>
+                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
+                        <ReactECharts option={ubicacionOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
+                    </div>
+                </div>
+
+                {/* Fila 3: Gráficos de fallas y estados */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6">
+                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
+                        <ReactECharts option={fallaOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
+                    </div>
+                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
+                        <ReactECharts option={estadoOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
+                    </div>
+                </div>
+
+                {/* FILA 4: Tiempos Promedio - ANCHO COMPLETO */}
+                <div className="grid grid-cols-1 gap-4 lg:gap-6 mb-6">
+                    <div className="panel p-3 h-[250px] sm:h-[300px] lg:h-[350px] w-full">
+                        <ReactECharts option={tiemposOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
+                    </div>
+                </div>
+
+                {/* NUEVA FILA: Cumplimiento SLA y Distribución de Tiempos */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 mb-6">
+                    {/* Tarjeta de cumplimiento SLA */}
+                    <div className="panel bg-white dark:bg-black p-4 lg:p-5 h-auto lg:h-[300px] overflow-auto">
+                        <h5 className="font-semibold text-base lg:text-lg mb-3 lg:mb-4 dark:text-white">Cumplimiento SLA</h5>
+                        <div className="space-y-3 lg:space-y-4">
                             <div>
-                                <div>
-                                    <div>Total Visits</div>
-                                    <div className="text-[#f8538d] text-lg">423,964</div>
-                                </div>
-
-                                <ReactApexChart series={totalVisit.series} options={totalVisit.options} type="line" height={58} className="overflow-hidden"/>
-                            </div>
-
-                            <div>
-                                <div>
-                                    <div>Paid Visits</div>
-                                    <div className="text-[#f8538d] text-lg">7,929</div>
-                                </div>
-
-                                <ReactApexChart series={paidVisit.series} options={paidVisit.options} type="line" height={58} className="overflow-hidden"/>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="panel h-full">
-                        <div className="flex justify-between dark:text-white-light mb-5">
-                            <h5 className="font-semibold text-lg ">Expenses</h5>
-
-                            <div className="dropdown">
-                                <Dropdown
-                                    offset={[0, 5]}
-                                    placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
-                                    btnClassName="hover:text-primary"
-                                    button={
-                                        <svg className="w-5 h-5 text-black/70 dark:text-white/70 hover:!text-primary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="5" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                            <circle opacity="0.5" cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                            <circle cx="19" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                        </svg>
-                                    }
-                                >
-                                    <ul>
-                                        <li>
-                                            <button type="button">This Week</button>
-                                        </li>
-                                        <li>
-                                            <button type="button">Last Week</button>
-                                        </li>
-                                        <li>
-                                            <button type="button">This Month</button>
-                                        </li>
-                                        <li>
-                                            <button type="button">Last Month</button>
-                                        </li>
-                                    </ul>
-                                </Dropdown>
-                            </div>
-                        </div>
-                        <div className=" text-[#e95f2b] text-3xl font-bold my-10">
-                            <span>$ 45,141 </span>
-                            <span className="text-black text-sm dark:text-white-light ltr:mr-2 rtl:ml-2">this week</span>
-                            <svg className="text-success inline" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    opacity="0.5"
-                                    d="M22 7L14.6203 14.3347C13.6227 15.3263 13.1238 15.822 12.5051 15.822C11.8864 15.8219 11.3876 15.326 10.3902 14.3342L10.1509 14.0962C9.15254 13.1035 8.65338 12.6071 8.03422 12.6074C7.41506 12.6076 6.91626 13.1043 5.91867 14.0977L2 18"
-                                    stroke="currentColor"
-                                    strokeWidth="1.5"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                <path d="M22.0001 12.5458V7H16.418" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="w-full rounded-full h-5 p-1 bg-dark-light overflow-hidden shadow-3xl dark:shadow-none dark:bg-dark-light/10">
-                                <div
-                                    className="bg-gradient-to-r from-[#4361ee] to-[#805dca] w-full h-full rounded-full relative before:absolute before:inset-y-0 ltr:before:right-0.5 rtl:before:left-0.5 before:bg-white before:w-2 before:h-2 before:rounded-full before:m-auto"
-                                    style={{ width: '65%' }}
-                                ></div>
-                            </div>
-                            <span className="ltr:ml-5 rtl:mr-5 dark:text-white-light">57%</span>
-                        </div>
-                    </div>
-
-                    <div
-                        className="panel h-full overflow-hidden before:bg-[#1937cc] before:absolute before:-right-44 before:top-0 before:bottom-0 before:m-auto before:rounded-full before:w-96 before:h-96 grid grid-cols-1 content-between"
-                        style={{ background: 'linear-gradient(0deg,#00c6fb -227%,#005bea)' }}
-                    >
-                        <div className="flex items-start justify-between text-white-light mb-16 z-[7]">
-                            <h5 className="font-semibold text-lg">Total Balance</h5>
-
-                            <div className="relative text-xl whitespace-nowrap">
-                                $ 41,741.42
-                                <span className="table text-[#d3d3d3] bg-[#4361ee] rounded p-1 text-xs mt-1 ltr:ml-auto rtl:mr-auto">+ 2453</span>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between z-10">
-                            <div className="flex items-center justify-between">
-                                <button type="button" className="shadow-[0_0_2px_0_#bfc9d4] rounded p-1 text-white-light hover:bg-[#1937cc] place-content-center ltr:mr-2 rtl:ml-2">
-                                    <svg className="w-5 h-5" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    </svg>
-                                </button>
-                                <button type="button" className="shadow-[0_0_2px_0_#bfc9d4] rounded p-1 text-white-light hover:bg-[#1937cc] grid place-content-center">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path
-                                            d="M2 12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4H14C17.7712 4 19.6569 4 20.8284 5.17157C22 6.34315 22 8.22876 22 12C22 15.7712 22 17.6569 20.8284 18.8284C19.6569 20 17.7712 20 14 20H10C6.22876 20 4.34315 20 3.17157 18.8284C2 17.6569 2 15.7712 2 12Z"
-                                            stroke="currentColor"
-                                            strokeWidth="1.5"
-                                        />
-                                        <path opacity="0.5" d="M10 16H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                        <path opacity="0.5" d="M14 16H12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                        <path opacity="0.5" d="M2 10L22 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                    </svg>
-                                </button>
-                            </div>
-                            <button type="button" className="shadow-[0_0_2px_0_#bfc9d4] rounded p-1 text-white-light hover:bg-[#4361ee] z-10">
-                                Upgrade
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid lg:grid-cols-3 gap-6 mb-6">
-                    <div className="panel h-full p-0 lg:col-span-2">
-                        <div className="flex items-start justify-between dark:text-white-light mb-5 p-5 border-b  border-white-light dark:border-[#1b2e4b]">
-                            <h5 className="font-semibold text-lg ">Unique Visitors</h5>
-                            <div className="dropdown">
-                                <Dropdown
-                                    offset={[0, 5]}
-                                    placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
-                                    btnClassName="hover:text-primary"
-                                    button={
-                                        <svg className="w-5 h-5 text-black/70 dark:text-white/70 hover:!text-primary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="5" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                            <circle opacity="0.5" cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                            <circle cx="19" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                        </svg>
-                                    }
-                                >
-                                    <ul>
-                                        <li>
-                                            <button type="button">View</button>
-                                        </li>
-                                        <li>
-                                            <button type="button">Update</button>
-                                        </li>
-                                        <li>
-                                            <button type="button">Delete</button>
-                                        </li>
-                                    </ul>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <ReactApexChart options={uniqueVisitorSeries.options} series={uniqueVisitorSeries.series} type="bar" height={360} className="overflow-hidden"/>
-                    </div>
-
-                    <div className="panel h-full">
-                        <div className="flex items-start justify-between dark:text-white-light mb-5 -mx-5 p-5 pt-0 border-b  border-white-light dark:border-[#1b2e4b]">
-                            <h5 className="font-semibold text-lg ">Activity Log</h5>
-                            <div className="dropdown">
-                                <Dropdown
-                                    offset={[0, 5]}
-                                    placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
-                                    btnClassName="hover:text-primary"
-                                    button={
-                                        <svg className="w-5 h-5 text-black/70 dark:text-white/70 hover:!text-primary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="5" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                            <circle opacity="0.5" cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                            <circle cx="19" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                        </svg>
-                                    }
-                                >
-                                    <ul>
-                                        <li>
-                                            <button type="button">View All</button>
-                                        </li>
-                                        <li>
-                                            <button type="button">Mark as Read</button>
-                                        </li>
-                                    </ul>
-                                </Dropdown>
-                            </div>
-                        </div>
-                        <PerfectScrollbar className="perfect-scrollbar relative h-[360px] ltr:pr-3 rtl:pl-3 ltr:-mr-3 rtl:-ml-3">
-                            <div className="space-y-7">
-                                <div className="flex">
-                                    <div className="shrink-0 ltr:mr-2 rtl:ml-2 relative z-10 before:w-[2px] before:h-[calc(100%-24px)] before:bg-white-dark/30 before:absolute before:top-10 before:left-4">
-                                        <div className="bg-secondary shadow shadow-secondary w-8 h-8 rounded-full flex items-center justify-center text-white">
-                                            <svg className="w-4 h-4" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h5 className="font-semibold dark:text-white-light">
-                                            New project created :{' '}
-                                            <button type="button" className="text-success">
-                                                [VRISTO Admin Template]
-                                            </button>
-                                        </h5>
-                                        <p className="text-white-dark text-xs">27 Feb, 2020</p>
-                                    </div>
-                                </div>
-                                <div className="flex">
-                                    <div className="shrink-0 ltr:mr-2 rtl:ml-2 relative z-10 before:w-[2px] before:h-[calc(100%-24px)] before:bg-white-dark/30 before:absolute before:top-10 before:left-4">
-                                        <div className="bg-success shadow-success w-8 h-8 rounded-full flex items-center justify-center text-white">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path
-                                                    opacity="0.5"
-                                                    d="M2 12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4H14C17.7712 4 19.6569 4 20.8284 5.17157C22 6.34315 22 8.22876 22 12C22 15.7712 22 17.6569 20.8284 18.8284C19.6569 20 17.7712 20 14 20H10C6.22876 20 4.34315 20 3.17157 18.8284C2 17.6569 2 15.7712 2 12Z"
-                                                    stroke="currentColor"
-                                                    strokeWidth="1.5"
-                                                />
-                                                <path
-                                                    d="M6 8L8.1589 9.79908C9.99553 11.3296 10.9139 12.0949 12 12.0949C13.0861 12.0949 14.0045 11.3296 15.8411 9.79908L18 8"
-                                                    stroke="currentColor"
-                                                    strokeWidth="1.5"
-                                                    strokeLinecap="round"
-                                                />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h5 className="font-semibold dark:text-white-light">
-                                            Mail sent to{' '}
-                                            <button type="button" className="text-white-dark">
-                                                HR
-                                            </button>{' '}
-                                            and{' '}
-                                            <button type="button" className="text-white-dark">
-                                                Admin
-                                            </button>
-                                        </h5>
-                                        <p className="text-white-dark text-xs">28 Feb, 2020</p>
-                                    </div>
-                                </div>
-                                <div className="flex">
-                                    <div className="shrink-0 ltr:mr-2 rtl:ml-2 relative z-10 before:w-[2px] before:h-[calc(100%-24px)] before:bg-white-dark/30 before:absolute before:top-10 before:left-4">
-                                        <div className="bg-primary w-8 h-8 rounded-full flex items-center justify-center text-white">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path opacity="0.5" d="M4 12.9L7.14286 16.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                                <path d="M20.0002 7.5625L11.4286 16.5625L11.0002 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h5 className="font-semibold dark:text-white-light">Server Logs Updated</h5>
-                                        <p className="text-white-dark text-xs">27 Feb, 2020</p>
-                                    </div>
-                                </div>
-                                <div className="flex">
-                                    <div className="shrink-0 ltr:mr-2 rtl:ml-2 relative z-10 before:w-[2px] before:h-[calc(100%-24px)] before:bg-white-dark/30 before:absolute before:top-10 before:left-4">
-                                        <div className="bg-danger w-8 h-8 rounded-full flex items-center justify-center text-white">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path opacity="0.5" d="M4 12.9L7.14286 16.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                                <path d="M20.0002 7.5625L11.4286 16.5625L11.0002 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h5 className="font-semibold dark:text-white-light">
-                                            Task Completed :
-                                            <button type="button" className="text-success ml-1">
-                                                [Backup Files EOD]
-                                            </button>
-                                        </h5>
-                                        <p className="text-white-dark text-xs">01 Mar, 2020</p>
-                                    </div>
-                                </div>
-                                <div className="flex">
-                                    <div className="shrink-0 ltr:mr-2 rtl:ml-2 relative z-10 before:w-[2px] before:h-[calc(100%-24px)] before:bg-white-dark/30 before:absolute before:top-10 before:left-4">
-                                        <div className="bg-warning w-8 h-8 rounded-full flex items-center justify-center text-white">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path
-                                                    d="M15.3929 4.05365L14.8912 4.61112L15.3929 4.05365ZM19.3517 7.61654L18.85 8.17402L19.3517 7.61654ZM21.654 10.1541L20.9689 10.4592V10.4592L21.654 10.1541ZM3.17157 20.8284L3.7019 20.2981H3.7019L3.17157 20.8284ZM20.8284 20.8284L20.2981 20.2981L20.2981 20.2981L20.8284 20.8284ZM14 21.25H10V22.75H14V21.25ZM2.75 14V10H1.25V14H2.75ZM21.25 13.5629V14H22.75V13.5629H21.25ZM14.8912 4.61112L18.85 8.17402L19.8534 7.05907L15.8947 3.49618L14.8912 4.61112ZM22.75 13.5629C22.75 11.8745 22.7651 10.8055 22.3391 9.84897L20.9689 10.4592C21.2349 11.0565 21.25 11.742 21.25 13.5629H22.75ZM18.85 8.17402C20.2034 9.3921 20.7029 9.86199 20.9689 10.4592L22.3391 9.84897C21.9131 8.89241 21.1084 8.18853 19.8534 7.05907L18.85 8.17402ZM10.0298 2.75C11.6116 2.75 12.2085 2.76158 12.7405 2.96573L13.2779 1.5653C12.4261 1.23842 11.498 1.25 10.0298 1.25V2.75ZM15.8947 3.49618C14.8087 2.51878 14.1297 1.89214 13.2779 1.5653L12.7405 2.96573C13.2727 3.16993 13.7215 3.55836 14.8912 4.61112L15.8947 3.49618ZM10 21.25C8.09318 21.25 6.73851 21.2484 5.71085 21.1102C4.70476 20.975 4.12511 20.7213 3.7019 20.2981L2.64124 21.3588C3.38961 22.1071 4.33855 22.4392 5.51098 22.5969C6.66182 22.7516 8.13558 22.75 10 22.75V21.25ZM1.25 14C1.25 15.8644 1.24841 17.3382 1.40313 18.489C1.56076 19.6614 1.89288 20.6104 2.64124 21.3588L3.7019 20.2981C3.27869 19.8749 3.02502 19.2952 2.88976 18.2892C2.75159 17.2615 2.75 15.9068 2.75 14H1.25ZM14 22.75C15.8644 22.75 17.3382 22.7516 18.489 22.5969C19.6614 22.4392 20.6104 22.1071 21.3588 21.3588L20.2981 20.2981C19.8749 20.7213 19.2952 20.975 18.2892 21.1102C17.2615 21.2484 15.9068 21.25 14 21.25V22.75ZM21.25 14C21.25 15.9068 21.2484 17.2615 21.1102 18.2892C20.975 19.2952 20.7213 19.8749 20.2981 20.2981L21.3588 21.3588C22.1071 20.6104 22.4392 19.6614 22.5969 18.489C22.7516 17.3382 22.75 15.8644 22.75 14H21.25ZM2.75 10C2.75 8.09318 2.75159 6.73851 2.88976 5.71085C3.02502 4.70476 3.27869 4.12511 3.7019 3.7019L2.64124 2.64124C1.89288 3.38961 1.56076 4.33855 1.40313 5.51098C1.24841 6.66182 1.25 8.13558 1.25 10H2.75ZM10.0298 1.25C8.15538 1.25 6.67442 1.24842 5.51887 1.40307C4.34232 1.56054 3.39019 1.8923 2.64124 2.64124L3.7019 3.7019C4.12453 3.27928 4.70596 3.02525 5.71785 2.88982C6.75075 2.75158 8.11311 2.75 10.0298 2.75V1.25Z"
-                                                    fill="currentColor"
-                                                />
-                                                <path opacity="0.5" d="M13 2.5V5C13 7.35702 13 8.53553 13.7322 9.26777C14.4645 10 15.643 10 18 10H22" stroke="currentColor" strokeWidth="1.5" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h5 className="font-semibold dark:text-white-light">
-                                            Documents Submitted from <button type="button">Sara</button>
-                                        </h5>
-                                        <p className="text-white-dark text-xs">10 Mar, 2020</p>
-                                    </div>
-                                </div>
-                                <div className="flex">
-                                    <div className="ltr:mr-2 rtl:ml-2">
-                                        <div className="bg-dark w-8 h-8 rounded-full flex items-center justify-center text-white">
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path
-                                                    opacity="0.5"
-                                                    d="M2 17C2 15.1144 2 14.1716 2.58579 13.5858C3.17157 13 4.11438 13 6 13H18C19.8856 13 20.8284 13 21.4142 13.5858C22 14.1716 22 15.1144 22 17C22 18.8856 22 19.8284 21.4142 20.4142C20.8284 21 19.8856 21 18 21H6C4.11438 21 3.17157 21 2.58579 20.4142C2 19.8284 2 18.8856 2 17Z"
-                                                    stroke="currentColor"
-                                                    strokeWidth="1.5"
-                                                />
-                                                <path
-                                                    opacity="0.5"
-                                                    d="M2 6C2 4.11438 2 3.17157 2.58579 2.58579C3.17157 2 4.11438 2 6 2H18C19.8856 2 20.8284 2 21.4142 2.58579C22 3.17157 22 4.11438 22 6C22 7.88562 22 8.82843 21.4142 9.41421C20.8284 10 19.8856 10 18 10H6C4.11438 10 3.17157 10 2.58579 9.41421C2 8.82843 2 7.88562 2 6Z"
-                                                    stroke="currentColor"
-                                                    strokeWidth="1.5"
-                                                />
-                                                <path d="M11 6H18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                                <path d="M6 6H8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                                <path d="M11 17H18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                                <path d="M6 17H8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h5 className="font-semibold dark:text-white-light">Server rebooted successfully</h5>
-                                        <p className="text-white-dark text-xs">06 Apr, 2020</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </PerfectScrollbar>
-                    </div>
-                </div>
-
-                <div className="grid sm:grid-cols-3 xl:grid-cols-5 gap-6 mb-6">
-                    <div className="panel h-full sm:col-span-3 xl:col-span-2">
-                        <div className="flex items-start justify-between mb-5">
-                            <h5 className="font-semibold text-lg dark:text-white-light">Visitors by Browser</h5>
-                        </div>
-                        <div className="flex flex-col space-y-5">
-                            <div className="flex items-center">
-                                <div className="w-9 h-9">
-                                    <div className="bg-primary/10 text-primary rounded-xl w-9 h-9 flex justify-center items-center dark:bg-primary dark:text-white-light">
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            width="20"
-                                            height="20"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="1.5"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        >
-                                            <circle cx="12" cy="12" r="10"></circle>
-                                            <circle opacity="0.5" cx="12" cy="12" r="4"></circle>
-                                            <line opacity="0.5" x1="21.17" y1="8" x2="12" y2="8"></line>
-                                            <line opacity="0.5" x1="3.95" y1="6.06" x2="8.54" y2="14"></line>
-                                            <line opacity="0.5" x1="10.88" y1="21.94" x2="15.46" y2="14"></line>
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div className="px-3 flex-initial w-full">
-                                    <div className="w-summary-info flex justify-between font-semibold text-white-dark mb-1">
-                                        <h6>Chrome</h6>
-                                        <p className="ltr:ml-auto rtl:mr-auto text-xs">65%</p>
-                                    </div>
-                                    <div>
-                                        <div className="w-full rounded-full h-5 p-1 bg-dark-light overflow-hidden shadow-3xl dark:bg-dark-light/10 dark:shadow-none">
-                                            <div
-                                                className="bg-gradient-to-r from-[#009ffd] to-[#2a2a72] w-full h-full rounded-full relative before:absolute before:inset-y-0 ltr:before:right-0.5 rtl:before:left-0.5 before:bg-white before:w-2 before:h-2 before:rounded-full before:m-auto"
-                                                style={{ width: '65%' }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-9 h-9">
-                                    <div className="bg-danger/10 text-danger rounded-xl w-9 h-9 flex justify-center items-center dark:bg-danger dark:text-white-light">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <circle opacity="0.5" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
-                                            <path
-                                                d="M13.024 14.5601C10.7142 15.484 9.5593 15.946 8.89964 15.4977C8.74324 15.3914 8.60834 15.2565 8.50206 15.1001C8.0538 14.4405 8.51575 13.2856 9.43967 10.9758C9.63673 10.4831 9.73527 10.2368 9.90474 10.0435C9.94792 9.99429 9.99429 9.94792 10.0435 9.90474C10.2368 9.73527 10.4831 9.63673 10.9758 9.43966C13.2856 8.51575 14.4405 8.0538 15.1001 8.50206C15.2565 8.60834 15.3914 8.74324 15.4977 8.89964C15.946 9.5593 15.484 10.7142 14.5601 13.024C14.363 13.5166 14.2645 13.763 14.095 13.9562C14.0518 14.0055 14.0055 14.0518 13.9562 14.095C13.763 14.2645 13.5166 14.363 13.024 14.5601Z"
-                                                stroke="currentColor"
-                                                strokeWidth="1.5"
-                                            />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div className="px-3 flex-initial w-full">
-                                    <div className="w-summary-info flex justify-between font-semibold text-white-dark mb-1">
-                                        <h6>Safari</h6>
-                                        <p className="ltr:ml-auto rtl:mr-auto text-xs">40%</p>
-                                    </div>
-                                    <div>
-                                        <div className="w-full rounded-full h-5 p-1 bg-dark-light overflow-hidden shadow-3xl dark:bg-dark-light/10 dark:shadow-none">
-                                            <div
-                                                className="bg-gradient-to-r from-[#a71d31] to-[#3f0d12] w-full h-full rounded-full relative before:absolute before:inset-y-0 ltr:before:right-0.5 rtl:before:left-0.5 before:bg-white before:w-2 before:h-2 before:rounded-full before:m-auto"
-                                                style={{ width: '40%' }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-9 h-9">
-                                    <div className="bg-warning/10 text-warning rounded-xl w-9 h-9 flex justify-center items-center dark:bg-warning dark:text-white-light">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path
-                                                opacity="0.5"
-                                                d="M2 12H22M16 12C16 13.3132 15.8965 14.6136 15.6955 15.8268C15.4945 17.0401 15.1999 18.1425 14.8284 19.0711C14.457 19.9997 14.016 20.7362 13.5307 21.2388C13.0454 21.7413 12.5253 22 12 22C11.4747 22 10.9546 21.7413 10.4693 21.2388C9.98396 20.7362 9.54301 19.9997 9.17157 19.0711C8.80014 18.1425 8.5055 17.0401 8.30448 15.8268C8.10346 14.6136 8 13.3132 8 12C8 10.6868 8.10346 9.38642 8.30448 8.17316C8.5055 6.95991 8.80014 5.85752 9.17157 4.92893C9.54301 4.00035 9.98396 3.26375 10.4693 2.7612C10.9546 2.25866 11.4747 2 12 2C12.5253 2 13.0454 2.25866 13.5307 2.76121C14.016 3.26375 14.457 4.00035 14.8284 4.92893C15.1999 5.85752 15.4945 6.95991 15.6955 8.17317C15.8965 9.38642 16 10.6868 16 12Z"
-                                                stroke="currentColor"
-                                                strokeWidth="1.5"
-                                                strokeLinecap="round"
-                                            />
-                                            <path
-                                                d="M22 12C22 13.3132 21.7413 14.6136 21.2388 15.8268C20.7362 17.0401 19.9997 18.1425 19.0711 19.0711C18.1425 19.9997 17.0401 20.7362 15.8268 21.2388C14.6136 21.7413 13.3132 22 12 22C10.6868 22 9.38642 21.7413 8.17317 21.2388C6.95991 20.7362 5.85752 19.9997 4.92893 19.0711C4.00035 18.1425 3.26375 17.0401 2.7612 15.8268C2.25866 14.6136 2 13.3132 2 12C2 10.6868 2.25866 9.38642 2.76121 8.17316C3.26375 6.95991 4.00035 5.85752 4.92893 4.92893C5.85752 4.00035 6.95991 3.26375 8.17317 2.7612C9.38642 2.25866 10.6868 2 12 2C13.3132 2 14.6136 2.25866 15.8268 2.76121C17.0401 3.26375 18.1425 4.00035 19.0711 4.92893C19.9997 5.85752 20.7362 6.95991 21.2388 8.17317C21.7413 9.38642 22 10.6868 22 12L22 12Z"
-                                                stroke="currentColor"
-                                                strokeWidth="1.5"
-                                            />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div className="px-3 flex-initial w-full">
-                                    <div className="w-summary-info flex justify-between font-semibold text-white-dark mb-1">
-                                        <h6>Others</h6>
-                                        <p className="ltr:ml-auto rtl:mr-auto text-xs">25%</p>
-                                    </div>
-                                    <div>
-                                        <div className="w-full rounded-full h-5 p-1 bg-dark-light overflow-hidden shadow-3xl dark:bg-dark-light/10 dark:shadow-none">
-                                            <div
-                                                className="bg-gradient-to-r from-[#fe5f75] to-[#fc9842] w-full h-full rounded-full relative before:absolute before:inset-y-0 ltr:before:right-0.5 rtl:before:left-0.5 before:bg-white before:w-2 before:h-2 before:rounded-full before:m-auto"
-                                                style={{ width: '25%' }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="panel h-full p-0">
-                        <div className="flex p-5">
-                            <div className="shrink-0 bg-primary/10 text-primary rounded-xl w-11 h-11 flex justify-center items-center dark:bg-primary dark:text-white-light">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="12" cy="6" r="4" stroke="currentColor" strokeWidth="1.5" />
-                                    <path opacity="0.5" d="M18 9C19.6569 9 21 7.88071 21 6.5C21 5.11929 19.6569 4 18 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                    <path opacity="0.5" d="M6 9C4.34315 9 3 7.88071 3 6.5C3 5.11929 4.34315 4 6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                    <ellipse cx="12" cy="17" rx="6" ry="4" stroke="currentColor" strokeWidth="1.5" />
-                                    <path opacity="0.5" d="M20 19C21.7542 18.6153 23 17.6411 23 16.5C23 15.3589 21.7542 14.3847 20 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                    <path opacity="0.5" d="M4 19C2.24575 18.6153 1 17.6411 1 16.5C1 15.3589 2.24575 14.3847 4 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                </svg>
-                            </div>
-                            <div className="ltr:ml-3 rtl:mr-3 font-semibold">
-                                <p className="text-xl dark:text-white-light">31.6K</p>
-                                <h5 className="text-[#506690] text-xs">Followers</h5>
-                            </div>
-                        </div>
-                        <div className="h-40">
-                            <ReactApexChart series={followers.series} options={followers.options} type="area" height={160} className="w-full absolute bottom-0 overflow-hidden" />
-                        </div>
-                    </div>
-
-                    <div className="panel h-full p-0">
-                        <div className="flex p-5">
-                            <div className="shrink-0 bg-danger/10 text-danger rounded-xl w-11 h-11 flex justify-center items-center dark:bg-danger dark:text-white-light">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M10.0464 14C8.54044 12.4882 8.67609 9.90087 10.3494 8.22108L15.197 3.35462C16.8703 1.67483 19.4476 1.53865 20.9536 3.05046C22.4596 4.56228 22.3239 7.14956 20.6506 8.82935L18.2268 11.2626"
-                                        stroke="currentColor"
-                                        strokeWidth="1.5"
-                                        strokeLinecap="round"
-                                    />
-                                    <path
-                                        opacity="0.5"
-                                        d="M13.9536 10C15.4596 11.5118 15.3239 14.0991 13.6506 15.7789L11.2268 18.2121L8.80299 20.6454C7.12969 22.3252 4.55237 22.4613 3.0464 20.9495C1.54043 19.4377 1.67609 16.8504 3.34939 15.1706L5.77323 12.7373"
-                                        stroke="currentColor"
-                                        strokeWidth="1.5"
-                                        strokeLinecap="round"
-                                    />
-                                </svg>
-                            </div>
-                            <div className="ltr:ml-3 rtl:mr-3 font-semibold">
-                                <p className="text-xl dark:text-white-light">1,900</p>
-                                <h5 className="text-[#506690] text-xs">Referral</h5>
-                            </div>
-                        </div>
-                        <div className="h-40">
-                            <ReactApexChart series={referral.series} options={referral.options} type="area" height={160} className="w-full absolute bottom-0 overflow-hidden" />
-                        </div>
-                    </div>
-
-                    <div className="panel h-full p-0">
-                        <div className="flex p-5">
-                            <div className="shrink-0 bg-success/10 text-success rounded-xl w-11 h-11 flex justify-center items-center dark:bg-success dark:text-white-light">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M10 22C14.4183 22 18 18.4183 18 14C18 9.58172 14.4183 6 10 6C5.58172 6 2 9.58172 2 14C2 15.2355 2.28008 16.4056 2.7802 17.4502C2.95209 17.8093 3.01245 18.2161 2.90955 18.6006L2.58151 19.8267C2.32295 20.793 3.20701 21.677 4.17335 21.4185L5.39939 21.0904C5.78393 20.9876 6.19071 21.0479 6.54976 21.2198C7.5944 21.7199 8.76449 22 10 22Z"
-                                        stroke="currentColor"
-                                        strokeWidth="1.5"
-                                    />
-                                    <path
-                                        opacity="0.5"
-                                        d="M18 14.5018C18.0665 14.4741 18.1324 14.4453 18.1977 14.4155C18.5598 14.2501 18.9661 14.1882 19.3506 14.2911L19.8267 14.4185C20.793 14.677 21.677 13.793 21.4185 12.8267L21.2911 12.3506C21.1882 11.9661 21.2501 11.5598 21.4155 11.1977C21.7908 10.376 22 9.46242 22 8.5C22 4.91015 19.0899 2 15.5 2C12.7977 2 10.4806 3.64899 9.5 5.9956"
-                                        stroke="currentColor"
-                                        strokeWidth="1.5"
-                                    />
-                                    <g opacity="0.5">
-                                        <path
-                                            d="M7.5 14C7.5 14.5523 7.05228 15 6.5 15C5.94772 15 5.5 14.5523 5.5 14C5.5 13.4477 5.94772 13 6.5 13C7.05228 13 7.5 13.4477 7.5 14Z"
-                                            fill="currentColor"
-                                        />
-                                        <path d="M11 14C11 14.5523 10.5523 15 10 15C9.44772 15 9 14.5523 9 14C9 13.4477 9.44772 13 10 13C10.5523 13 11 13.4477 11 14Z" fill="currentColor" />
-                                        <path
-                                            d="M14.5 14C14.5 14.5523 14.0523 15 13.5 15C12.9477 15 12.5 14.5523 12.5 14C12.5 13.4477 12.9477 13 13.5 13C14.0523 13 14.5 13.4477 14.5 14Z"
-                                            fill="currentColor"
-                                        />
-                                    </g>
-                                </svg>
-                            </div>
-                            <div className="ltr:ml-3 rtl:mr-3 font-semibold">
-                                <p className="text-xl dark:text-white-light">18.2%</p>
-                                <h5 className="text-[#506690] text-xs">Engagement</h5>
-                            </div>
-                        </div>
-                        <div className="h-40">
-                            <ReactApexChart series={engagement.series} options={engagement.options} type="area" height={160} className="w-full absolute bottom-0 overflow-hidden" />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    <div className="panel h-full">
-                        <div className="flex items-start border-b  border-white-light dark:border-[#1b2e4b] -m-5 mb-5 p-5">
-                            <div className="shrink-0 ring-2 ring-white-light dark:ring-dark rounded-full ltr:mr-4 rtl:ml-4">
-                                <img src="/assets/images/profile-1.jpeg" alt="profile1" className="w-10 h-10 rounded-full object-cover" />
-                            </div>
-                            <div className="font-semibold">
-                                <h6>Jimmy Turner</h6>
-                                <p className="text-xs text-white-dark mt-1">Monday, Nov 18</p>
-                            </div>
-                        </div>
-                        <div>
-                            <div className="text-white-dark pb-8">
-                                "Duis aute irure dolor" in reprehenderit in voluptate velit esse cillum "dolore eu fugiat" nulla pariatur. Excepteur sint occaecat cupidatat non proident.
-                            </div>
-                            <div className="w-full absolute bottom-0 flex items-center justify-between p-5 -mx-5">
-                                <div className="flex items-center">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-info inline ltr:mr-1.5 rtl:ml-1.5 relative -top-1">
-                                        <path
-                                            d="M20.9751 12.1852L20.2361 12.0574L20.9751 12.1852ZM20.2696 16.265L19.5306 16.1371L20.2696 16.265ZM6.93776 20.4771L6.19055 20.5417H6.19055L6.93776 20.4771ZM6.1256 11.0844L6.87281 11.0198L6.1256 11.0844ZM13.9949 5.22142L14.7351 5.34269V5.34269L13.9949 5.22142ZM13.3323 9.26598L14.0724 9.38725V9.38725L13.3323 9.26598ZM6.69813 9.67749L6.20854 9.10933H6.20854L6.69813 9.67749ZM8.13687 8.43769L8.62646 9.00585H8.62646L8.13687 8.43769ZM10.518 4.78374L9.79207 4.59542L10.518 4.78374ZM10.9938 2.94989L11.7197 3.13821L11.7197 3.13821L10.9938 2.94989ZM12.6676 2.06435L12.4382 2.77841L12.4382 2.77841L12.6676 2.06435ZM12.8126 2.11093L13.0419 1.39687L13.0419 1.39687L12.8126 2.11093ZM9.86194 6.46262L10.5235 6.81599V6.81599L9.86194 6.46262ZM13.9047 3.24752L13.1787 3.43584V3.43584L13.9047 3.24752ZM11.6742 2.13239L11.3486 1.45675L11.3486 1.45675L11.6742 2.13239ZM20.2361 12.0574L19.5306 16.1371L21.0086 16.3928L21.7142 12.313L20.2361 12.0574ZM13.245 21.25H8.59634V22.75H13.245V21.25ZM7.68497 20.4125L6.87281 11.0198L5.37839 11.149L6.19055 20.5417L7.68497 20.4125ZM19.5306 16.1371C19.0238 19.0677 16.3813 21.25 13.245 21.25V22.75C17.0712 22.75 20.3708 20.081 21.0086 16.3928L19.5306 16.1371ZM13.2548 5.10015L12.5921 9.14472L14.0724 9.38725L14.7351 5.34269L13.2548 5.10015ZM7.18772 10.2456L8.62646 9.00585L7.64728 7.86954L6.20854 9.10933L7.18772 10.2456ZM11.244 4.97206L11.7197 3.13821L10.2678 2.76157L9.79207 4.59542L11.244 4.97206ZM12.4382 2.77841L12.5832 2.82498L13.0419 1.39687L12.897 1.3503L12.4382 2.77841ZM10.5235 6.81599C10.8354 6.23198 11.0777 5.61339 11.244 4.97206L9.79207 4.59542C9.65572 5.12107 9.45698 5.62893 9.20041 6.10924L10.5235 6.81599ZM12.5832 2.82498C12.8896 2.92342 13.1072 3.16009 13.1787 3.43584L14.6306 3.05921C14.4252 2.26719 13.819 1.64648 13.0419 1.39687L12.5832 2.82498ZM11.7197 3.13821C11.7547 3.0032 11.8522 2.87913 11.9998 2.80804L11.3486 1.45675C10.8166 1.71309 10.417 2.18627 10.2678 2.76157L11.7197 3.13821ZM11.9998 2.80804C12.1345 2.74311 12.2931 2.73181 12.4382 2.77841L12.897 1.3503C12.3872 1.18655 11.8312 1.2242 11.3486 1.45675L11.9998 2.80804ZM14.1537 10.9842H19.3348V9.4842H14.1537V10.9842ZM14.7351 5.34269C14.8596 4.58256 14.824 3.80477 14.6306 3.0592L13.1787 3.43584C13.3197 3.97923 13.3456 4.54613 13.2548 5.10016L14.7351 5.34269ZM8.59634 21.25C8.12243 21.25 7.726 20.887 7.68497 20.4125L6.19055 20.5417C6.29851 21.7902 7.34269 22.75 8.59634 22.75V21.25ZM8.62646 9.00585C9.30632 8.42 10.0391 7.72267 10.5235 6.81599L9.20041 6.10924C8.85403 6.75767 8.30249 7.30493 7.64728 7.86954L8.62646 9.00585ZM21.7142 12.313C21.9695 10.8365 20.8341 9.4842 19.3348 9.4842V10.9842C19.9014 10.9842 20.3332 11.4959 20.2361 12.0574L21.7142 12.313ZM12.5921 9.14471C12.4344 10.1076 13.1766 10.9842 14.1537 10.9842V9.4842C14.1038 9.4842 14.0639 9.43901 14.0724 9.38725L12.5921 9.14471ZM6.87281 11.0198C6.84739 10.7258 6.96474 10.4378 7.18772 10.2456L6.20854 9.10933C5.62021 9.61631 5.31148 10.3753 5.37839 11.149L6.87281 11.0198Z"
-                                            fill="currentColor"
-                                        />
-                                        <path
-                                            opacity="0.5"
-                                            d="M3.9716 21.4709L3.22439 21.5355L3.9716 21.4709ZM3 10.2344L3.74721 10.1698C3.71261 9.76962 3.36893 9.46776 2.96767 9.48507C2.5664 9.50239 2.25 9.83274 2.25 10.2344L3 10.2344ZM4.71881 21.4063L3.74721 10.1698L2.25279 10.299L3.22439 21.5355L4.71881 21.4063ZM3.75 21.5129V10.2344H2.25V21.5129H3.75ZM3.22439 21.5355C3.2112 21.383 3.33146 21.2502 3.48671 21.2502V22.7502C4.21268 22.7502 4.78122 22.1281 4.71881 21.4063L3.22439 21.5355ZM3.48671 21.2502C3.63292 21.2502 3.75 21.3686 3.75 21.5129H2.25C2.25 22.1954 2.80289 22.7502 3.48671 22.7502V21.2502Z"
-                                            fill="currentColor"
-                                        />
-                                    </svg>
-                                    <span className="dark:text-info">551 Likes</span>
-                                </div>
-                                <button type="button" className="flex items-center bg-success/30 text-success rounded-md px-1.5 py-1 text-xs hover:shadow-[0_10px_20px_-10px] hover:shadow-success">
-                                    Read More
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 rtl:rotate-180 ltr:ml-1.5 rtl:mr-1.5">
-                                        <path d="M11 19L17 12L11 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                        <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="panel h-full">
-                        <div className="flex items-center justify-between border-b  border-white-light dark:border-[#1b2e4b] -m-5 mb-5 p-5">
-                            <div className="flex">
-                                <div className="media-aside align-self-start">
-                                    <div className="shrink-0 ring-2 ring-white-light dark:ring-dark rounded-full ltr:mr-4 rtl:ml-4">
-                                        <img src="/assets/images/g-8.png" alt="profile2" className="w-10 h-10 rounded-full object-cover" />
-                                    </div>
-                                </div>
-                                <div className="font-semibold">
-                                    <h6>Dev Summit - New York</h6>
-                                    <p className="text-xs text-white-dark mt-1">Bronx, NY</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="font-semibold text-center pb-8">
-                            <div className="mb-4 text-primary">4 Members Going</div>
-                            <div className="flex items-center justify-center gap-3 pb-8">
-                                <img className="w-10 h-10 ring-2 ring-white-light dark:ring-dark rounded-lg overflow-hidden object-cover" src="/assets/images/profile-1.jpeg" alt="profile1" />
-                                <img className="w-10 h-10 ring-2 ring-white-light dark:ring-dark rounded-lg overflow-hidden object-cover" src="/assets/images/profile-2.jpeg" alt="profile2" />
-                                <img className="w-10 h-10 ring-2 ring-white-light dark:ring-dark rounded-lg overflow-hidden object-cover" src="/assets/images/profile-3.jpeg" alt="profile3" />
-                                <img className="w-10 h-10 ring-2 ring-white-light dark:ring-dark rounded-lg overflow-hidden object-cover" src="/assets/images/profile-4.jpeg" alt="profile4" />
-                            </div>
-
-                            <div className="w-full absolute bottom-0 flex items-center justify-between p-5 -mx-5">
-                                <button type="button" className="btn btn-secondary btn-lg w-full border-0 bg-gradient-to-r from-[#3d38e1] to-[#1e9afe]">
-                                    View Details
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="panel h-full">
-                        <div className="flex items-center justify-between border-b  border-white-light dark:border-[#1b2e4b] -m-5 mb-5 p-5">
-                            <button type="button" className="flex font-semibold">
-                                <div className="shrink-0 bg-secondary w-10 h-10 rounded-md flex items-center justify-center text-white ltr:mr-4 rtl:ml-4">
-                                    <span>FD</span>
-                                </div>
-                                <div style={{ textAlign: 'left' }}>
-                                    <h6>Figma Design</h6>
-                                    <p className="text-xs text-white-dark mt-1">Design Reset</p>
-                                </div>
-                            </button>
-
-                            <div className="dropdown">
-                                <Dropdown
-                                    offset={[0, 5]}
-                                    placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
-                                    btnClassName="hover:text-primary"
-                                    button={
-                                        <svg className="w-5 h-5 text-black/70 dark:text-white/70 hover:!text-primary" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="5" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                            <circle opacity="0.5" cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                            <circle cx="19" cy="12" r="2" stroke="currentColor" strokeWidth="1.5" />
-                                        </svg>
-                                    }
-                                >
-                                    <ul>
-                                        <li>
-                                            <button type="button">View Project</button>
-                                        </li>
-                                        <li>
-                                            <button type="button">Edit Project</button>
-                                        </li>
-                                        <li>
-                                            <button type="button">Mark as Done</button>
-                                        </li>
-                                    </ul>
-                                </Dropdown>
-                            </div>
-                        </div>
-                        <div className="group">
-                            <div className="text-white-dark mb-5">Doloribus nisi vel suscipit modi, optio ex repudiandae voluptatibus officiis commodi. Nesciunt quas aut neque incidunt!</div>
-                            <div className="flex items-center justify-between mb-2 font-semibold">
-                                <div className="flex items-center">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-success">
-                                        <path
-                                            opacity="0.5"
-                                            d="M2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12Z"
-                                            stroke="currentColor"
-                                            strokeWidth="1.5"
-                                        />
-                                        <path d="M8.5 12.5L10.5 14.5L15.5 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    <div className="ltr:ml-2 rtl:mr-2 text-xs">5 Tasks</div>
-                                </div>
-                                <p className="text-primary">65%</p>
-                            </div>
-                            <div className="rounded-full h-2.5 p-0.5 bg-dark-light dark:bg-dark-light/10 mb-5">
-                                <div className="bg-gradient-to-r from-[#1e9afe] to-[#60dfcd] h-full rounded-full" style={{ width: '65%' }}></div>
-                            </div>
-                            <div className="flex items-end justify-between">
-                                <div className="flex items-center rounded-full bg-danger/20 px-2 py-1 text-xs text-danger font-semibold">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="ltr:mr-1 rtl:ml-1">
-                                        <circle opacity="0.5" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
-                                        <path d="M12 8V12L14.5 14.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
-                                    3 Days Left
-                                </div>
-                                <div className="flex items-center justify-center group-hover:-space-x-2 rtl:space-x-reverse rtl:group-hover:space-x-reverse">
-                                    <span className="bg-[#bfc9d4] dark:bg-dark w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold transition-all duration-300 opacity-0 group-hover:opacity-100">
-                                        +6
+                                <div className="flex justify-between mb-1 text-xs lg:text-sm dark:text-gray-300">
+                                    <span className="truncate">Coordinación (&lt;{sla.coordinacion.meta}h)</span>
+                                    <span className={`font-bold ml-2 flex-shrink-0 ${sla.coordinacion.cumplimiento >= 90 ? 'text-green-600' : 'text-yellow-600'}`}>
+                                        {sla.coordinacion.cumplimiento}%
                                     </span>
-                                    <img
-                                        className="w-9 h-9 border-2 border-white dark:border-dark rounded-full object-cover transition-all duration-300"
-                                        src="/assets/images/profile-6.jpeg"
-                                        alt="profile6"
-                                    />
-                                    <img
-                                        className="w-9 h-9 border-2 border-white dark:border-dark rounded-full object-cover transition-all duration-300"
-                                        src="/assets/images/profile-7.jpeg"
-                                        alt="profile7"
-                                    />
-                                    <img
-                                        className="w-9 h-9 border-2 border-white dark:border-dark rounded-full object-cover transition-all duration-300"
-                                        src="/assets/images/profile-8.jpeg"
-                                        alt="profile8"
-                                    />
                                 </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                                    <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${sla.coordinacion.cumplimiento}%` }}></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between mb-1 text-xs lg:text-sm dark:text-gray-300">
+                                    <span className="truncate">On Site (&lt;{sla.onSite.meta}h)</span>
+                                    <span className={`font-bold ml-2 flex-shrink-0 ${sla.onSite.cumplimiento >= 80 ? 'text-green-600' : 'text-yellow-600'}`}>
+                                        {sla.onSite.cumplimiento}%
+                                    </span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                                    <div className="bg-green-500 h-2 rounded-full" style={{ width: `${sla.onSite.cumplimiento}%` }}></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="flex justify-between mb-1 text-xs lg:text-sm dark:text-gray-300">
+                                    <span className="truncate">Laboratorio (&lt;{sla.laboratorio.meta}h)</span>
+                                    <span className={`font-bold ml-2 flex-shrink-0 ${sla.laboratorio.cumplimiento >= 70 ? 'text-green-600' : 'text-red-600'}`}>
+                                        {sla.laboratorio.cumplimiento}%
+                                    </span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                                    <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${sla.laboratorio.cumplimiento}%` }}></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Métricas adicionales */}
+                        <div className="mt-4 lg:mt-6 pt-3 lg:pt-4 border-t dark:border-gray-700">
+                            <div className="grid grid-cols-2 gap-2 lg:gap-3">
+                                <div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Tickets dentro SLA</p>
+                                    <p className="text-lg lg:text-xl font-bold dark:text-white">78%</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Tiempo extra</p>
+                                    <p className="text-lg lg:text-xl font-bold text-orange-500">+2.3h</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Distribución de tiempos de resolución */}
+                    <div className="panel bg-white dark:bg-black p-4 lg:p-5 lg:col-span-2 h-auto lg:h-[300px] overflow-auto">
+                        <h5 className="font-semibold text-base lg:text-lg mb-3 lg:mb-4 dark:text-white">Distribución Tiempo de Resolución</h5>
+                        <div className="flex h-32 sm:h-36 lg:h-40 items-end gap-2 sm:gap-3 lg:gap-4 justify-center px-2">
+                            {distribucionTiempos.rangos.map((rango, idx) => (
+                                <div key={idx} className="flex-1 flex flex-col items-center max-w-[60px] sm:max-w-[80px] lg:max-w-[100px]">
+                                    <div 
+                                        className="w-full rounded-t-lg transition-all hover:opacity-80"
+                                        style={{ 
+                                            height: `${Math.max(30, distribucionTiempos.porcentajes[idx] * (window.innerWidth < 640 ? 1 : 1.5))}px`,
+                                            backgroundColor: distribucionTiempos.colores[idx],
+                                            minHeight: '25px'
+                                        }}
+                                    >
+                                        <div className="text-white text-center font-bold text-xs pt-1">
+                                            {distribucionTiempos.porcentajes[idx]}%
+                                        </div>
+                                    </div>
+                                    <span className="mt-1 lg:mt-2 text-xs font-medium dark:text-gray-300">{rango}</span>
+                                    <span className="text-[10px] lg:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                                        {Math.round(ticketsPersonalTotal.mensual * distribucionTiempos.porcentajes[idx] / 100)} tickets
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-3 lg:mt-4 flex flex-wrap justify-center gap-3 lg:gap-6 px-2">
+                            <div className="flex items-center gap-1 lg:gap-2">
+                                <div className="w-2 h-2 lg:w-3 lg:h-3 rounded-full bg-blue-500"></div>
+                                <span className="text-[10px] lg:text-xs dark:text-gray-300">Óptimo</span>
+                            </div>
+                            <div className="flex items-center gap-1 lg:gap-2">
+                                <div className="w-2 h-2 lg:w-3 lg:h-3 rounded-full bg-green-500"></div>
+                                <span className="text-[10px] lg:text-xs dark:text-gray-300">Normal</span>
+                            </div>
+                            <div className="flex items-center gap-1 lg:gap-2">
+                                <div className="w-2 h-2 lg:w-3 lg:h-3 rounded-full bg-yellow-500"></div>
+                                <span className="text-[10px] lg:text-xs dark:text-gray-300">Lento</span>
+                            </div>
+                            <div className="flex items-center gap-1 lg:gap-2">
+                                <div className="w-2 h-2 lg:w-3 lg:h-3 rounded-full bg-red-500"></div>
+                                <span className="text-[10px] lg:text-xs dark:text-gray-300">Crítico</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* NUEVA FILA: Evolución de tiempos */}
+                <div className="grid grid-cols-1 gap-4 lg:gap-6 mb-6">
+                    <div className="panel p-3 h-[250px] sm:h-[300px] lg:h-[350px] w-full">
+                        <ReactECharts option={evolucionTiemposOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
+                    </div>
+                </div>
+
+                {/* FILA 5: Reincidencias y Tendencia */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6">
+                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
+                        <ReactECharts option={reincidenciasOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
+                    </div>
+                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
+                        <ReactECharts option={tendenciaReincidenciasOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
+                    </div>
+                </div>
+
+                {/* NUEVA FILA: Reincidencias por técnico y falla */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6">
+                    <div className="panel bg-white dark:bg-black p-4 lg:p-5 h-[300px] lg:h-[350px] overflow-auto">
+                        <h5 className="font-semibold text-base lg:text-lg mb-3 lg:mb-4 dark:text-white">Reincidencias por Técnico</h5>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs lg:text-sm">
+                                <thead>
+                                    <tr className="border-b dark:border-gray-700">
+                                        <th className="text-left py-2 dark:text-gray-300">Técnico</th>
+                                        <th className="text-center py-2 dark:text-gray-300">Tickets</th>
+                                        <th className="text-center py-2 dark:text-gray-300">Reinc.</th>
+                                        <th className="text-right py-2 dark:text-gray-300">%</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {ticketsPorTecnico.nombres.map((nombre, idx) => (
+                                        <tr key={idx} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                            <td className="py-2 font-medium dark:text-white truncate max-w-[80px] lg:max-w-none">{nombre}</td>
+                                            <td className="text-center dark:text-gray-300">{ticketsPorTecnico.mensual[idx]}</td>
+                                            <td className="text-center">
+                                                <span className="text-red-600 font-medium">
+                                                    {Math.round(ticketsPorTecnico.mensual[idx] * reincidenciasDetalle.porTecnico[idx] / 100)}
+                                                </span>
+                                            </td>
+                                            <td className="text-right">
+                                                <span className={`font-bold ${
+                                                    reincidenciasDetalle.porTecnico[idx] > 20 ? 'text-red-600' : 
+                                                    reincidenciasDetalle.porTecnico[idx] > 15 ? 'text-yellow-600' : 'text-green-600'
+                                                }`}>
+                                                    {reincidenciasDetalle.porTecnico[idx]}%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="panel bg-white dark:bg-black p-4 lg:p-5 h-[300px] lg:h-[350px] overflow-auto">
+                        <h5 className="font-semibold text-base lg:text-lg mb-3 lg:mb-4 dark:text-white">Reincidencias por Tipo de Falla</h5>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs lg:text-sm">
+                                <thead>
+                                    <tr className="border-b dark:border-gray-700">
+                                        <th className="text-left py-2 dark:text-gray-300">Falla</th>
+                                        <th className="text-center py-2 dark:text-gray-300">Total</th>
+                                        <th className="text-center py-2 dark:text-gray-300">Reinc.</th>
+                                        <th className="text-right py-2 dark:text-gray-300">%</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {ticketsPorFalla.tipos.map((tipo, idx) => (
+                                        <tr key={idx} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                            <td className="py-2 font-medium dark:text-white truncate max-w-[100px] lg:max-w-none">{tipo}</td>
+                                            <td className="text-center dark:text-gray-300">{ticketsPorFalla.valores[idx]}</td>
+                                            <td className="text-center">
+                                                <span className="text-red-600 font-medium">
+                                                    {Math.round(ticketsPorFalla.valores[idx] * reincidenciasDetalle.porFalla[idx] / 100)}
+                                                </span>
+                                            </td>
+                                            <td className="text-right">
+                                                <span className={`font-bold ${
+                                                    reincidenciasDetalle.porFalla[idx] > 20 ? 'text-red-600' : 
+                                                    reincidenciasDetalle.porFalla[idx] > 15 ? 'text-yellow-600' : 'text-green-600'
+                                                }`}>
+                                                    {reincidenciasDetalle.porFalla[idx]}%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {/* FILA 6: Tickets por técnico y resumen personal - MODIFICADA */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 mb-6">
+                    <div className="lg:col-span-2 panel p-3 h-[350px] lg:h-[450px] w-full">
+                        <ReactECharts option={tecnicosOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
+                    </div>
+                    <div className="panel bg-white dark:bg-black p-4 lg:p-5 h-[350px] lg:h-[450px] overflow-auto">
+                        <h5 className="font-semibold text-base lg:text-lg mb-3 lg:mb-4 dark:text-white">Top Técnicos</h5>
+                        <div className="space-y-2 lg:space-y-4">
+                            {ticketsPorTecnico.nombres
+                                .map((nombre, idx) => ({ nombre, tickets: ticketsPorTecnico.mensual[idx], reincidencia: reincidenciasDetalle.porTecnico[idx] }))
+                                .sort((a, b) => b.tickets - a.tickets)
+                                .map((tecnico, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-2 lg:p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                    <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+                                        <div
+                                            className={`w-6 h-6 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0 ${
+                                                idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-gray-400' : idx === 2 ? 'bg-amber-700' : 'bg-blue-500'
+                                            }`}
+                                        >
+                                            {idx + 1}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="font-semibold dark:text-white text-xs lg:text-sm truncate">{tecnico.nombre}</p>
+                                            <p className="text-[10px] lg:text-xs text-gray-500 dark:text-gray-400">{tecnico.tickets} tickets</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right flex-shrink-0 ml-2">
+                                        <div className="text-xs lg:text-sm font-bold text-primary">{Math.round(tecnico.tickets / 30)}/día</div>
+                                        <div className={`text-[10px] lg:text-xs ${
+                                            tecnico.reincidencia > 20 ? 'text-red-600' : 
+                                            tecnico.reincidencia > 15 ? 'text-yellow-600' : 'text-green-600'
+                                        }`}>
+                                            {tecnico.reincidencia}% reinc.
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <h5 className="font-semibold text-base lg:text-lg mt-4 lg:mt-6 mb-2 lg:mb-4 dark:text-white">Resumen Personal</h5>
+                        <div className="space-y-2 lg:space-y-3 text-xs lg:text-sm dark:text-gray-300">
+                            <div className="flex justify-between">
+                                <span>Total Técnicos:</span>
+                                <span className="font-bold dark:text-white">{ticketsPorTecnico.nombres.length}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Promedio/técnico:</span>
+                                <span className="font-bold dark:text-white">{Math.round(ticketsPersonalTotal.mensual / ticketsPorTecnico.nombres.length)}/mes</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Meta mensual:</span>
+                                <span className="font-bold text-green-600">✓ 105%</span>
+                            </div>
+                            <div className="flex justify-between pt-2 border-t dark:border-gray-700">
+                                <span className="truncate">Menos reinc.:</span>
+                                <span className="font-bold text-green-600 ml-2">María P. (8%)</span>
                             </div>
                         </div>
                     </div>
