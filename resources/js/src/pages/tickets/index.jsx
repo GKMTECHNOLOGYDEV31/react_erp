@@ -74,79 +74,80 @@ const ListaTickets = () => {
         }
     }, []);
 
-const cargarTickets = async () => {
-    setLoading(true);
-    try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${API_URL}/tickets`, {
-            headers: {
-                Authorization: token ? `Bearer ${token}` : '',
-                Accept: 'application/json',
-            },
-        });
+    const cargarTickets = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_URL}/tickets`, {
+                headers: {
+                    Authorization: token ? `Bearer ${token}` : '',
+                    Accept: 'application/json',
+                },
+            });
 
-        if (response.data.success) {
-            const ticketsTransformados = response.data.data.map((ticket) => ({
-                id: ticket.idTicket,
-                numeroTicket: ticket.numero_ticket,
-                // Datos cliente
-                nombreCompleto: ticket.nombreCompleto,
-                correoElectronico: ticket.correoElectronico,
-                telefonoCelular: ticket.telefonoCelular,
-                telefonoFijo: ticket.telefonoFijo || '',
-                tipoDocumento: ticket.tipo_documento?.nombre || '',  // CORREGIDO: tipo_documento con guión bajo
-                dni_ruc_ce: ticket.dni_ruc_ce,
+            if (response.data.success) {
+                const ticketsTransformados = response.data.data.map((ticket) => ({
+                    id: ticket.idTicket,
+                    numeroTicket: ticket.numero_ticket,
+                    // Datos cliente
+                    nombreCompleto: ticket.nombreCompleto,
+                    correoElectronico: ticket.correoElectronico,
+                    telefonoCelular: ticket.telefonoCelular,
+                    telefonoFijo: ticket.telefonoFijo || '',
+                    tipoDocumento: ticket.tipo_documento?.nombre || '',
+                    dni_ruc_ce: ticket.dni_ruc_ce,
 
-                // Datos producto
-                tipoProducto: ticket.categoria?.nombre || 'N/A',
-                modelo: ticket.modelo?.nombre || 'N/A',
-                serie: ticket.serieProducto,
+                    // Datos producto
+                    tipoProducto: ticket.categoria?.nombre || 'N/A',
+                    modelo: ticket.modelo?.nombre || 'N/A',
+                    serie: ticket.serieProducto,
 
-                // Falla
-                detallesFalla: ticket.detallesFalla,
+                    // Falla
+                    detallesFalla: ticket.detallesFalla,
 
-                // Fechas
-                fechaCreacion: new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                }),
-                fechaCompra: ticket.fechaCompra,
-                tiendaSedeCompra: ticket.tiendaSedeCompra,
+                    // Fechas
+                    fechaCreacion: new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                    }),
+                    fechaCompra: ticket.fechaCompra,
+                    tiendaSedeCompra: ticket.tiendaSedeCompra,
 
-                // Estado
-                estado: ticket.estado === 1 ? 'evaluando' : ticket.estado === 2 ? 'gestionando' : 'finalizado',
+                    // Estado (1: evaluando, 2: gestionando, 3: finalizado)
+                    estado: ticket.estado === 1 ? 'evaluando' : ticket.estado === 2 ? 'gestionando' : 'finalizado',
+                    estado_valor: ticket.estado, // Guardamos el valor numérico para las validaciones
 
-                // Ubicación
-                departamento: ticket.departamento,
-                provincia: ticket.provincia,
-                distrito: ticket.distrito,
-                direccionCompleta: ticket.direccionCompleta,
-                referenciaDomicilio: ticket.referenciaDomicilio,
-                ubicacionGoogleMaps: ticket.ubicacionGoogleMaps,
+                    // Ubicación
+                    departamento: ticket.departamento,
+                    provincia: ticket.provincia,
+                    distrito: ticket.distrito,
+                    direccionCompleta: ticket.direccionCompleta,
+                    referenciaDomicilio: ticket.referenciaDomicilio,
+                    ubicacionGoogleMaps: ticket.ubicacionGoogleMaps,
 
-                // Evidencias
-                fotoVideoFalla: ticket.fotoVideoFalla,
-                fotoBoletaFactura: ticket.fotoBoletaFactura,
-                fotoNumeroSerie: ticket.fotoNumeroSerie,
+                    // Evidencias
+                    fotoVideoFalla: ticket.fotoVideoFalla,
+                    fotoBoletaFactura: ticket.fotoBoletaFactura,
+                    fotoNumeroSerie: ticket.fotoNumeroSerie,
 
-                // Información adicional
-                idUsuarioCreador: ticket.idUsuarioCreador,
-                idClienteGeneral: ticket.idClienteGeneral,
-                usuarioCreador: ticket.usuario_creador ? `${ticket.usuario_creador.Nombre} ${ticket.usuario_creador.apellidoPaterno}` : 'N/A',
-            }));
+                    // Información adicional
+                    idUsuarioCreador: ticket.idUsuarioCreador,
+                    idClienteGeneral: ticket.idClienteGeneral,
+                    usuarioCreador: ticket.usuario_creador ? `${ticket.usuario_creador.Nombre} ${ticket.usuario_creador.apellidoPaterno}` : 'N/A',
+                }));
 
-            setTicketsData(ticketsTransformados);
+                setTicketsData(ticketsTransformados);
+            }
+        } catch (error) {
+            console.error('Error cargando tickets:', error);
+            toastr.error('Error al cargar los tickets', 'Error');
+        } finally {
+            setLoading(false);
         }
-    } catch (error) {
-        console.error('Error cargando tickets:', error);
-        toastr.error('Error al cargar los tickets', 'Error');
-    } finally {
-        setLoading(false);
-    }
-};
+    };
 
     useEffect(() => {
         dispatch(setPageTitle('Lista de Tickets'));
@@ -208,7 +209,7 @@ const cargarTickets = async () => {
         return isSystemDark;
     });
 
-    // Función para obtener el badge de estado - ACTUALIZADO con los nuevos estados
+    // Función para obtener el badge de estado
     const getStatusBadge = (estado) => {
         const statusConfig = {
             evaluando: {
@@ -260,6 +261,24 @@ const cargarTickets = async () => {
             setLoading(false);
             setModalEliminar(false);
         }
+    };
+
+    // Función para verificar si el botón de editar debe estar deshabilitado
+    const isEditDisabled = (estado_valor) => {
+        return estado_valor !== 1; // Deshabilitado para estados 2 y 3 (gestionando y finalizado)
+    };
+
+    // Función para verificar si el botón de eliminar debe estar deshabilitado
+    const isDeleteDisabled = (estado_valor) => {
+        return estado_valor !== 1; // Deshabilitado para estados 2 y 3 (gestionando y finalizado)
+    };
+
+    // Función para obtener el tooltip según el estado
+    const getActionTooltip = (estado_valor, accion) => {
+        if (estado_valor === 1) return `${accion} ticket`;
+        if (estado_valor === 2) return `No se puede ${accion.toLowerCase()} - Ticket en gestión`;
+        if (estado_valor === 3) return `No se puede ${accion.toLowerCase()} - Ticket finalizado`;
+        return `${accion} ticket`;
     };
 
     // Definir columnas para DataTable
@@ -415,6 +434,7 @@ const cargarTickets = async () => {
             },
             cell: (row) => (
                 <div className="flex items-center justify-center gap-1 py-2">
+                    {/* Botón Ver - Siempre habilitado */}
                     <button
                         className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-colors group"
                         onClick={() => {
@@ -425,29 +445,49 @@ const cargarTickets = async () => {
                     >
                         <FontAwesomeIcon icon={faEye} className="text-blue-600 dark:text-blue-400 w-4 h-4 group-hover:scale-110 transition-transform" />
                     </button>
+
+                    {/* Botón Editar - Deshabilitado para estados 2 y 3 */}
                     <button
-                        className="p-1.5 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 rounded-full transition-colors group"
-                        onClick={() => (window.location.href = `/tickets/editar/${row.id}`)}
-                        title="Editar ticket"
-                    >
-                        <FontAwesomeIcon icon={faEdit} className="text-yellow-600 dark:text-yellow-400 w-4 h-4 group-hover:scale-110 transition-transform" />
-                    </button>
-                    <button
-                        className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors group"
+                        className={`p-1.5 rounded-full transition-colors group ${
+                            isEditDisabled(row.estado_valor) 
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800' 
+                                : 'hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
+                        }`}
                         onClick={() => {
-                            setSelectedTicket(row);
-                            setModalEliminar(true);
+                            if (!isEditDisabled(row.estado_valor)) {
+                                window.location.href = `/tickets/editar/${row.id}`;
+                            }
                         }}
-                        title="Eliminar ticket"
+                        title={getActionTooltip(row.estado_valor, 'Editar')}
+                        disabled={isEditDisabled(row.estado_valor)}
                     >
-                        <FontAwesomeIcon icon={faTrash} className="text-red-600 dark:text-red-400 w-4 h-4 group-hover:scale-110 transition-transform" />
+                        <FontAwesomeIcon icon={faEdit} className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    </button>
+
+                    {/* Botón Eliminar - Deshabilitado para estados 2 y 3 */}
+                    <button
+                        className={`p-1.5 rounded-full transition-colors group ${
+                            isDeleteDisabled(row.estado_valor) 
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800' 
+                                : 'hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400'
+                        }`}
+                        onClick={() => {
+                            if (!isDeleteDisabled(row.estado_valor)) {
+                                setSelectedTicket(row);
+                                setModalEliminar(true);
+                            }
+                        }}
+                        title={getActionTooltip(row.estado_valor, 'Eliminar')}
+                        disabled={isDeleteDisabled(row.estado_valor)}
+                    >
+                        <FontAwesomeIcon icon={faTrash} className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     </button>
                 </div>
             ),
         },
     ];
 
-    // Filtrar datos por estado, búsqueda y fecha - ACTUALIZADO con los nuevos estados
+    // Filtrar datos por estado, búsqueda y fecha
     const filteredData = useMemo(() => {
         let data = ticketsData;
 
@@ -492,7 +532,7 @@ const cargarTickets = async () => {
         return data;
     }, [ticketsData, selectedStatus, filterText, dateRange]);
 
-    // Componente de filtros y búsqueda combinados - ACTUALIZADO con los nuevos estados
+    // Componente de filtros y búsqueda combinados
     const subHeaderComponent = useMemo(() => {
         return (
             <div className="flex flex-wrap items-center gap-4 w-full">
