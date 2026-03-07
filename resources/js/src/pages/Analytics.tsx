@@ -1,1033 +1,1151 @@
 import { Link } from 'react-router-dom';
+import ReactECharts from 'echarts-for-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { IRootState } from '../store';
 import PerfectScrollbar from 'react-perfect-scrollbar';
 import Dropdown from '../components/Dropdown';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react'; // 👈 SOLO agregué useRef
 import { setPageTitle } from '../store/themeConfigSlice';
-import ReactECharts from 'echarts-for-react';
-import * as echarts from 'echarts';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+    faTicket, 
+    faMapLocation, 
+    faGear, 
+    faClock, 
+    faUserGear,
+    faRotateRight,
+    faChartSimple,
+    faCalendarDay,
+    faCalendarWeek,
+    faCalendarAlt,
+    faCircleCheck,
+    faTriangleExclamation,
+    faHardDrive,
+    faMicrochip,
+    faBolt,
+    faBrush,
+    faLaptopCode,
+    faIndustry,
+    faUsers,
+    faArrowTrendUp,
+    faArrowTrendDown,
+    faStopwatch,
+    faDownload,
+    faPrint,
+    faExpand,
+    faCompress,
+    faChartLine,
+    faChartPie,
+    faChartBar,
+    faTable,
+    faClockRotateLeft,
+    faUserCheck,
+    faFlask,
+    faCheckDouble,
+    faMedal,
+    faStar,
+    faRefresh,
+    faExclamationTriangle,
+    faBuilding
+} from '@fortawesome/free-solid-svg-icons';
+
+// ==================== COMPONENTE PARA GRÁFICOS RESPONSIVOS (SOLO ANCHO) ====================
+const ResponsiveEChart = ({ option, style, ...props }: any) => {
+    const chartRef = useRef<any>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Forzar resize cuando cambia el tamaño del contenedor o el sidebar
+    useEffect(() => {
+        const forceResize = () => {
+            if (chartRef.current) {
+                setTimeout(() => {
+                    chartRef.current.getEchartsInstance().resize();
+                }, 50);
+            }
+        };
+
+        // Observar cambios en el contenedor
+        if (containerRef.current) {
+            const resizeObserver = new ResizeObserver(() => {
+                forceResize();
+            });
+            resizeObserver.observe(containerRef.current);
+            
+            // Observar cambios en el sidebar
+            const sidebar = document.querySelector('.sidebar') || document.querySelector('.navbar');
+            if (sidebar) {
+                resizeObserver.observe(sidebar);
+            }
+            
+            return () => resizeObserver.disconnect();
+        }
+    }, []);
+
+    // Resize inicial
+    useEffect(() => {
+        setTimeout(() => {
+            if (chartRef.current) {
+                chartRef.current.getEchartsInstance().resize();
+            }
+        }, 200);
+    }, []);
+
+    return (
+        <div 
+            ref={containerRef} 
+            style={{ 
+                width: '100%', 
+                height: style?.height || '350px',
+                position: 'relative'
+            }}
+        >
+            <ReactECharts
+                ref={chartRef}
+                option={option}
+                style={{ 
+                    width: '100%', 
+                    height: '100%'
+                }}
+                opts={{ 
+                    renderer: 'canvas', 
+                    width: 'auto', 
+                    height: 'auto'
+                }}
+                {...props}
+            />
+        </div>
+    );
+};
+
+// Datos estáticos para demostración
+const mockData = {
+    ticketsPorPeriodo: {
+        dia: 145,
+        semana: 892,
+        mes: 3241,
+        año: 28456,
+        tendencia: { dia: 12, semana: 8, mes: 15, año: 23 }
+    },
+    ticketsPorDistrito: [
+        { distrito: 'Santiago de Surco', provincia: 'Lima', cantidad: 456, variacion: 12 },
+        { distrito: 'Miraflores', provincia: 'Lima', cantidad: 389, variacion: -5 },
+        { distrito: 'San Isidro', provincia: 'Lima', cantidad: 367, variacion: 8 },
+        { distrito: 'La Molina', provincia: 'Lima', cantidad: 298, variacion: 3 },
+        { distrito: 'San Borja', provincia: 'Lima', cantidad: 276, variacion: -2 },
+        { distrito: 'Arequipa', provincia: 'Arequipa', cantidad: 234, variacion: 15 },
+        { distrito: 'Trujillo', provincia: 'La Libertad', cantidad: 198, variacion: 10 },
+        { distrito: 'Chiclayo', provincia: 'Lambayeque', cantidad: 167, variacion: -8 }
+    ],
+    ticketsPorFalla: [
+        { falla: 'Panel', cantidad: 324, icon: faHardDrive, porcentaje: 23, color: '#4361ee' },
+        { falla: 'Mainboard', cantidad: 287, icon: faMicrochip, porcentaje: 20, color: '#805dca' },
+        { falla: 'Power', cantidad: 198, icon: faBolt, porcentaje: 14, color: '#e2a03f' },
+        { falla: 'Limpieza Interna', cantidad: 156, icon: faBrush, porcentaje: 11, color: '#2196f3' },
+        { falla: 'Software', cantidad: 234, icon: faLaptopCode, porcentaje: 17, color: '#00ab55' },
+        { falla: 'NTF', cantidad: 67, icon: faTriangleExclamation, porcentaje: 5, color: '#e7515a' },
+        { falla: 'Falla Externa', cantidad: 89, icon: faIndustry, porcentaje: 6, color: '#607d8b' }
+    ],
+    ticketsPorEstado: [
+        { estado: 'Diagnóstico', cantidad: 156, color: '#f59e0b', icon: faClock },
+        { estado: 'Visita Finalizada', cantidad: 234, color: '#10b981', icon: faCircleCheck },
+        { estado: 'Pendiente Recojo', cantidad: 89, color: '#3b82f6', icon: faTicket },
+        { estado: 'Ingreso a Laboratorio', cantidad: 123, color: '#8b5cf6', icon: faFlask },
+        { estado: 'Cerrado', cantidad: 567, color: '#6b7280', icon: faCheckDouble }
+    ],
+    tiemposPromedio: {
+        coordinacionInicial: { horas: 4.5, tendencia: -0.5 },
+        solucionOnSite: { horas: 2.8, tendencia: 0.2 },
+        solucionLaboratorio: { horas: 24.5, tendencia: -2.3 },
+        resolucionTotal: { horas: 72.3, tendencia: 1.5 }
+    },
+    reincidencias: {
+        porcentaje: 8.5,
+        total: 234,
+        reincidentes: 1987,
+        porTecnico: [
+            { tecnico: 'Carlos Ruiz', reincidencias: 12 },
+            { tecnico: 'Miguel Torres', reincidencias: 8 },
+            { tecnico: 'Ana González', reincidencias: 5 }
+        ],
+        tendencia: -2.3
+    },
+    ticketsPorTecnico: {
+        diario: [
+            { tecnico: 'Carlos Ruiz', tickets: 8, eficiencia: 95, reincidencias: 1 },
+            { tecnico: 'Miguel Torres', tickets: 7, eficiencia: 88, reincidencias: 2 },
+            { tecnico: 'José Pérez', tickets: 6, eficiencia: 92, reincidencias: 0 },
+            { tecnico: 'Ana González', tickets: 9, eficiencia: 98, reincidencias: 1 },
+            { tecnico: 'Luis Fernández', tickets: 5, eficiencia: 85, reincidencias: 1 }
+        ],
+        semanal: [
+            { tecnico: 'Carlos Ruiz', tickets: 42, eficiencia: 94, reincidencias: 5 },
+            { tecnico: 'Miguel Torres', tickets: 38, eficiencia: 87, reincidencias: 7 },
+            { tecnico: 'José Pérez', tickets: 35, eficiencia: 91, reincidencias: 3 },
+            { tecnico: 'Ana González', tickets: 45, eficiencia: 97, reincidencias: 4 },
+            { tecnico: 'Luis Fernández', tickets: 32, eficiencia: 84, reincidencias: 6 }
+        ],
+        mensual: [
+            { tecnico: 'Carlos Ruiz', tickets: 168, eficiencia: 93, reincidencias: 18 },
+            { tecnico: 'Miguel Torres', tickets: 152, eficiencia: 86, reincidencias: 24 },
+            { tecnico: 'José Pérez', tickets: 145, eficiencia: 90, reincidencias: 15 },
+            { tecnico: 'Ana González', tickets: 178, eficiencia: 96, reincidencias: 14 },
+            { tecnico: 'Luis Fernández', tickets: 138, eficiencia: 83, reincidencias: 22 }
+        ]
+    },
+    ticketsPorPersonal: {
+        diario: 35,
+        semanal: 187,
+        mensual: 781,
+        objetivos: { diario: 40, semanal: 200, mensual: 800 }
+    },
+    tendencias: {
+        diario: [32, 35, 38, 42, 45, 48, 52, 55, 58, 62, 65, 68, 72, 75, 78, 82, 85, 88, 92, 95, 98, 102, 105, 108, 112, 115, 118, 122, 125, 128],
+        mensual: [2800, 2850, 2900, 2950, 3000, 3100, 3150, 3200, 3241, 3300, 3350, 3400]
+    }
+};
 
 const Analytics = () => {
     const dispatch = useDispatch();
-    const [selectedPeriod, setSelectedPeriod] = useState('month');
+    const [periodoTickets, setPeriodoTickets] = useState<'dia' | 'semana' | 'mes' | 'año'>('mes');
+    const [periodoTecnicos, setPeriodoTecnicos] = useState<'diario' | 'semanal' | 'mensual'>('diario');
+    const [vistaDistritos, setVistaDistritos] = useState<'grafico' | 'tabla'>('grafico');
+    const [expandido, setExpandido] = useState(false);
 
     useEffect(() => {
-        dispatch(setPageTitle('Analytics Tickets'));
-
-        // Registrar tema personalizado para ECharts
-        echarts.registerTheme('tickets-theme', {
-            backgroundColor: 'transparent',
-            textStyle: { color: '#e2e8f0' },
-            color: ['#60a5fa', '#34d399', '#f87171', '#fbbf24', '#c084fc', '#f472b6', '#94a3b8'],
-        });
+        dispatch(setPageTitle('Analytics Dashboard - Tickets'));
     }, [dispatch]);
 
     const isDark = useSelector((state: IRootState) => state.themeConfig.theme === 'dark' || state.themeConfig.isDarkMode);
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
 
-    // ==============================================
-    // DATOS ESTÁTICOS PARA LOS KPIs
-    // ==============================================
+    // ==================== FORZAR RESIZE INICIAL ====================
+    useEffect(() => {
+        const forceResize = () => {
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        };
+        
+        forceResize();
+        
+        // Observar cambios en el sidebar
+        const observer = new MutationObserver(() => {
+            forceResize();
+        });
 
-    // 1. Tickets por período (día, semana, mes, año)
-    const ticketsPorPeriodo = {
-        diario: [45, 52, 38, 41, 64, 58, 47, 53, 49, 61, 55, 48, 42, 39, 51, 44, 57, 63, 49, 52, 46, 38, 41, 35, 44, 51, 48, 42, 39, 37],
-        semanal: [245, 312, 298, 341, 364, 321, 289, 305, 318, 334, 298, 312],
-        mensual: [1245, 1352, 1438, 1541, 1624, 1589, 1498, 1523, 1487, 1532, 1498, 1623],
-        anual: [12458, 14532, 16238, 17894, 19234],
-    };
-
-    // 2. Tickets por distrito y provincia
-    const ticketsPorUbicacion = [
-        { value: 1245, name: 'Lima Cercado' },
-        { value: 987, name: 'San Isidro' },
-        { value: 876, name: 'Miraflores' },
-        { value: 754, name: 'Surco' },
-        { value: 654, name: 'La Molina' },
-        { value: 543, name: 'San Borja' },
-        { value: 432, name: 'Arequipa' },
-        { value: 321, name: 'Trujillo' },
-        { value: 298, name: 'Chiclayo' },
-        { value: 276, name: 'Piura' },
-        { value: 245, name: 'Cusco' },
-        { value: 198, name: 'Huancayo' },
-    ];
-
-    // 3. Tickets por tipo de falla
-    const ticketsPorFalla = {
-        tipos: ['Panel', 'Mainboard', 'Power', 'Limpieza Interna', 'Software', 'NTF', 'Falla Externa'],
-        valores: [345, 278, 412, 189, 567, 234, 321],
-    };
-
-    // 4. Tickets por estado
-    const ticketsPorEstado = {
-        estados: ['Diagnóstico', 'Visita Finalizada', 'Pendiente Recojo', 'Ingreso a Laboratorio', 'Cerrado'],
-        valores: [234, 456, 178, 312, 654],
-    };
-
-    // 5. Tiempos promedio (en horas)
-    const tiemposPromedio = {
-        coordinacion: 4.2, // horas
-        solucionOnSite: 8.5,
-        solucionLaboratorio: 24.3,
-        resolucionTotal: 36.8,
-    };
-
-    // 6. Reincidencias
-    const reincidencias = {
-        total: 187,
-        porcentaje: 12.4,
-        historial: [12, 15, 18, 22, 19, 24, 21, 18, 16, 14, 17, 19],
-    };
-
-    // 7. Tickets por técnico
-    const ticketsPorTecnico = {
-        nombres: ['Carlos R.', 'Ana M.', 'Luis G.', 'María P.', 'Jorge L.', 'Patricia V.'],
-        diario: [8, 12, 9, 11, 7, 10],
-        semanal: [42, 48, 45, 51, 38, 44],
-        mensual: [168, 185, 172, 194, 156, 178],
-    };
-
-    // 8. Tickets por personal total
-    const ticketsPersonalTotal = {
-        diario: 57,
-        semanal: 268,
-        mensual: 1053,
-    };
-
-    // ==============================================
-    // NUEVOS DATOS PARA LAS MEJORAS
-    // ==============================================
-
-    // SLAs y distribución de tiempos
-    const sla = {
-        coordinacion: { meta: 4, cumplimiento: 92 },
-        onSite: { meta: 8, cumplimiento: 78 },
-        laboratorio: { meta: 24, cumplimiento: 65 },
-    };
-
-    const distribucionTiempos = {
-        rangos: ['0-12h', '12-24h', '24-48h', '+48h'],
-        porcentajes: [24, 42, 28, 6],
-        colores: ['#60a5fa', '#34d399', '#fbbf24', '#f87171'],
-    };
-
-    const evolucionTiempos = {
-        coordinacion: [4.5, 4.3, 4.1, 4.4, 4.2, 4.0, 4.1, 4.3, 4.2, 4.4, 4.1, 4.2],
-        onSite: [8.8, 8.6, 8.4, 8.7, 8.5, 8.3, 8.4, 8.6, 8.5, 8.7, 8.4, 8.5],
-        laboratorio: [25.1, 24.8, 24.5, 24.9, 24.3, 24.0, 24.2, 24.4, 24.3, 24.6, 24.2, 24.3],
-    };
-
-    const reincidenciasDetalle = {
-        porTecnico: [18, 12, 24, 8, 15, 22],
-        porFalla: [15, 22, 18, 8, 12, 5, 20],
-    };
-
-    // ==============================================
-    // CONFIGURACIONES DE GRÁFICOS ECHARTS - CORREGIDAS PARA SER RESPONSIVES
-    // ==============================================
-
-    // Función para obtener el tamaño de fuente responsive
-    const getResponsiveFontSize = (baseSize) => {
-        if (typeof window !== 'undefined') {
-            if (window.innerWidth < 640) return baseSize * 0.7;
-            if (window.innerWidth < 1024) return baseSize * 0.85;
+        const sidebar = document.querySelector('.sidebar') || document.querySelector('.navbar');
+        if (sidebar) {
+            observer.observe(sidebar, { 
+                attributes: true, 
+                attributeFilter: ['class', 'style'] 
+            });
         }
-        return baseSize;
+
+        return () => observer.disconnect();
+    }, []);
+
+    // Gráfico de tendencia de tickets
+    const tendenciaTicketsOption = {
+        tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: {
+            type: 'category',
+            data: periodoTickets === 'dia' 
+                ? Array.from({ length: 30 }, (_, i) => `Día ${i + 1}`)
+                : ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+            axisLabel: { color: isDark ? '#bfc9d4' : '#506690' }
+        },
+        yAxis: {
+            type: 'value',
+            axisLabel: { color: isDark ? '#bfc9d4' : '#506690' },
+            splitLine: { lineStyle: { color: isDark ? '#191e3a' : '#e0e6ed' } }
+        },
+        series: [{
+            name: 'Tickets',
+            type: 'line',
+            data: periodoTickets === 'dia' ? mockData.tendencias.diario : mockData.tendencias.mensual,
+            smooth: true,
+            lineStyle: { width: 3, color: '#4361ee' },
+            areaStyle: { color: isDark ? '#4361ee20' : '#4361ee10' },
+            symbol: 'circle',
+            symbolSize: 8
+        }]
     };
 
-    // Gráfico 1: Tickets por período (Línea con área) - RESPONSIVE
-    const ticketPeriodoOption = {
-        title: {
-            text: 'Tickets por Día',
-            left: 'center',
-            top: 5,
-            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
-        },
+    // Configuración para gráfico de tickets por distrito
+    const ticketsDistritoOption = {
         tooltip: {
             trigger: 'axis',
             axisPointer: { type: 'shadow' },
-            formatter: '{b}<br/>📊 Tickets: {c}',
+            formatter: (params: any) => {
+                const data = params[0];
+                const item = mockData.ticketsPorDistrito[data.dataIndex];
+                return `
+                    <div class="font-semibold">${item.distrito}</div>
+                    <div class="text-xs">Provincia: ${item.provincia}</div>
+                    <div class="flex justify-between mt-1">
+                        <span>Tickets:</span>
+                        <span class="font-bold">${item.cantidad}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Variación:</span>
+                        <span class="${item.variacion >= 0 ? 'text-success' : 'text-danger'}">
+                            ${item.variacion >= 0 ? '+' : ''}${item.variacion}%
+                        </span>
+                    </div>
+                `;
+            }
         },
-        grid: { left: '8%', right: '5%', top: '15%', bottom: '8%', containLabel: true },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
+            type: 'value',
+            axisLabel: { color: isDark ? '#bfc9d4' : '#506690' },
+            splitLine: { lineStyle: { color: isDark ? '#191e3a' : '#e0e6ed' } }
+        },
+        yAxis: {
             type: 'category',
-            data: Array.from({ length: 30 }, (_, i) => `Día ${i + 1}`),
-            axisLabel: { rotate: 30, interval: 5, fontSize: getResponsiveFontSize(10) },
+            data: mockData.ticketsPorDistrito.map(item => item.distrito),
+            axisLabel: { color: isDark ? '#bfc9d4' : '#506690' },
+            axisLine: { lineStyle: { color: isDark ? '#3b3f5c' : '#e0e6ed' } }
         },
-        yAxis: { 
-            type: 'value', 
-            name: 'Cantidad',
-            nameTextStyle: { fontSize: getResponsiveFontSize(11) },
-            axisLabel: { fontSize: getResponsiveFontSize(10) }
-        },
-        series: [
-            {
-                name: 'Tickets',
-                type: 'line',
-                data: ticketsPorPeriodo.diario,
-                smooth: true,
-                symbol: 'circle',
-                symbolSize: 6,
-                lineStyle: { width: 2, color: '#60a5fa' },
-                areaStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: 'rgba(96, 165, 250, 0.3)' },
-                        { offset: 1, color: 'rgba(96, 165, 250, 0.05)' },
-                    ]),
+        series: [{
+            name: 'Tickets',
+            type: 'bar',
+            data: mockData.ticketsPorDistrito.map(item => item.cantidad),
+            itemStyle: {
+                color: (params: any) => {
+                    const item = mockData.ticketsPorDistrito[params.dataIndex];
+                    return item.variacion >= 0 ? '#10b981' : '#e7515a';
                 },
+                borderRadius: [0, 8, 8, 0]
             },
-        ],
+            barWidth: 20,
+            label: {
+                show: true,
+                position: 'right',
+                formatter: (params: any) => {
+                    const item = mockData.ticketsPorDistrito[params.dataIndex];
+                    return `${item.cantidad} (${item.variacion >= 0 ? '+' : ''}${item.variacion}%)`;
+                },
+                color: isDark ? '#bfc9d4' : '#506690',
+                fontSize: 11
+            }
+        }]
     };
 
-    // Gráfico 2: Tickets por ubicación (Mapa de árbol - Treemap) - RESPONSIVE
-    const ubicacionOption = {
-        title: {
-            text: 'Tickets por Distrito/Provincia',
-            left: 'center',
-            top: 5,
-            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+    // Configuración para gráfico de tickets por falla
+    const ticketsFallaOption = {
+        tooltip: { 
+            trigger: 'item',
+            formatter: (params: any) => {
+                return `${params.name}: ${params.value} tickets (${params.percent}%)`;
+            }
         },
-        tooltip: {
-            formatter: '{b}<br/>Tickets: {c}',
+        legend: {
+            orient: 'vertical',
+            left: 'left',
+            textStyle: { color: isDark ? '#bfc9d4' : '#506690' }
         },
-        series: [
-            {
-                name: 'Ubicaciones',
-                type: 'treemap',
-                data: ticketsPorUbicacion,
-                width: '100%',
-                height: '85%',
-                breadcrumb: { show: false },
+        series: [{
+            name: 'Tickets por Falla',
+            type: 'pie',
+            radius: ['40%', '70%'],
+            center: ['50%', '50%'],
+            avoidLabelOverlap: false,
+            itemStyle: {
+                borderRadius: 10,
+                borderColor: isDark ? '#1b2e4b' : '#fff',
+                borderWidth: 2
+            },
+            label: {
+                show: true,
+                position: 'outside',
+                formatter: '{b}: {d}%',
+                color: isDark ? '#bfc9d4' : '#506690'
+            },
+            emphasis: {
                 label: {
                     show: true,
-                    position: 'insideTopLeft',
-                    fontSize: getResponsiveFontSize(10),
-                    color: '#fff',
-                },
-                itemStyle: {
-                    borderRadius: 6,
-                    borderColor: isDark ? '#334155' : '#e2e8f0',
-                    borderWidth: 1,
-                },
-                top: '12%',
-                bottom: '3%',
+                    fontSize: 14,
+                    fontWeight: 'bold'
+                }
             },
-        ],
+            data: mockData.ticketsPorFalla.map(item => ({
+                name: item.falla,
+                value: item.cantidad,
+                itemStyle: { color: item.color }
+            }))
+        }]
     };
 
-    // Gráfico 3: Tickets por tipo de falla (Radar) - RESPONSIVE
-    const fallaOption = {
-        title: {
-            text: 'Tickets por Tipo de Falla',
-            left: 'center',
-            top: 5,
-            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+    // Configuración para gráfico de tickets por estado
+    const ticketsEstadoOption = {
+        tooltip: { 
+            trigger: 'axis', 
+            axisPointer: { type: 'shadow' },
+            formatter: (params: any) => {
+                const data = params[0];
+                const item = mockData.ticketsPorEstado[data.dataIndex];
+                return `
+                    <div class="font-semibold">${item.estado}</div>
+                    <div class="flex justify-between mt-1">
+                        <span>Tickets:</span>
+                        <span class="font-bold">${item.cantidad}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Porcentaje:</span>
+                        <span>${Math.round(item.cantidad / mockData.ticketsPorPeriodo.mes * 100)}%</span>
+                    </div>
+                `;
+            }
         },
-        tooltip: { trigger: 'item' },
-        radar: {
-            indicator: ticketsPorFalla.tipos.map((tipo) => ({ name: tipo, max: 600 })),
-            shape: 'circle',
-            center: ['50%', '50%'],
-            radius: '65%',
-            name: { 
-                textStyle: { 
-                    color: isDark ? '#94a3b8' : '#475569',
-                    fontSize: getResponsiveFontSize(10)
-                } 
-            },
-        },
-        series: [
-            {
-                name: 'Fallas',
-                type: 'radar',
-                data: [{ value: ticketsPorFalla.valores, name: 'Cantidad' }],
-                lineStyle: { color: '#34d399', width: 2 },
-                itemStyle: { color: '#10b981' },
-                areaStyle: { color: 'rgba(52, 211, 153, 0.1)' },
-            },
-        ],
-    };
-
-    // Gráfico 4: Tickets por estado - RESPONSIVE
-    const estadoOption = {
-        title: {
-            text: 'Tickets por Estado',
-            left: 'center',
-            top: 5,
-            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
-        },
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-        grid: { left: '15%', right: '5%', top: '15%', bottom: '5%', containLabel: true },
-        xAxis: { 
-            type: 'value',
-            axisLabel: { fontSize: getResponsiveFontSize(10) },
-            name: 'Cantidad',
-            nameTextStyle: { fontSize: getResponsiveFontSize(11) }
-        },
-        yAxis: { 
-            type: 'category', 
-            data: ticketsPorEstado.estados, 
-            axisLabel: { fontSize: getResponsiveFontSize(11) } 
-        },
-        series: [
-            {
-                name: 'Tickets',
-                type: 'bar',
-                data: ticketsPorEstado.valores,
-                barWidth: '60%',
-                label: { 
-                    show: true, 
-                    position: 'right', 
-                    fontWeight: 'bold',
-                    fontSize: getResponsiveFontSize(10)
-                },
-                itemStyle: {
-                    borderRadius: [0, 6, 6, 0],
-                    color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-                        { offset: 0, color: '#f87171' },
-                        { offset: 0.5, color: '#fbbf24' },
-                        { offset: 1, color: '#34d399' },
-                    ]),
-                },
-            },
-        ],
-    };
-
-    // Gráfico 5: Tiempos promedio - GAUGES RESPONSIVES
-    const tiemposOption = {
-        title: {
-            text: 'Tiempos Promedio (Horas)',
-            left: 'center',
-            top: 5,
-            textStyle: {
-                fontSize: getResponsiveFontSize(14),
-                fontWeight: 'bold',
-                color: isDark ? '#f1f5f9' : '#0f172a',
-            },
-        },
-        tooltip: {
-            formatter: '{a} <br/>{b}: {c} horas',
-        },
-        series: [
-            {
-                name: 'Coordinación',
-                type: 'gauge',
-                center: ['12.5%', '55%'],
-                radius: '65%',
-                startAngle: 0,
-                endAngle: 360,
-                min: 0,
-                max: 24,
-                progress: {
-                    show: true,
-                    width: 12,
-                    roundCap: true,
-                    itemStyle: { color: '#60a5fa' },
-                },
-                axisLine: {
-                    lineStyle: {
-                        width: 12,
-                        color: [[0.75, isDark ? '#334155' : '#e2e8f0']],
-                    },
-                },
-                axisTick: { show: false },
-                splitLine: { show: false },
-                axisLabel: { show: false },
-                anchor: { show: false },
-                title: {
-                    show: true,
-                    fontSize: getResponsiveFontSize(10),
-                    color: isDark ? '#e2e8f0' : '#1e293b',
-                    offsetCenter: [0, '-35%'],
-                },
-                detail: {
-                    valueAnimation: true,
-                    fontSize: getResponsiveFontSize(12),
-                    color: '#60a5fa',
-                    formatter: '{value}h',
-                    offsetCenter: [0, '40%'],
-                },
-                data: [{ value: tiemposPromedio.coordinacion, name: 'Coord.' }],
-            },
-            {
-                name: 'On Site',
-                type: 'gauge',
-                center: ['37.5%', '55%'],
-                radius: '65%',
-                startAngle: 0,
-                endAngle: 360,
-                min: 0,
-                max: 48,
-                progress: {
-                    show: true,
-                    width: 12,
-                    roundCap: true,
-                    itemStyle: { color: '#34d399' },
-                },
-                axisLine: {
-                    lineStyle: {
-                        width: 12,
-                        color: [[0.75, isDark ? '#334155' : '#e2e8f0']],
-                    },
-                },
-                axisTick: { show: false },
-                splitLine: { show: false },
-                axisLabel: { show: false },
-                anchor: { show: false },
-                title: {
-                    show: true,
-                    fontSize: getResponsiveFontSize(10),
-                    color: isDark ? '#e2e8f0' : '#1e293b',
-                    offsetCenter: [0, '-35%'],
-                },
-                detail: {
-                    valueAnimation: true,
-                    fontSize: getResponsiveFontSize(12),
-                    color: '#34d399',
-                    formatter: '{value}h',
-                    offsetCenter: [0, '40%'],
-                },
-                data: [{ value: tiemposPromedio.solucionOnSite, name: 'On Site' }],
-            },
-            {
-                name: 'Laboratorio',
-                type: 'gauge',
-                center: ['62.5%', '55%'],
-                radius: '65%',
-                startAngle: 0,
-                endAngle: 360,
-                min: 0,
-                max: 72,
-                progress: {
-                    show: true,
-                    width: 12,
-                    roundCap: true,
-                    itemStyle: { color: '#fbbf24' },
-                },
-                axisLine: {
-                    lineStyle: {
-                        width: 12,
-                        color: [[0.75, isDark ? '#334155' : '#e2e8f0']],
-                    },
-                },
-                axisTick: { show: false },
-                splitLine: { show: false },
-                axisLabel: { show: false },
-                anchor: { show: false },
-                title: {
-                    show: true,
-                    fontSize: getResponsiveFontSize(10),
-                    color: isDark ? '#e2e8f0' : '#1e293b',
-                    offsetCenter: [0, '-35%'],
-                },
-                detail: {
-                    valueAnimation: true,
-                    fontSize: getResponsiveFontSize(12),
-                    color: '#fbbf24',
-                    formatter: '{value}h',
-                    offsetCenter: [0, '40%'],
-                },
-                data: [{ value: tiemposPromedio.solucionLaboratorio, name: 'Lab.' }],
-            },
-            {
-                name: 'Total',
-                type: 'gauge',
-                center: ['87.5%', '55%'],
-                radius: '65%',
-                startAngle: 0,
-                endAngle: 360,
-                min: 0,
-                max: 100,
-                progress: {
-                    show: true,
-                    width: 12,
-                    roundCap: true,
-                    itemStyle: { color: '#f87171' },
-                },
-                axisLine: {
-                    lineStyle: {
-                        width: 12,
-                        color: [[0.75, isDark ? '#334155' : '#e2e8f0']],
-                    },
-                },
-                axisTick: { show: false },
-                splitLine: { show: false },
-                axisLabel: { show: false },
-                anchor: { show: false },
-                title: {
-                    show: true,
-                    fontSize: getResponsiveFontSize(10),
-                    color: isDark ? '#e2e8f0' : '#1e293b',
-                    offsetCenter: [0, '-35%'],
-                },
-                detail: {
-                    valueAnimation: true,
-                    fontSize: getResponsiveFontSize(12),
-                    color: '#f87171',
-                    formatter: '{value}h',
-                    offsetCenter: [0, '40%'],
-                },
-                data: [{ value: tiemposPromedio.resolucionTotal, name: 'Total' }],
-            },
-        ],
-    };
-
-    // Gráfico 6: Reincidencias (Pie con rosquilla) - RESPONSIVE
-    const reincidenciasOption = {
-        title: {
-            text: 'Reincidencias',
-            left: 'center',
-            top: 5,
-            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
-        },
-        tooltip: { trigger: 'item' },
-        series: [
-            {
-                name: 'Reincidencias',
-                type: 'pie',
-                radius: ['55%', '70%'],
-                center: ['50%', '55%'],
-                avoidLabelOverlap: false,
-                label: { 
-                    show: true, 
-                    position: 'outside', 
-                    formatter: '{b}: {d}%',
-                    fontSize: getResponsiveFontSize(10)
-                },
-                emphasis: { scale: false },
-                data: [
-                    { value: reincidencias.total, name: 'Con Reincidencia' },
-                    { value: ticketsPersonalTotal.mensual - reincidencias.total, name: 'Sin Reincidencia' },
-                ],
-                itemStyle: {
-                    borderRadius: 8,
-                    borderColor: isDark ? '#1e293b' : '#fff',
-                    borderWidth: 2,
-                },
-            },
-        ],
-    };
-
-    // NUEVO Gráfico: Evolución de tiempos - RESPONSIVE
-    const evolucionTiemposOption = {
-        title: {
-            text: 'Evolución de Tiempos (12 meses)',
-            left: 'center',
-            top: 5,
-            textStyle: { fontSize: getResponsiveFontSize(13), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
-        },
-        tooltip: { trigger: 'axis' },
-        legend: { 
-            data: ['Coordinación', 'On Site', 'Laboratorio'], 
-            bottom: 0,
-            itemWidth: 8,
-            itemHeight: 8,
-            textStyle: { fontSize: getResponsiveFontSize(9) }
-        },
-        grid: { left: '8%', right: '5%', top: '15%', bottom: '15%', containLabel: true },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
-            axisLabel: { fontSize: getResponsiveFontSize(9) }
+            data: mockData.ticketsPorEstado.map(item => item.estado),
+            axisLabel: { 
+                color: isDark ? '#bfc9d4' : '#506690',
+                rotate: 15,
+                fontSize: 11
+            },
+            axisLine: { lineStyle: { color: isDark ? '#3b3f5c' : '#e0e6ed' } }
         },
-        yAxis: { 
-            type: 'value', 
-            name: 'Horas',
-            nameTextStyle: { fontSize: getResponsiveFontSize(10) },
-            axisLabel: { fontSize: getResponsiveFontSize(9) }
+        yAxis: {
+            type: 'value',
+            axisLabel: { color: isDark ? '#bfc9d4' : '#506690' },
+            splitLine: { lineStyle: { color: isDark ? '#191e3a' : '#e0e6ed' } }
         },
-        series: [
-            {
-                name: 'Coordinación',
-                type: 'line',
-                data: evolucionTiempos.coordinacion,
-                smooth: true,
-                lineStyle: { width: 2, color: '#60a5fa' },
-                symbol: 'circle',
-                symbolSize: 4,
+        series: [{
+            name: 'Tickets',
+            type: 'bar',
+            data: mockData.ticketsPorEstado.map(item => item.cantidad),
+            itemStyle: {
+                color: (params: any) => mockData.ticketsPorEstado[params.dataIndex].color,
+                borderRadius: [8, 8, 0, 0]
             },
-            {
-                name: 'On Site',
-                type: 'line',
-                data: evolucionTiempos.onSite,
-                smooth: true,
-                lineStyle: { width: 2, color: '#34d399' },
-                symbol: 'circle',
-                symbolSize: 4,
-            },
-            {
-                name: 'Laboratorio',
-                type: 'line',
-                data: evolucionTiempos.laboratorio,
-                smooth: true,
-                lineStyle: { width: 2, color: '#fbbf24' },
-                symbol: 'circle',
-                symbolSize: 4,
-            },
-        ],
+            barWidth: 40,
+            label: {
+                show: true,
+                position: 'top',
+                color: isDark ? '#bfc9d4' : '#506690',
+                fontSize: 11,
+                formatter: (params: any) => params.value
+            }
+        }]
     };
 
-    // Gráfico 7: Tickets por técnico (Barras agrupadas) - RESPONSIVE
-    const tecnicosOption = {
-        title: {
-            text: 'Tickets por Técnico (Mensual)',
-            left: 'center',
-            top: 5,
-            textStyle: { fontSize: getResponsiveFontSize(14), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+    // Configuración para gráfico de tickets por técnico
+    const ticketsTecnicoOption = {
+        tooltip: { 
+            trigger: 'axis', 
+            axisPointer: { type: 'shadow' },
+            formatter: (params: any) => {
+                const data = params[0];
+                const item = mockData.ticketsPorTecnico[periodoTecnicos][data.dataIndex];
+                return `
+                    <div class="font-semibold">${item.tecnico}</div>
+                    <div class="flex justify-between mt-1">
+                        <span>Tickets:</span>
+                        <span class="font-bold">${item.tickets}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Eficiencia:</span>
+                        <span class="${item.eficiencia >= 90 ? 'text-success' : 'text-warning'}">${item.eficiencia}%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Reincidencias:</span>
+                        <span class="text-danger">${item.reincidencias}</span>
+                    </div>
+                `;
+            }
         },
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-        legend: { 
-            data: ['Tickets', '% Reincidencias'], 
-            bottom: 0,
-            itemWidth: 8,
-            itemHeight: 8,
-            textStyle: { fontSize: getResponsiveFontSize(9) }
-        },
-        grid: { left: '8%', right: '8%', top: '15%', bottom: '15%', containLabel: true },
-        xAxis: { 
-            type: 'category', 
-            data: ticketsPorTecnico.nombres, 
-            axisLabel: { rotate: 15, fontSize: getResponsiveFontSize(9) } 
-        },
-        yAxis: [
-            { 
-                type: 'value', 
-                name: 'Tickets',
-                nameTextStyle: { fontSize: getResponsiveFontSize(10) },
-                axisLabel: { fontSize: getResponsiveFontSize(9) }
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: {
+            type: 'category',
+            data: mockData.ticketsPorTecnico[periodoTecnicos].map(item => item.tecnico.split(' ')[0]),
+            axisLabel: { 
+                color: isDark ? '#bfc9d4' : '#506690',
+                rotate: 15
             },
-            { 
-                type: 'value', 
-                name: '% Reinc.',
-                nameTextStyle: { fontSize: getResponsiveFontSize(10) },
-                max: 30,
-                axisLabel: { fontSize: getResponsiveFontSize(9) }
-            },
-        ],
-        series: [
-            {
-                name: 'Tickets',
-                type: 'bar',
-                data: ticketsPorTecnico.mensual,
-                barWidth: '40%',
-                itemStyle: {
-                    borderRadius: [6, 6, 0, 0],
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: '#c084fc' },
-                        { offset: 1, color: '#8b5cf6' },
-                    ]),
-                },
-                label: { 
-                    show: true, 
-                    position: 'top',
-                    fontSize: getResponsiveFontSize(8),
-                    rotate: 0
-                },
-            },
-            {
-                name: '% Reincidencias',
-                type: 'line',
-                yAxisIndex: 1,
-                data: reincidenciasDetalle.porTecnico,
-                lineStyle: { width: 2, color: '#f87171' },
-                symbol: 'circle',
-                symbolSize: 4,
-            },
-        ],
-    };
-
-    // Gráfico 8: Tendencia de reincidencias (Línea) - RESPONSIVE
-    const tendenciaReincidenciasOption = {
-        title: {
-            text: 'Tendencia Reincidencias (12 meses)',
-            left: 'center',
-            top: 5,
-            textStyle: { fontSize: getResponsiveFontSize(13), fontWeight: 'bold', color: isDark ? '#e2e8f0' : '#1e293b' },
+            axisLine: { lineStyle: { color: isDark ? '#3b3f5c' : '#e0e6ed' } }
         },
-        tooltip: { trigger: 'axis' },
-        grid: { left: '8%', right: '5%', top: '15%', bottom: '8%', containLabel: true },
-        xAxis: { 
-            type: 'category', 
-            data: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
-            axisLabel: { fontSize: getResponsiveFontSize(9) }
+        yAxis: {
+            type: 'value',
+            axisLabel: { color: isDark ? '#bfc9d4' : '#506690' },
+            splitLine: { lineStyle: { color: isDark ? '#191e3a' : '#e0e6ed' } }
         },
-        yAxis: { 
-            type: 'value', 
-            name: 'Reincidencias',
-            nameTextStyle: { fontSize: getResponsiveFontSize(10) },
-            axisLabel: { fontSize: getResponsiveFontSize(9) }
-        },
-        series: [
-            {
-                data: reincidencias.historial,
-                type: 'line',
-                smooth: true,
-                lineStyle: { width: 2, color: '#f87171' },
-                areaStyle: { color: 'rgba(248, 113, 113, 0.1)' },
-                symbol: 'circle',
-                symbolSize: 4,
+        series: [{
+            name: 'Tickets',
+            type: 'bar',
+            data: mockData.ticketsPorTecnico[periodoTecnicos].map(item => item.tickets),
+            itemStyle: {
+                color: '#e2a03f',
+                borderRadius: [8, 8, 0, 0]
             },
-        ],
+            barWidth: 30,
+            label: {
+                show: true,
+                position: 'top',
+                color: isDark ? '#bfc9d4' : '#506690',
+                fontSize: 11,
+                formatter: (params: any) => params.value
+            }
+        }]
     };
 
     return (
-        <div className="overflow-x-hidden w-full">
-            <ul className="flex space-x-2 rtl:space-x-reverse">
-                <li>
-                    <Link to="/" className="text-primary hover:underline">
-                        Dashboard
-                    </Link>
-                </li>
-                <li className="before:content-['/'] ltr:before:mr-2 rtl:before:ml-2">
-                    <span>Analytics Tickets</span>
-                </li>
-            </ul>
-
-            <div className="pt-5 w-full">
-                {/* Fila 1: KPIs principales */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6">
-                    <div className="panel bg-gradient-to-r from-blue-500 to-blue-600 p-4">
-                        <div className="flex justify-between items-center">
-                            <div className="min-w-0">
-                                <p className="text-white/70 text-xs sm:text-sm truncate">Total Tickets (Hoy)</p>
-                                <h3 className="text-white text-2xl sm:text-3xl font-bold">{ticketsPersonalTotal.diario}</h3>
-                                <span className="text-white/80 text-xs">+12% vs ayer</span>
-                            </div>
-                            <div className="bg-white/20 p-2 sm:p-3 rounded-full flex-shrink-0">
-                                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="panel bg-gradient-to-r from-purple-500 to-purple-600 p-4">
-                        <div className="flex justify-between items-center">
-                            <div className="min-w-0">
-                                <p className="text-white/70 text-xs sm:text-sm truncate">Reincidencias</p>
-                                <h3 className="text-white text-2xl sm:text-3xl font-bold">{reincidencias.porcentaje}%</h3>
-                                <span className="text-white/80 text-xs">{reincidencias.total} tickets</span>
-                            </div>
-                            <div className="bg-white/20 p-2 sm:p-3 rounded-full flex-shrink-0">
-                                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="panel bg-gradient-to-r from-amber-500 to-amber-600 p-4">
-                        <div className="flex justify-between items-center">
-                            <div className="min-w-0">
-                                <p className="text-white/70 text-xs sm:text-sm truncate">Técnico del Mes</p>
-                                <h3 className="text-white text-2xl sm:text-3xl font-bold truncate">María P.</h3>
-                                <span className="text-white/80 text-xs">194 tickets</span>
-                            </div>
-                            <div className="bg-white/20 p-2 sm:p-3 rounded-full flex-shrink-0">
-                                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="panel bg-gradient-to-r from-emerald-500 to-emerald-600 p-4">
-                        <div className="flex justify-between items-center">
-                            <div className="min-w-0">
-                                <p className="text-white/70 text-xs sm:text-sm truncate">Tiempo Promedio</p>
-                                <h3 className="text-white text-2xl sm:text-3xl font-bold">{tiemposPromedio.resolucionTotal}h</h3>
-                                <span className="text-white/80 text-xs">Resolución total</span>
-                            </div>
-                            <div className="bg-white/20 p-2 sm:p-3 rounded-full flex-shrink-0">
-                                <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
+        <div>
+            {/* Header mejorado con acciones */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+                <ul className="flex space-x-2 rtl:space-x-reverse">
+                    <li>
+                        <Link to="/" className="text-primary hover:underline">
+                            Dashboard
+                        </Link>
+                    </li>
+                    <li className="before:content-['/'] ltr:before:mr-2 rtl:before:ml-2">
+                        <span>Analytics Tickets</span>
+                    </li>
+                </ul>
+                
+                <div className="flex gap-2">
+                    <button className="btn btn-outline-primary btn-sm">
+                        <FontAwesomeIcon icon={faDownload} className="mr-2" /> Exportar
+                    </button>
+                    <button className="btn btn-outline-primary btn-sm">
+                        <FontAwesomeIcon icon={faPrint} className="mr-2" /> Imprimir
+                    </button>
+                    <button className="btn btn-outline-primary btn-sm" onClick={() => setExpandido(!expandido)}>
+                        <FontAwesomeIcon icon={expandido ? faCompress : faExpand} />
+                    </button>
                 </div>
+            </div>
 
-                {/* Fila 2: Gráficos principales */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6">
-                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
-                        <ReactECharts option={ticketPeriodoOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
-                    </div>
-                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
-                        <ReactECharts option={ubicacionOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
-                    </div>
-                </div>
-
-                {/* Fila 3: Gráficos de fallas y estados */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6">
-                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
-                        <ReactECharts option={fallaOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
-                    </div>
-                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
-                        <ReactECharts option={estadoOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
-                    </div>
-                </div>
-
-                {/* FILA 4: Tiempos Promedio - ANCHO COMPLETO */}
-                <div className="grid grid-cols-1 gap-4 lg:gap-6 mb-6">
-                    <div className="panel p-3 h-[250px] sm:h-[300px] lg:h-[350px] w-full">
-                        <ReactECharts option={tiemposOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
-                    </div>
-                </div>
-
-                {/* NUEVA FILA: Cumplimiento SLA y Distribución de Tiempos */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 mb-6">
-                    {/* Tarjeta de cumplimiento SLA */}
-                    <div className="panel bg-white dark:bg-black p-4 lg:p-5 h-auto lg:h-[300px] overflow-auto">
-                        <h5 className="font-semibold text-base lg:text-lg mb-3 lg:mb-4 dark:text-white">Cumplimiento SLA</h5>
-                        <div className="space-y-3 lg:space-y-4">
+            <div className={`pt-5 transition-all duration-300 ${expandido ? 'scale-100' : ''}`}>
+                {/* Fila 1: KPIs Principales */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div className="panel bg-gradient-to-r from-[#4361ee] to-[#805dca] text-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-8 -mt-8"></div>
+                        <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full -ml-6 -mb-6"></div>
+                        
+                        <div className="flex justify-between items-center relative z-10">
                             <div>
-                                <div className="flex justify-between mb-1 text-xs lg:text-sm dark:text-gray-300">
-                                    <span className="truncate">Coordinación (&lt;{sla.coordinacion.meta}h)</span>
-                                    <span className={`font-bold ml-2 flex-shrink-0 ${sla.coordinacion.cumplimiento >= 90 ? 'text-green-600' : 'text-yellow-600'}`}>
-                                        {sla.coordinacion.cumplimiento}%
+                                <p className="text-white/70 text-sm flex items-center gap-1">
+                                    <FontAwesomeIcon icon={faTicket} />
+                                    Total Tickets
+                                </p>
+                                <div className="flex items-baseline gap-2 mt-1">
+                                    <h3 className="text-3xl font-bold">{mockData.ticketsPorPeriodo[periodoTickets].toLocaleString()}</h3>
+                                    <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
+                                        <FontAwesomeIcon icon={faArrowTrendUp} className="mr-1" />
+                                        +{mockData.ticketsPorPeriodo.tendencia[periodoTickets]}%
                                     </span>
                                 </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                                    <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${sla.coordinacion.cumplimiento}%` }}></div>
-                                </div>
+                            </div>
+                            <div className="dropdown">
+                                <Dropdown
+                                    offset={[0, 5]}
+                                    placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
+                                    btnClassName="hover:bg-white/10 rounded p-2"
+                                    button={<FontAwesomeIcon icon={faCalendarAlt} className="text-white" />}
+                                >
+                                    <ul>
+                                        <li><button type="button" onClick={() => setPeriodoTickets('dia')}>Hoy</button></li>
+                                        <li><button type="button" onClick={() => setPeriodoTickets('semana')}>Esta Semana</button></li>
+                                        <li><button type="button" onClick={() => setPeriodoTickets('mes')}>Este Mes</button></li>
+                                        <li><button type="button" onClick={() => setPeriodoTickets('año')}>Este Año</button></li>
+                                    </ul>
+                                </Dropdown>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-4 grid grid-cols-3 gap-2 text-white/80 text-xs relative z-10">
+                            <div className="bg-white/10 rounded p-2 text-center">
+                                <div>Día</div>
+                                <div className="font-bold text-sm">{mockData.ticketsPorPeriodo.dia}</div>
+                            </div>
+                            <div className="bg-white/10 rounded p-2 text-center">
+                                <div>Semana</div>
+                                <div className="font-bold text-sm">{mockData.ticketsPorPeriodo.semana}</div>
+                            </div>
+                            <div className="bg-white/10 rounded p-2 text-center">
+                                <div>Mes</div>
+                                <div className="font-bold text-sm">{mockData.ticketsPorPeriodo.mes}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="panel">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-white-dark text-sm">Tickets Cerrados</p>
+                            <span className="text-xs bg-success/10 text-success px-2 py-1 rounded-full">
+                                {Math.round((mockData.ticketsPorEstado.find(e => e.estado === 'Cerrado')?.cantidad || 0) / mockData.ticketsPorPeriodo.mes * 100)}% del total
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="bg-success/10 text-success rounded-full w-12 h-12 flex items-center justify-center">
+                                <FontAwesomeIcon icon={faCircleCheck} className="text-2xl" />
                             </div>
                             <div>
-                                <div className="flex justify-between mb-1 text-xs lg:text-sm dark:text-gray-300">
-                                    <span className="truncate">On Site (&lt;{sla.onSite.meta}h)</span>
-                                    <span className={`font-bold ml-2 flex-shrink-0 ${sla.onSite.cumplimiento >= 80 ? 'text-green-600' : 'text-yellow-600'}`}>
-                                        {sla.onSite.cumplimiento}%
-                                    </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                                    <div className="bg-green-500 h-2 rounded-full" style={{ width: `${sla.onSite.cumplimiento}%` }}></div>
-                                </div>
-                            </div>
-                            <div>
-                                <div className="flex justify-between mb-1 text-xs lg:text-sm dark:text-gray-300">
-                                    <span className="truncate">Laboratorio (&lt;{sla.laboratorio.meta}h)</span>
-                                    <span className={`font-bold ml-2 flex-shrink-0 ${sla.laboratorio.cumplimiento >= 70 ? 'text-green-600' : 'text-red-600'}`}>
-                                        {sla.laboratorio.cumplimiento}%
-                                    </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                                    <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${sla.laboratorio.cumplimiento}%` }}></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Métricas adicionales */}
-                        <div className="mt-4 lg:mt-6 pt-3 lg:pt-4 border-t dark:border-gray-700">
-                            <div className="grid grid-cols-2 gap-2 lg:gap-3">
-                                <div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Tickets dentro SLA</p>
-                                    <p className="text-lg lg:text-xl font-bold dark:text-white">78%</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Tiempo extra</p>
-                                    <p className="text-lg lg:text-xl font-bold text-orange-500">+2.3h</p>
+                                <h4 className="text-2xl font-bold">{mockData.ticketsPorEstado.find(e => e.estado === 'Cerrado')?.cantidad}</h4>
+                                <div className="flex items-center gap-2 text-xs">
+                                    <FontAwesomeIcon icon={faArrowTrendUp} className="text-success" />
+                                    <span className="text-success">+12% vs mes anterior</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Distribución de tiempos de resolución */}
-                    <div className="panel bg-white dark:bg-black p-4 lg:p-5 lg:col-span-2 h-auto lg:h-[300px] overflow-auto">
-                        <h5 className="font-semibold text-base lg:text-lg mb-3 lg:mb-4 dark:text-white">Distribución Tiempo de Resolución</h5>
-                        <div className="flex h-32 sm:h-36 lg:h-40 items-end gap-2 sm:gap-3 lg:gap-4 justify-center px-2">
-                            {distribucionTiempos.rangos.map((rango, idx) => (
-                                <div key={idx} className="flex-1 flex flex-col items-center max-w-[60px] sm:max-w-[80px] lg:max-w-[100px]">
-                                    <div 
-                                        className="w-full rounded-t-lg transition-all hover:opacity-80"
-                                        style={{ 
-                                            height: `${Math.max(30, distribucionTiempos.porcentajes[idx] * (window.innerWidth < 640 ? 1 : 1.5))}px`,
-                                            backgroundColor: distribucionTiempos.colores[idx],
-                                            minHeight: '25px'
-                                        }}
-                                    >
-                                        <div className="text-white text-center font-bold text-xs pt-1">
-                                            {distribucionTiempos.porcentajes[idx]}%
-                                        </div>
-                                    </div>
-                                    <span className="mt-1 lg:mt-2 text-xs font-medium dark:text-gray-300">{rango}</span>
-                                    <span className="text-[10px] lg:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                                        {Math.round(ticketsPersonalTotal.mensual * distribucionTiempos.porcentajes[idx] / 100)} tickets
+                    <div className="panel">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-white-dark text-sm">Tiempo Prom. Resolución</p>
+                            <span className="text-xs bg-warning/10 text-warning px-2 py-1 rounded-full">
+                                Meta: 48h
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="bg-warning/10 text-warning rounded-full w-12 h-12 flex items-center justify-center">
+                                <FontAwesomeIcon icon={faClock} className="text-2xl" />
+                            </div>
+                            <div>
+                                <h4 className="text-2xl font-bold">{mockData.tiemposPromedio.resolucionTotal.horas}h</h4>
+                                <div className="flex items-center gap-2 text-xs">
+                                    <FontAwesomeIcon icon={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown} 
+                                        className={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'} />
+                                    <span className={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'}>
+                                        {Math.abs(mockData.tiemposPromedio.resolucionTotal.tendencia)}h vs ayer
                                     </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="panel">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-white-dark text-sm">Reincidencias</p>
+                            <span className="text-xs bg-danger/10 text-danger px-2 py-1 rounded-full">
+                                <FontAwesomeIcon icon={faArrowTrendDown} className="mr-1" />
+                                {Math.abs(mockData.reincidencias.tendencia)}%
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="bg-danger/10 text-danger rounded-full w-12 h-12 flex items-center justify-center">
+                                <FontAwesomeIcon icon={faRotateRight} className="text-2xl" />
+                            </div>
+                            <div>
+                                <h4 className="text-2xl font-bold">{mockData.reincidencias.porcentaje}%</h4>
+                                <div className="flex items-center gap-1 text-xs">
+                                    <span className="text-white-dark">{mockData.reincidencias.reincidentes} tickets</span>
+                                    <span className="text-danger">• {mockData.reincidencias.total} únicos</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Gráfico de Tendencia */}
+                <div className="grid grid-cols-1 gap-6 mb-6">
+                    <div className="panel">
+                        <div className="flex justify-between items-center mb-5">
+                            <div className="flex items-center gap-2">
+                                <FontAwesomeIcon icon={faChartLine} className="text-primary text-xl" />
+                                <h5 className="font-semibold text-lg">Tendencia de Tickets</h5>
+                            </div>
+                            <div className="flex gap-2">
+                                <button className="px-3 py-1 text-xs bg-primary/10 text-primary rounded-md">
+                                    <FontAwesomeIcon icon={faCalendarDay} className="mr-1" /> Últimos 30 días
+                                </button>
+                            </div>
+                        </div>
+                        {/* 👇 CAMBIADO a ResponsiveEChart */}
+                        <ResponsiveEChart option={tendenciaTicketsOption} style={{ height: '200px' }} />
+                    </div>
+                </div>
+
+                {/* Fila 2: Tickets por Distrito y por Falla */}
+                <div className="grid lg:grid-cols-2 gap-6 mb-6">
+                    <div className="panel">
+                        <div className="flex justify-between items-center mb-5">
+                            <div className="flex items-center gap-2">
+                                <FontAwesomeIcon icon={faMapLocation} className="text-primary text-xl" />
+                                <h5 className="font-semibold text-lg">Tickets por Distrito</h5>
+                            </div>
+                            <div className="flex gap-1 bg-white-dark/10 rounded-lg p-1">
+                                <button 
+                                    onClick={() => setVistaDistritos('grafico')}
+                                    className={`px-3 py-1 rounded-md text-sm ${vistaDistritos === 'grafico' ? 'bg-primary text-white' : ''}`}
+                                >
+                                    <FontAwesomeIcon icon={faChartBar} />
+                                </button>
+                                <button 
+                                    onClick={() => setVistaDistritos('tabla')}
+                                    className={`px-3 py-1 rounded-md text-sm ${vistaDistritos === 'tabla' ? 'bg-primary text-white' : ''}`}
+                                >
+                                    <FontAwesomeIcon icon={faTable} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {vistaDistritos === 'grafico' ? (
+                            <>
+                                {/* 👇 CAMBIADO a ResponsiveEChart */}
+                                <ResponsiveEChart option={ticketsDistritoOption} style={{ height: '350px' }} />
+                                <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                                    <span className="bg-success/10 text-success px-2 py-1 rounded-full text-xs">
+                                        <FontAwesomeIcon icon={faArrowTrendUp} className="mr-1" /> Crecimiento
+                                    </span>
+                                    <span className="bg-danger/10 text-danger px-2 py-1 rounded-full text-xs">
+                                        <FontAwesomeIcon icon={faArrowTrendDown} className="mr-1" /> Decrecimiento
+                                    </span>
+                                </div>
+                            </>
+                        ) : (
+                            <PerfectScrollbar className="h-[350px]">
+                                <table className="table-hover w-full">
+                                    <thead>
+                                        <tr>
+                                            <th className="text-left">Distrito</th>
+                                            <th className="text-left">Provincia</th>
+                                            <th className="text-right">Tickets</th>
+                                            <th className="text-right">Variación</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {mockData.ticketsPorDistrito.map((item, index) => (
+                                            <tr key={index}>
+                                                <td className="font-semibold">{item.distrito}</td>
+                                                <td>{item.provincia}</td>
+                                                <td className="text-right">{item.cantidad}</td>
+                                                <td className="text-right">
+                                                    <span className={`${item.variacion >= 0 ? 'text-success' : 'text-danger'} flex items-center gap-1 justify-end`}>
+                                                        <FontAwesomeIcon icon={item.variacion >= 0 ? faArrowTrendUp : faArrowTrendDown} />
+                                                        {item.variacion >= 0 ? '+' : ''}{item.variacion}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </PerfectScrollbar>
+                        )}
+                        
+                        <div className="mt-4 text-sm text-white-dark flex items-center justify-between">
+                            <span>
+                                <FontAwesomeIcon icon={faBuilding} className="mr-1" />
+                                {[...new Set(mockData.ticketsPorDistrito.map(item => item.provincia))].length} provincias
+                            </span>
+                            <span className="font-semibold">Total: {mockData.ticketsPorDistrito.reduce((acc, item) => acc + item.cantidad, 0)} tickets</span>
+                        </div>
+                    </div>
+
+                    <div className="panel">
+                        <div className="flex items-center gap-2 mb-5">
+                            <FontAwesomeIcon icon={faGear} className="text-primary text-xl" />
+                            <h5 className="font-semibold text-lg">Tickets por Tipo de Falla</h5>
+                        </div>
+                        
+                        {/* Leyenda interactiva */}
+                        <div className="grid grid-cols-2 gap-2 mb-4">
+                            {mockData.ticketsPorFalla.map((falla, index) => (
+                                <div key={index} className="flex items-center gap-2 text-sm">
+                                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: falla.color }}></span>
+                                    <span className="flex-1">{falla.falla}</span>
+                                    <span className="font-semibold">{falla.porcentaje}%</span>
                                 </div>
                             ))}
                         </div>
-                        <div className="mt-3 lg:mt-4 flex flex-wrap justify-center gap-3 lg:gap-6 px-2">
-                            <div className="flex items-center gap-1 lg:gap-2">
-                                <div className="w-2 h-2 lg:w-3 lg:h-3 rounded-full bg-blue-500"></div>
-                                <span className="text-[10px] lg:text-xs dark:text-gray-300">Óptimo</span>
+
+                        {/* 👇 CAMBIADO a ResponsiveEChart */}
+                        <ResponsiveEChart option={ticketsFallaOption} style={{ height: '300px' }} />
+                        
+                        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                            <div className="bg-primary/5 p-2 rounded">
+                                <div className="text-xs text-white-dark">Principal</div>
+                                <div className="font-semibold">{mockData.ticketsPorFalla[0].falla}</div>
+                                <div className="text-primary text-sm">{mockData.ticketsPorFalla[0].cantidad}</div>
                             </div>
-                            <div className="flex items-center gap-1 lg:gap-2">
-                                <div className="w-2 h-2 lg:w-3 lg:h-3 rounded-full bg-green-500"></div>
-                                <span className="text-[10px] lg:text-xs dark:text-gray-300">Normal</span>
+                            <div className="bg-success/5 p-2 rounded">
+                                <div className="text-xs text-white-dark">Mejoría</div>
+                                <div className="font-semibold">Software</div>
+                                <div className="text-success text-sm">-5%</div>
                             </div>
-                            <div className="flex items-center gap-1 lg:gap-2">
-                                <div className="w-2 h-2 lg:w-3 lg:h-3 rounded-full bg-yellow-500"></div>
-                                <span className="text-[10px] lg:text-xs dark:text-gray-300">Lento</span>
-                            </div>
-                            <div className="flex items-center gap-1 lg:gap-2">
-                                <div className="w-2 h-2 lg:w-3 lg:h-3 rounded-full bg-red-500"></div>
-                                <span className="text-[10px] lg:text-xs dark:text-gray-300">Crítico</span>
+                            <div className="bg-danger/5 p-2 rounded">
+                                <div className="text-xs text-white-dark">Crítico</div>
+                                <div className="font-semibold">Mainboard</div>
+                                <div className="text-danger text-sm">+8%</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* NUEVA FILA: Evolución de tiempos */}
-                <div className="grid grid-cols-1 gap-4 lg:gap-6 mb-6">
-                    <div className="panel p-3 h-[250px] sm:h-[300px] lg:h-[350px] w-full">
-                        <ReactECharts option={evolucionTiemposOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
-                    </div>
-                </div>
-
-                {/* FILA 5: Reincidencias y Tendencia */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6">
-                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
-                        <ReactECharts option={reincidenciasOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
-                    </div>
-                    <div className="panel p-3 h-[300px] sm:h-[350px] lg:h-[400px] w-full">
-                        <ReactECharts option={tendenciaReincidenciasOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
-                    </div>
-                </div>
-
-                {/* NUEVA FILA: Reincidencias por técnico y falla */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6">
-                    <div className="panel bg-white dark:bg-black p-4 lg:p-5 h-[300px] lg:h-[350px] overflow-auto">
-                        <h5 className="font-semibold text-base lg:text-lg mb-3 lg:mb-4 dark:text-white">Reincidencias por Técnico</h5>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-xs lg:text-sm">
-                                <thead>
-                                    <tr className="border-b dark:border-gray-700">
-                                        <th className="text-left py-2 dark:text-gray-300">Técnico</th>
-                                        <th className="text-center py-2 dark:text-gray-300">Tickets</th>
-                                        <th className="text-center py-2 dark:text-gray-300">Reinc.</th>
-                                        <th className="text-right py-2 dark:text-gray-300">%</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {ticketsPorTecnico.nombres.map((nombre, idx) => (
-                                        <tr key={idx} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                                            <td className="py-2 font-medium dark:text-white truncate max-w-[80px] lg:max-w-none">{nombre}</td>
-                                            <td className="text-center dark:text-gray-300">{ticketsPorTecnico.mensual[idx]}</td>
-                                            <td className="text-center">
-                                                <span className="text-red-600 font-medium">
-                                                    {Math.round(ticketsPorTecnico.mensual[idx] * reincidenciasDetalle.porTecnico[idx] / 100)}
-                                                </span>
-                                            </td>
-                                            <td className="text-right">
-                                                <span className={`font-bold ${
-                                                    reincidenciasDetalle.porTecnico[idx] > 20 ? 'text-red-600' : 
-                                                    reincidenciasDetalle.porTecnico[idx] > 15 ? 'text-yellow-600' : 'text-green-600'
-                                                }`}>
-                                                    {reincidenciasDetalle.porTecnico[idx]}%
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div className="panel bg-white dark:bg-black p-4 lg:p-5 h-[300px] lg:h-[350px] overflow-auto">
-                        <h5 className="font-semibold text-base lg:text-lg mb-3 lg:mb-4 dark:text-white">Reincidencias por Tipo de Falla</h5>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-xs lg:text-sm">
-                                <thead>
-                                    <tr className="border-b dark:border-gray-700">
-                                        <th className="text-left py-2 dark:text-gray-300">Falla</th>
-                                        <th className="text-center py-2 dark:text-gray-300">Total</th>
-                                        <th className="text-center py-2 dark:text-gray-300">Reinc.</th>
-                                        <th className="text-right py-2 dark:text-gray-300">%</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {ticketsPorFalla.tipos.map((tipo, idx) => (
-                                        <tr key={idx} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                                            <td className="py-2 font-medium dark:text-white truncate max-w-[100px] lg:max-w-none">{tipo}</td>
-                                            <td className="text-center dark:text-gray-300">{ticketsPorFalla.valores[idx]}</td>
-                                            <td className="text-center">
-                                                <span className="text-red-600 font-medium">
-                                                    {Math.round(ticketsPorFalla.valores[idx] * reincidenciasDetalle.porFalla[idx] / 100)}
-                                                </span>
-                                            </td>
-                                            <td className="text-right">
-                                                <span className={`font-bold ${
-                                                    reincidenciasDetalle.porFalla[idx] > 20 ? 'text-red-600' : 
-                                                    reincidenciasDetalle.porFalla[idx] > 15 ? 'text-yellow-600' : 'text-green-600'
-                                                }`}>
-                                                    {reincidenciasDetalle.porFalla[idx]}%
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                {/* FILA 6: Tickets por técnico y resumen personal - MODIFICADA */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 mb-6">
-                    <div className="lg:col-span-2 panel p-3 h-[350px] lg:h-[450px] w-full">
-                        <ReactECharts option={tecnicosOption} theme="tickets-theme" style={{ height: '100%', width: '100%' }} />
-                    </div>
-                    <div className="panel bg-white dark:bg-black p-4 lg:p-5 h-[350px] lg:h-[450px] overflow-auto">
-                        <h5 className="font-semibold text-base lg:text-lg mb-3 lg:mb-4 dark:text-white">Top Técnicos</h5>
-                        <div className="space-y-2 lg:space-y-4">
-                            {ticketsPorTecnico.nombres
-                                .map((nombre, idx) => ({ nombre, tickets: ticketsPorTecnico.mensual[idx], reincidencia: reincidenciasDetalle.porTecnico[idx] }))
-                                .sort((a, b) => b.tickets - a.tickets)
-                                .map((tecnico, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-2 lg:p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                    <div className="flex items-center gap-2 lg:gap-3 min-w-0">
-                                        <div
-                                            className={`w-6 h-6 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0 ${
-                                                idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-gray-400' : idx === 2 ? 'bg-amber-700' : 'bg-blue-500'
-                                            }`}
-                                        >
-                                            {idx + 1}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="font-semibold dark:text-white text-xs lg:text-sm truncate">{tecnico.nombre}</p>
-                                            <p className="text-[10px] lg:text-xs text-gray-500 dark:text-gray-400">{tecnico.tickets} tickets</p>
-                                        </div>
+                {/* Fila 3: Tickets por Estado */}
+                <div className="grid grid-cols-1 gap-6 mb-6">
+                    <div className="panel">
+                        <div className="flex justify-between items-center mb-5">
+                            <div className="flex items-center gap-2">
+                                <FontAwesomeIcon icon={faChartSimple} className="text-primary text-xl" />
+                                <h5 className="font-semibold text-lg">Flujo de Tickets por Estado</h5>
+                            </div>
+                            <div className="flex gap-2">
+                                {mockData.ticketsPorEstado.map((estado, index) => (
+                                    <div key={index} className="flex items-center gap-1 text-xs">
+                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: estado.color }}></span>
+                                        <span>{estado.estado}</span>
                                     </div>
-                                    <div className="text-right flex-shrink-0 ml-2">
-                                        <div className="text-xs lg:text-sm font-bold text-primary">{Math.round(tecnico.tickets / 30)}/día</div>
-                                        <div className={`text-[10px] lg:text-xs ${
-                                            tecnico.reincidencia > 20 ? 'text-red-600' : 
-                                            tecnico.reincidencia > 15 ? 'text-yellow-600' : 'text-green-600'
-                                        }`}>
-                                            {tecnico.reincidencia}% reinc.
-                                        </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="grid lg:grid-cols-5 gap-4 mb-4">
+                            {mockData.ticketsPorEstado.map((estado, index) => (
+                                <div key={index} className="bg-white-dark/5 rounded-lg p-3 text-center">
+                                    <FontAwesomeIcon icon={estado.icon} className="text-2xl mb-2" style={{ color: estado.color }} />
+                                    <div className="text-sm font-semibold">{estado.estado}</div>
+                                    <div className="text-xl font-bold" style={{ color: estado.color }}>{estado.cantidad}</div>
+                                    <div className="text-xs text-white-dark">
+                                        {Math.round(estado.cantidad / mockData.ticketsPorPeriodo.mes * 100)}% del total
                                     </div>
                                 </div>
                             ))}
                         </div>
 
-                        <h5 className="font-semibold text-base lg:text-lg mt-4 lg:mt-6 mb-2 lg:mb-4 dark:text-white">Resumen Personal</h5>
-                        <div className="space-y-2 lg:space-y-3 text-xs lg:text-sm dark:text-gray-300">
-                            <div className="flex justify-between">
-                                <span>Total Técnicos:</span>
-                                <span className="font-bold dark:text-white">{ticketsPorTecnico.nombres.length}</span>
+                        {/* 👇 CAMBIADO a ResponsiveEChart */}
+                        <ResponsiveEChart option={ticketsEstadoOption} style={{ height: '250px' }} />
+                    </div>
+                </div>
+
+                {/* Fila 4: Tiempos Promedio */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    {Object.entries(mockData.tiemposPromedio).map(([key, value], index) => {
+                        const titles = {
+                            coordinacionInicial: { label: 'Coord. Inicial', icon: faClockRotateLeft, color: 'info' },
+                            solucionOnSite: { label: 'Solución On Site', icon: faUserCheck, color: 'success' },
+                            solucionLaboratorio: { label: 'Solución Lab.', icon: faFlask, color: 'warning' },
+                            resolucionTotal: { label: 'Resolución Total', icon: faCheckDouble, color: 'danger' }
+                        };
+                        const title = titles[key as keyof typeof titles];
+                        
+                        return (
+                            <div key={index} className="panel bg-gradient-to-br from-[#1b2e4b] to-[#253b5b] text-white relative overflow-hidden group hover:shadow-xl transition-all duration-300">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                                
+                                <div className="flex items-center gap-3 relative z-10">
+                                    <div className={`bg-${title.color} rounded-full w-12 h-12 flex items-center justify-center text-2xl`}>
+                                        <FontAwesomeIcon icon={title.icon} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className={`text-${title.color}/70 text-sm`}>{title.label}</p>
+                                        <div className="flex items-baseline justify-between">
+                                            <h4 className="text-2xl font-bold">{value.horas} <span className="text-sm">horas</span></h4>
+                                            <span className={`text-${value.tendencia > 0 ? 'danger' : 'success'} text-xs flex items-center gap-1`}>
+                                                <FontAwesomeIcon icon={value.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown} />
+                                                {Math.abs(value.tendencia)}h
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Barra de progreso hacia la meta */}
+                                <div className="mt-4">
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="text-white/70">Meta: 48h</span>
+                                        <span className="text-white/70">{Math.round((48 - value.horas) / 48 * 100)}% restante</span>
+                                    </div>
+                                    <div className="w-full bg-white/20 rounded-full h-1.5">
+                                        <div 
+                                            className={`bg-${title.color} h-1.5 rounded-full transition-all duration-500`}
+                                            style={{ width: `${Math.min(100, (value.horas / 48) * 100)}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex justify-between">
-                                <span>Promedio/técnico:</span>
-                                <span className="font-bold dark:text-white">{Math.round(ticketsPersonalTotal.mensual / ticketsPorTecnico.nombres.length)}/mes</span>
+                        );
+                    })}
+                </div>
+
+                {/* Fila 5: Tickets por Técnico y Personal */}
+                <div className="grid lg:grid-cols-2 gap-6 mb-6">
+                    <div className="panel">
+                        <div className="flex justify-between items-center mb-5">
+                            <div className="flex items-center gap-2">
+                                <FontAwesomeIcon icon={faUserGear} className="text-primary text-xl" />
+                                <h5 className="font-semibold text-lg">Rendimiento por Técnico</h5>
                             </div>
-                            <div className="flex justify-between">
-                                <span>Meta mensual:</span>
-                                <span className="font-bold text-green-600">✓ 105%</span>
+                            <div className="flex gap-1 bg-white-dark/10 rounded-lg p-1">
+                                <button 
+                                    onClick={() => setPeriodoTecnicos('diario')}
+                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'diario' ? 'bg-primary text-white' : ''}`}
+                                >
+                                    <FontAwesomeIcon icon={faCalendarDay} /> Día
+                                </button>
+                                <button 
+                                    onClick={() => setPeriodoTecnicos('semanal')}
+                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'semanal' ? 'bg-primary text-white' : ''}`}
+                                >
+                                    <FontAwesomeIcon icon={faCalendarWeek} /> Semana
+                                </button>
+                                <button 
+                                    onClick={() => setPeriodoTecnicos('mensual')}
+                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'mensual' ? 'bg-primary text-white' : ''}`}
+                                >
+                                    <FontAwesomeIcon icon={faCalendarAlt} /> Mes
+                                </button>
                             </div>
-                            <div className="flex justify-between pt-2 border-t dark:border-gray-700">
-                                <span className="truncate">Menos reinc.:</span>
-                                <span className="font-bold text-green-600 ml-2">María P. (8%)</span>
+                        </div>
+
+                        {/* Tarjetas de técnicos */}
+                        <div className="grid grid-cols-1 gap-3 mb-4">
+                            {mockData.ticketsPorTecnico[periodoTecnicos].map((tecnico, index) => (
+                                <div key={index} className="bg-white-dark/5 rounded-lg p-3 hover:bg-primary/5 transition-colors">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold
+                                                ${index === 0 ? 'bg-yellow-500' : 
+                                                  index === 1 ? 'bg-gray-400' : 
+                                                  index === 2 ? 'bg-orange-400' : 'bg-primary/50'}`}>
+                                                {tecnico.tecnico.split(' ').map(n => n[0]).join('')}
+                                            </div>
+                                            <div>
+                                                <div className="font-semibold flex items-center gap-2">
+                                                    {tecnico.tecnico}
+                                                    {index === 0 && <FontAwesomeIcon icon={faMedal} className="text-yellow-500" />}
+                                                    {tecnico.eficiencia >= 95 && <FontAwesomeIcon icon={faStar} className="text-yellow-500 text-xs" />}
+                                                </div>
+                                                <div className="flex items-center gap-3 text-xs">
+                                                    <span className="text-white-dark">
+                                                        <FontAwesomeIcon icon={faTicket} className="mr-1" />
+                                                        {tecnico.tickets} tickets
+                                                    </span>
+                                                    <span className={`${tecnico.eficiencia >= 90 ? 'text-success' : 'text-warning'}`}>
+                                                        <FontAwesomeIcon icon={faChartLine} className="mr-1" />
+                                                        {tecnico.eficiencia}% eficiencia
+                                                    </span>
+                                                    {tecnico.reincidencias > 0 && (
+                                                        <span className="text-danger">
+                                                            <FontAwesomeIcon icon={faRotateRight} className="mr-1" />
+                                                            {tecnico.reincidencias} re.
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Barra de progreso de eficiencia */}
+                                        <div className="w-24">
+                                            <div className="w-full bg-white-dark/20 rounded-full h-2">
+                                                <div 
+                                                    className={`h-2 rounded-full ${tecnico.eficiencia >= 90 ? 'bg-success' : tecnico.eficiencia >= 80 ? 'bg-warning' : 'bg-danger'}`}
+                                                    style={{ width: `${tecnico.eficiencia}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Mini gráfico de comparativa */}
+                        {/* 👇 CAMBIADO a ResponsiveEChart */}
+                        <ResponsiveEChart option={ticketsTecnicoOption} style={{ height: '150px' }} />
+                    </div>
+
+                    <div className="panel">
+                        <div className="flex items-center gap-2 mb-5">
+                            <FontAwesomeIcon icon={faUsers} className="text-primary text-xl" />
+                            <h5 className="font-semibold text-lg">Rendimiento del Personal</h5>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-4 mb-6">
+                            {['Diario', 'Semanal', 'Mensual'].map((periodo, index) => {
+                                const valores = [mockData.ticketsPorPersonal.diario, mockData.ticketsPorPersonal.semanal, mockData.ticketsPorPersonal.mensual];
+                                const objetivos = [mockData.ticketsPorPersonal.objetivos.diario, mockData.ticketsPorPersonal.objetivos.semanal, mockData.ticketsPorPersonal.objetivos.mensual];
+                                const alcanzado = (valores[index] / objetivos[index]) * 100;
+                                
+                                return (
+                                    <div key={index} className="text-center p-4 bg-white-dark/5 rounded-lg hover:shadow-lg transition-all">
+                                        <FontAwesomeIcon 
+                                            icon={index === 0 ? faCalendarDay : index === 1 ? faCalendarWeek : faCalendarAlt} 
+                                            className={`text-2xl mb-2 text-${index === 0 ? 'primary' : index === 1 ? 'success' : 'warning'}`} 
+                                        />
+                                        <p className="text-white-dark text-sm">{periodo}</p>
+                                        <p className="text-2xl font-bold">{valores[index]}</p>
+                                        <div className="mt-2">
+                                            <div className="w-full bg-white-dark/20 rounded-full h-1.5">
+                                                <div 
+                                                    className={`h-1.5 rounded-full bg-${index === 0 ? 'primary' : index === 1 ? 'success' : 'warning'}`}
+                                                    style={{ width: `${Math.min(100, alcanzado)}%` }}
+                                                ></div>
+                                            </div>
+                                            <p className="text-xs text-white-dark mt-1">
+                                                {Math.round(alcanzado)}% de meta ({objetivos[index]})
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Top técnicos con medallas */}
+                        <div className="bg-gradient-to-r from-primary/5 to-transparent rounded-lg p-4">
+                            <h6 className="font-semibold mb-3 flex items-center gap-2">
+                                <FontAwesomeIcon icon={faMedal} className="text-yellow-500" />
+                                Podio de Honor - {periodoTecnicos}
+                            </h6>
+                            <div className="space-y-3">
+                                {mockData.ticketsPorTecnico[periodoTecnicos].slice(0, 3).map((tecnico, index) => (
+                                    <div key={index} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold
+                                                ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-400'}`}>
+                                                {index + 1}
+                                            </div>
+                                            <div>
+                                                <span className="font-semibold">{tecnico.tecnico}</span>
+                                                <div className="text-xs text-white-dark">
+                                                    {tecnico.tickets} tickets • {tecnico.eficiencia}% efectividad
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="font-bold text-lg">{tecnico.tickets}</div>
+                                            <div className="text-xs text-success">+{Math.round(tecnico.tickets * 0.15)} vs promedio</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Fila 6: Análisis de Reincidencias */}
+                <div className="grid grid-cols-1 gap-6">
+                    <div className="panel">
+                        <div className="flex items-center justify-between mb-5">
+                            <div className="flex items-center gap-2">
+                                <FontAwesomeIcon icon={faRotateRight} className="text-danger text-xl" />
+                                <h5 className="font-semibold text-lg">Análisis de Reincidencias</h5>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 bg-danger/5 px-3 py-1 rounded-full">
+                                    <FontAwesomeIcon icon={faArrowTrendDown} className="text-success" />
+                                    <span className="text-sm">Mejorando {Math.abs(mockData.reincidencias.tendencia)}%</span>
+                                </div>
+                                <div className="flex items-center gap-2 bg-primary/5 px-3 py-1 rounded-full">
+                                    <FontAwesomeIcon icon={faTicket} className="text-primary" />
+                                    <span className="text-sm">{mockData.reincidencias.reincidentes} tickets</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="col-span-2">
+                                <div className="bg-white-dark/5 p-4 rounded-lg">
+                                    <p className="text-white-dark mb-3 flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faChartPie} />
+                                        Distribución de reincidencias por tipo de falla
+                                    </p>
+                                    <div className="space-y-4">
+                                        {mockData.ticketsPorFalla.map((falla, index) => {
+                                            const reincidencias = Math.round(falla.cantidad * (mockData.reincidencias.porcentaje / 100));
+                                            return (
+                                                <div key={index}>
+                                                    <div className="flex justify-between text-sm mb-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: falla.color }}></span>
+                                                            <span>{falla.falla}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="font-semibold">{reincidencias} tickets</span>
+                                                            <span className="text-xs text-white-dark">
+                                                                {Math.round(reincidencias / mockData.reincidencias.reincidentes * 100)}% del total
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-full bg-white-dark/20 rounded-full h-2">
+                                                        <div 
+                                                            className="bg-danger h-2 rounded-full transition-all duration-500"
+                                                            style={{ width: `${(reincidencias / 30) * 100}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="bg-gradient-to-br from-danger/10 to-danger/5 rounded-lg p-4">
+                                    <FontAwesomeIcon icon={faExclamationTriangle} className="text-danger text-3xl mb-2" />
+                                    <p className="text-sm text-white-dark mb-1">Tickets con más de 2 visitas</p>
+                                    <p className="text-3xl font-bold text-danger">87</p>
+                                    <p className="text-xs text-white-dark mt-1">Requieren atención especial</p>
+                                </div>
+
+                                <div className="bg-white-dark/5 rounded-lg p-4">
+                                    <h6 className="font-semibold mb-2 text-sm">Técnicos con más reincidencias</h6>
+                                    {mockData.reincidencias.porTecnico.map((item, index) => (
+                                        <div key={index} className="flex justify-between items-center text-sm py-1">
+                                            <span>{item.tecnico}</span>
+                                            <span className="font-semibold text-danger">{item.reincidencias}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="bg-success/5 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs text-white-dark">Tasa de éxito</p>
+                                            <p className="text-xl font-bold text-success">
+                                                {100 - mockData.reincidencias.porcentaje}%
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-xs text-white-dark">1ra visita</p>
+                                            <p className="text-lg font-semibold">
+                                                {mockData.ticketsPorPeriodo.mes - mockData.reincidencias.total}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Fila 7: Resumen Ejecutivo */}
+                <div className="grid grid-cols-1 gap-6 mt-6">
+                    <div className="panel bg-gradient-to-r from-primary to-secondary text-white">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h5 className="font-semibold text-lg mb-2">Resumen Ejecutivo</h5>
+                                <p className="text-white/80 text-sm">Última actualización: Hoy 10:30 AM</p>
+                            </div>
+                            <button className="bg-white/20 hover:bg-white/30 rounded-lg p-2 transition-colors">
+                                <FontAwesomeIcon icon={faRefresh} />
+                            </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                            <div>
+                                <p className="text-white/70 text-xs">SLAs cumplidos</p>
+                                <p className="text-2xl font-bold">94%</p>
+                                <p className="text-green-300 text-xs">+2.5% vs ayer</p>
+                            </div>
+                            <div>
+                                <p className="text-white/70 text-xs">Satisfacción cliente</p>
+                                <p className="text-2xl font-bold">4.8/5.0</p>
+                                <p className="text-green-300 text-xs">+0.3 puntos</p>
+                            </div>
+                            <div>
+                                <p className="text-white/70 text-xs">Tickets pendientes</p>
+                                <p className="text-2xl font-bold">368</p>
+                                <p className="text-yellow-300 text-xs">-12 vs ayer</p>
+                            </div>
+                            <div>
+                                <p className="text-white/70 text-xs">Productividad</p>
+                                <p className="text-2xl font-bold">87%</p>
+                                <p className="text-green-300 text-xs">Meta: 85%</p>
                             </div>
                         </div>
                     </div>
