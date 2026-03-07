@@ -47,3 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('marcas', [MarcaController::class, 'index']);
     Route::get('marcas', [TicketClienteGeneralController::class, 'getMarcas']);
 });
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/clientes-generales/{id}', [TicketClienteGeneralController::class, 'show']);
+});

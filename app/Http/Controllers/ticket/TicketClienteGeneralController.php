@@ -8,6 +8,7 @@ use App\Models\TicketClienteGeneral;
 use App\Models\TipoDocumento;
 use App\Models\Categoria;
 use App\Models\Categorium;
+use App\Models\Clientegeneral;
 use App\Models\Modelo;
 use App\Models\Marca;
 use App\Models\MarcaClientegeneral;
@@ -278,31 +279,31 @@ class TicketClienteGeneralController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show($id)
-    {
-        try {
-            $ticket = TicketClienteGeneral::with(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador'])
-                ->find($id);
+    // public function show($id)
+    // {
+    //     try {
+    //         $ticket = TicketClienteGeneral::with(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador'])
+    //             ->find($id);
 
-            if (!$ticket) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ticket no encontrado'
-                ], 404);
-            }
+    //         if (!$ticket) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Ticket no encontrado'
+    //             ], 404);
+    //         }
 
-            return response()->json([
-                'success' => true,
-                'data' => $ticket
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener el ticket',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
+    //         return response()->json([
+    //             'success' => true,
+    //             'data' => $ticket
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Error al obtener el ticket',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
  /**
  * Update the specified resource in storage.
@@ -806,4 +807,42 @@ public function getModelosByMarca($idMarca)
         ], 500);
     }
 }
+
+// En tu controlador de ClienteGeneral (o en el controlador que corresponda)
+public function show($id)
+{
+    try {
+        $cliente = Clientegeneral::find($id);
+        
+        if (!$cliente) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cliente no encontrado'
+            ], 404);
+        }
+
+        // Si la foto es BLOB, necesitas convertirla a base64 o URL
+        if ($cliente->foto) {
+            // Opción 1: Convertir a base64 (si es necesario)
+            $cliente->foto_base64 = base64_encode($cliente->foto);
+            
+            // Opción 2: Si tienes un endpoint para servir imágenes
+            // $cliente->foto_url = url('/api/clientes/' . $id . '/foto');
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $cliente
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al obtener cliente',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+
 }
