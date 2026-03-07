@@ -74,81 +74,79 @@ const ListaTickets = () => {
         }
     }, []);
 
-    // Cargar tickets desde el backend
-    const cargarTickets = async () => {
-        setLoading(true);
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_URL}/tickets`, {
-                headers: {
-                    Authorization: token ? `Bearer ${token}` : '',
-                    Accept: 'application/json',
-                },
-            });
+const cargarTickets = async () => {
+    setLoading(true);
+    try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/tickets`, {
+            headers: {
+                Authorization: token ? `Bearer ${token}` : '',
+                Accept: 'application/json',
+            },
+        });
 
-            if (response.data.success) {
-                // Transformar datos para el frontend
-                const ticketsTransformados = response.data.data.map((ticket) => ({
-                    id: ticket.idTicket,
-                    numeroTicket: ticket.numero_ticket,
-                    // Datos cliente
-                    nombreCompleto: ticket.nombreCompleto,
-                    correoElectronico: ticket.correoElectronico,
-                    telefonoCelular: ticket.telefonoCelular,
-                    telefonoFijo: ticket.telefonoFijo || '',
-                    tipoDocumento: ticket.tipoDocumento?.nombre || '',
-                    dni_ruc_ce: ticket.dni_ruc_ce,
+        if (response.data.success) {
+            const ticketsTransformados = response.data.data.map((ticket) => ({
+                id: ticket.idTicket,
+                numeroTicket: ticket.numero_ticket,
+                // Datos cliente
+                nombreCompleto: ticket.nombreCompleto,
+                correoElectronico: ticket.correoElectronico,
+                telefonoCelular: ticket.telefonoCelular,
+                telefonoFijo: ticket.telefonoFijo || '',
+                tipoDocumento: ticket.tipo_documento?.nombre || '',  // CORREGIDO: tipo_documento con guión bajo
+                dni_ruc_ce: ticket.dni_ruc_ce,
 
-                    // Datos producto
-                    tipoProducto: ticket.categoria?.nombre || 'N/A',
-                    modelo: ticket.modelo?.nombre || 'N/A',
-                    serie: ticket.serieProducto,
+                // Datos producto
+                tipoProducto: ticket.categoria?.nombre || 'N/A',
+                modelo: ticket.modelo?.nombre || 'N/A',
+                serie: ticket.serieProducto,
 
-                    // Falla
-                    detallesFalla: ticket.detallesFalla,
+                // Falla
+                detallesFalla: ticket.detallesFalla,
 
-                    // Fechas
-                    fechaCreacion: new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                    }),
-                    fechaCompra: ticket.fechaCompra,
-                    tiendaSedeCompra: ticket.tiendaSedeCompra,
+                // Fechas
+                fechaCreacion: new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                }),
+                fechaCompra: ticket.fechaCompra,
+                tiendaSedeCompra: ticket.tiendaSedeCompra,
 
-                    // Estado (1: evaluando, 2: gestionando, 3: finalizado)
-                    estado: ticket.estado === 1 ? 'evaluando' : ticket.estado === 2 ? 'gestionando' : 'finalizado',
+                // Estado
+                estado: ticket.estado === 1 ? 'evaluando' : ticket.estado === 2 ? 'gestionando' : 'finalizado',
 
-                    // Ubicación
-                    departamento: ticket.departamento,
-                    provincia: ticket.provincia,
-                    distrito: ticket.distrito,
-                    direccionCompleta: ticket.direccionCompleta,
-                    referenciaDomicilio: ticket.referenciaDomicilio,
-                    ubicacionGoogleMaps: ticket.ubicacionGoogleMaps,
+                // Ubicación
+                departamento: ticket.departamento,
+                provincia: ticket.provincia,
+                distrito: ticket.distrito,
+                direccionCompleta: ticket.direccionCompleta,
+                referenciaDomicilio: ticket.referenciaDomicilio,
+                ubicacionGoogleMaps: ticket.ubicacionGoogleMaps,
 
-                    // Evidencias
-                    fotoVideoFalla: ticket.fotoVideoFalla,
-                    fotoBoletaFactura: ticket.fotoBoletaFactura,
-                    fotoNumeroSerie: ticket.fotoNumeroSerie,
+                // Evidencias
+                fotoVideoFalla: ticket.fotoVideoFalla,
+                fotoBoletaFactura: ticket.fotoBoletaFactura,
+                fotoNumeroSerie: ticket.fotoNumeroSerie,
 
-                    // Información adicional
-                    idUsuarioCreador: ticket.idUsuarioCreador,
-                    idClienteGeneral: ticket.idClienteGeneral,
-                    usuarioCreador: ticket.usuario_creador ? `${ticket.usuario_creador.Nombre} ${ticket.usuario_creador.apellidoPaterno}` : 'N/A',
-                }));
+                // Información adicional
+                idUsuarioCreador: ticket.idUsuarioCreador,
+                idClienteGeneral: ticket.idClienteGeneral,
+                usuarioCreador: ticket.usuario_creador ? `${ticket.usuario_creador.Nombre} ${ticket.usuario_creador.apellidoPaterno}` : 'N/A',
+            }));
 
-                setTicketsData(ticketsTransformados);
-            }
-        } catch (error) {
-            console.error('Error cargando tickets:', error);
-            toastr.error('Error al cargar los tickets', 'Error');
-        } finally {
-            setLoading(false);
+            setTicketsData(ticketsTransformados);
         }
-    };
+    } catch (error) {
+        console.error('Error cargando tickets:', error);
+        toastr.error('Error al cargar los tickets', 'Error');
+    } finally {
+        setLoading(false);
+    }
+};
 
     useEffect(() => {
         dispatch(setPageTitle('Lista de Tickets'));

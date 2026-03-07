@@ -22,28 +22,126 @@ class TicketClienteGeneralController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+  public function index()
 {
     try {
+        \Log::info('========== INICIO index tickets ==========');
+        
         $user = auth()->user();
         
+        \Log::info('Usuario autenticado:', [
+            'idUsuario' => $user ? $user->idUsuario : null,
+            'nombre' => $user ? $user->Nombre : null,
+            'idClienteGeneral' => $user ? $user->idClienteGeneral : null
+        ]);
+        
         if (!$user) {
+            \Log::error('Usuario no autenticado');
             return response()->json([
                 'success' => false,
                 'message' => 'Usuario no autenticado'
             ], 401);
         }
 
-        $tickets = TicketClienteGeneral::with(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador'])
-            ->where('idClienteGeneral', $user->idClienteGeneral) // Filtrar por el cliente del usuario
+        \Log::info('Consultando tickets para cliente general:', [
+            'idClienteGeneral' => $user->idClienteGeneral
+        ]);
+
+        // Primero, obtener los tickets sin relaciones para ver los IDs
+        $ticketsBase = TicketClienteGeneral::where('idClienteGeneral', $user->idClienteGeneral)
             ->orderBy('idTicket', 'desc')
             ->get();
+
+        \Log::info('Tickets base encontrados (sin relaciones):', [
+            'cantidad' => $ticketsBase->count(),
+            'ids' => $ticketsBase->pluck('idTicket')->toArray()
+        ]);
+
+        // Log de los idTipoDocumento de los tickets
+        if ($ticketsBase->isNotEmpty()) {
+            \Log::info('IDs de tipoDocumento en tickets:', [
+                'tickets' => $ticketsBase->map(function($t) {
+                    return [
+                        'idTicket' => $t->idTicket,
+                        'idTipoDocumento' => $t->idTipoDocumento
+                    ];
+                })->toArray()
+            ]);
+        }
+
+        // Ahora obtener los tickets con todas las relaciones
+        $tickets = TicketClienteGeneral::with([
+            'tipoDocumento', 
+            'categoria', 
+            'modelo' => function($query) {
+                $query->select('idModelo', 'nombre', 'idMarca', 'idCategoria', 'estado');
+            },
+            'modelo.marca' => function($query) {
+                $query->select('idMarca', 'nombre', 'estado');
+            },
+            'usuarioCreador' => function($query) {
+                $query->select(
+                    'idUsuario',
+                    'apellidoPaterno',
+                    'apellidoMaterno',
+                    'Nombre',
+                    'correo',
+                    'usuario',
+                    'idClienteGeneral'
+                );
+            }
+        ])
+        ->where('idClienteGeneral', $user->idClienteGeneral)
+        ->orderBy('idTicket', 'desc')
+        ->get();
+
+        \Log::info('Tickets con relaciones encontrados:', [
+            'cantidad' => $tickets->count()
+        ]);
+
+        // Verificar cada ticket individualmente
+        foreach ($tickets as $index => $ticket) {
+            \Log::info("Ticket #{$index} - ID: {$ticket->idTicket}");
+            \Log::info("  - idTipoDocumento: " . ($ticket->idTipoDocumento ?? 'null'));
+            \Log::info("  - tipoDocumento existe: " . ($ticket->tipoDocumento ? 'SÍ' : 'NO'));
+            
+            if ($ticket->tipoDocumento) {
+                \Log::info("  - tipoDocumento data: ", [
+                    'id' => $ticket->tipoDocumento->idTipoDocumento,
+                    'nombre' => $ticket->tipoDocumento->nombre
+                ]);
+            } else {
+                // Si no hay relación, verificar si el ID existe en la tabla tipodocumento
+                if ($ticket->idTipoDocumento) {
+                    $existe = DB::table('tipodocumento')
+                        ->where('idTipoDocumento', $ticket->idTipoDocumento)
+                        ->exists();
+                    \Log::info("  - ¿Existe idTipoDocumento {$ticket->idTipoDocumento} en BD? " . ($existe ? 'SÍ' : 'NO'));
+                }
+            }
+        }
+
+        // También verificar la tabla tipodocumento directamente
+        $tiposDocumento = DB::table('tipodocumento')->get();
+        \Log::info('Todos los tipos de documento en BD:', [
+            'cantidad' => $tiposDocumento->count(),
+            'datos' => $tiposDocumento->toArray()
+        ]);
+
+        \Log::info('========== FIN index tickets ==========');
 
         return response()->json([
             'success' => true,
             'data' => $tickets
         ], 200);
+
     } catch (\Exception $e) {
+        \Log::error('========== ERROR en index tickets ==========');
+        \Log::error('Mensaje: ' . $e->getMessage());
+        \Log::error('Archivo: ' . $e->getFile() . ':' . $e->getLine());
+        \Log::error('Trace: ' . $e->getTraceAsString());
+        \Log::error('===========================================');
+        
         return response()->json([
             'success' => false,
             'message' => 'Error al obtener tickets',
@@ -51,7 +149,6 @@ class TicketClienteGeneralController extends Controller
         ], 500);
     }
 }
-
     /**
      * Store a newly created resource in storage.
      */
