@@ -1,4 +1,4 @@
-import React, { Fragment, useState } from 'react';
+import React, { Fragment, useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -9,9 +9,7 @@ import {
     faHashtag,
     faComment,
     faCalendarAlt,
-    faExclamationCircle,
-    faSpinner,
-    faCheckCircle,
+    faCheckDouble,
     faUser,
     faIdCard,
     faPhone,
@@ -29,35 +27,116 @@ import {
     faFileInvoice,
     faImage,
     faMap,
-    faSearch
+    faSearch,
+    faSearchLocation,
+    faTools
 } from '@fortawesome/free-solid-svg-icons';
 
 const ModalVerTicket = ({ modal, setModal, ticketData }) => {
     const [modalImage, setModalImage] = useState(null);
+    const [departamentos, setDepartamentos] = useState([]);
+    const [provincias, setProvincias] = useState({});
+    const [distritos, setDistritos] = useState({});
+    const [loadingUbigeo, setLoadingUbigeo] = useState(true);
+
+    // Cargar datos de ubigeo cuando se abre el modal
+    useEffect(() => {
+        if (modal && ticketData) {
+            cargarUbigeos();
+        }
+    }, [modal, ticketData]);
+
+    // Cargar ubigeos
+    const cargarUbigeos = async () => {
+        setLoadingUbigeo(true);
+        try {
+            const deptosResponse = await fetch('/assets/ubigeos/departamentos.json');
+            const deptosData = await deptosResponse.json();
+            setDepartamentos(deptosData);
+
+            const provsResponse = await fetch('/assets/ubigeos/provincias.json');
+            const provsData = await provsResponse.json();
+            setProvincias(provsData);
+
+            const distsResponse = await fetch('/assets/ubigeos/distritos.json');
+            const distsData = await distsResponse.json();
+            setDistritos(distsData);
+        } catch (error) {
+            console.error('Error cargando ubigeos:', error);
+        } finally {
+            setLoadingUbigeo(false);
+        }
+    };
+
+    // Función para formatear fecha
+    const formatearFecha = (fecha) => {
+        if (!fecha) return 'No registrada';
+        try {
+            const date = new Date(fecha);
+            return date.toLocaleDateString('es-PE', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        } catch (e) {
+            return fecha;
+        }
+    };
+
+    // Función para obtener nombre del departamento
+    const getDepartamentoNombre = (id) => {
+        if (!id || !departamentos.length) return id || 'N/A';
+        const depto = departamentos.find(d => d.id_ubigeo === id);
+        return depto ? depto.nombre_ubigeo : id;
+    };
+
+    // Función para obtener nombre de la provincia
+    const getProvinciaNombre = (id) => {
+        if (!id || !provincias || Object.keys(provincias).length === 0) return id || 'N/A';
+        
+        // Buscar en el objeto de provincias
+        for (const key in provincias) {
+            const provincia = provincias[key].find(p => p.id_ubigeo === id);
+            if (provincia) return provincia.nombre_ubigeo;
+        }
+        return id;
+    };
+
+    // Función para obtener nombre del distrito
+    const getDistritoNombre = (id) => {
+        if (!id || !distritos || Object.keys(distritos).length === 0) return id || 'N/A';
+        
+        // Buscar en el objeto de distritos
+        for (const key in distritos) {
+            const distrito = distritos[key].find(d => d.id_ubigeo === id);
+            if (distrito) return distrito.nombre_ubigeo;
+        }
+        return id;
+    };
 
     if (!ticketData) return null;
 
     // Función para obtener el badge de estado
     const getStatusBadge = (estado) => {
         const statusConfig = {
-            abierto: {
+            evaluando: {
+                color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+                icon: faSearchLocation,
+                text: 'Evaluando'
+            },
+            gestionando: {
                 color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-                icon: faExclamationCircle,
-                text: 'Abierto'
+                icon: faTools,
+                text: 'Gestionando'
             },
-            en_proceso: {
-                color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-                icon: faSpinner,
-                text: 'En Proceso'
-            },
-            cerrado: {
+            finalizado: {
                 color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                icon: faCheckCircle,
-                text: 'Cerrado'
+                icon: faCheckDouble,
+                text: 'Finalizado'
             }
         };
 
-        const config = statusConfig[estado] || statusConfig.abierto;
+        const config = statusConfig[estado] || statusConfig.evaluando;
 
         return (
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>
@@ -88,6 +167,10 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                         alt="Vista ampliada"
                         className="max-w-full max-h-[90vh] object-contain rounded-lg"
                         onClick={(e) => e.stopPropagation()}
+                        onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://placehold.co/800x600/cccccc/000?text=Error+al+cargar+imagen';
+                        }}
                     />
                 </div>
             </div>
@@ -178,7 +261,7 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                                     <span className="text-xs font-medium">Documento</span>
                                                 </div>
                                                 <p className="text-sm font-semibold text-gray-800 dark:text-white">
-                                                    {ticketData.tipoDocumento?.toUpperCase()}: {ticketData.dniRucCe}
+                                                    {ticketData.tipoDocumento}: {ticketData.dni_ruc_ce}
                                                 </p>
                                             </div>
 
@@ -195,7 +278,7 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                             <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                                                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
                                                     <FontAwesomeIcon icon={faPhone} className="w-3 h-3" />
-                                                    <FontAwesomeIcon icon={faMobile} className="w-3 h-3" />
+                                                    <FontAwesomeIcon icon={faMobile} className="w-3 h-3 ml-1" />
                                                     <span className="text-xs font-medium">Teléfonos</span>
                                                 </div>
                                                 <p className="text-sm font-semibold text-gray-800 dark:text-white">
@@ -240,7 +323,7 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                                     <span className="text-xs font-medium">Departamento</span>
                                                 </div>
                                                 <p className="text-sm font-semibold text-gray-800 dark:text-white">
-                                                    {ticketData.departamento}
+                                                    {getDepartamentoNombre(ticketData.departamento)}
                                                 </p>
                                             </div>
 
@@ -250,7 +333,7 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                                     <span className="text-xs font-medium">Provincia</span>
                                                 </div>
                                                 <p className="text-sm font-semibold text-gray-800 dark:text-white">
-                                                    {ticketData.provincia}
+                                                    {getProvinciaNombre(ticketData.provincia)}
                                                 </p>
                                             </div>
 
@@ -260,7 +343,7 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                                     <span className="text-xs font-medium">Distrito</span>
                                                 </div>
                                                 <p className="text-sm font-semibold text-gray-800 dark:text-white">
-                                                    {ticketData.distrito}
+                                                    {getDistritoNombre(ticketData.distrito)}
                                                 </p>
                                             </div>
                                         </div>
@@ -276,22 +359,14 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                             <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                                                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
                                                     <FontAwesomeIcon icon={faLaptop} className="w-3 h-3" />
-                                                    <span className="text-xs font-medium">Tipo</span>
+                                                    <span className="text-xs font-medium">Categoría</span>
                                                 </div>
                                                 <p className="text-sm font-semibold text-gray-800 dark:text-white">
                                                     {ticketData.tipoProducto}
                                                 </p>
                                             </div>
 
-                                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                                                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
-                                                    <FontAwesomeIcon icon={faTag} className="w-3 h-3" />
-                                                    <span className="text-xs font-medium">Marca</span>
-                                                </div>
-                                                <p className="text-sm font-semibold text-gray-800 dark:text-white">
-                                                    {ticketData.marca}
-                                                </p>
-                                            </div>
+                                         
 
                                             <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                                                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
@@ -327,8 +402,8 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                                     <FontAwesomeIcon icon={faComment} className="w-3 h-3" />
                                                     <span className="text-xs font-medium">Detalles de la Falla</span>
                                                 </div>
-                                                <p className="text-sm text-gray-800 dark:text-white">
-                                                    {ticketData.detallesFalla || ticketData.observacion}
+                                                <p className="text-sm text-gray-800 dark:text-white whitespace-pre-line">
+                                                    {ticketData.detallesFalla}
                                                 </p>
                                             </div>
 
@@ -338,7 +413,7 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                                     <span className="text-xs font-medium">Fecha de Compra</span>
                                                 </div>
                                                 <p className="text-sm font-semibold text-gray-800 dark:text-white">
-                                                    {ticketData.fechaCompra}
+                                                    {formatearFecha(ticketData.fechaCompra)}
                                                 </p>
                                             </div>
 
@@ -353,7 +428,7 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                             </div>
                                         </div>
 
-                                        {/* ARCHIVOS ADJUNTOS - SIEMPRE VISIBLE */}
+                                        {/* ARCHIVOS ADJUNTOS */}
                                         <div className="border-l-4 border-primary pl-4 mb-4">
                                             <h3 className="text-md font-semibold flex items-center gap-2">
                                                 <FontAwesomeIcon icon={faCamera} className="w-4 h-4 text-primary" />
@@ -365,7 +440,7 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                             <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                                                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
                                                     <FontAwesomeIcon icon={faVideo} className="w-3 h-3" />
-                                                    <span className="text-xs font-medium">Foto</span>
+                                                    <span className="text-xs font-medium">Foto de la Falla</span>
                                                 </div>
                                                 {ticketData.fotoVideoFalla ? (
                                                     <div className="relative group">
@@ -374,6 +449,10 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                                             alt="Falla"
                                                             className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-200 dark:border-gray-700"
                                                             onClick={() => setModalImage(ticketData.fotoVideoFalla)}
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Error+al+cargar';
+                                                            }}
                                                         />
                                                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center cursor-pointer"
                                                              onClick={() => setModalImage(ticketData.fotoVideoFalla)}>
@@ -403,6 +482,10 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                                             alt="Boleta"
                                                             className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-200 dark:border-gray-700"
                                                             onClick={() => setModalImage(ticketData.fotoBoletaFactura)}
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Error+al+cargar';
+                                                            }}
                                                         />
                                                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center cursor-pointer"
                                                              onClick={() => setModalImage(ticketData.fotoBoletaFactura)}>
@@ -425,16 +508,20 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                                     <FontAwesomeIcon icon={faImage} className="w-3 h-3" />
                                                     <span className="text-xs font-medium">N° de Serie</span>
                                                 </div>
-                                                {ticketData.fotoSerieEquipo ? (
+                                                {ticketData.fotoNumeroSerie ? (
                                                     <div className="relative group">
                                                         <img
-                                                            src={ticketData.fotoSerieEquipo}
+                                                            src={ticketData.fotoNumeroSerie}
                                                             alt="Serie"
                                                             className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-200 dark:border-gray-700"
-                                                            onClick={() => setModalImage(ticketData.fotoSerieEquipo)}
+                                                            onClick={() => setModalImage(ticketData.fotoNumeroSerie)}
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Error+al+cargar';
+                                                            }}
                                                         />
                                                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center cursor-pointer"
-                                                             onClick={() => setModalImage(ticketData.fotoSerieEquipo)}>
+                                                             onClick={() => setModalImage(ticketData.fotoNumeroSerie)}>
                                                             <div className="bg-white bg-opacity-90 rounded-full px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-gray-700 shadow-lg">
                                                                 <FontAwesomeIcon icon={faSearch} className="w-2 h-2 mr-1" />
                                                                 Ampliar
