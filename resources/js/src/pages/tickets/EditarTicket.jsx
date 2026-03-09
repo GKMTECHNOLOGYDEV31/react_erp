@@ -48,6 +48,7 @@ const EditarTicket = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const fechaCompraRef = useRef(null);
+    const flatpickrInstance = useRef(null);
     const fileInputFallaRef = useRef(null);
     const fileInputBoletaRef = useRef(null);
     const fileInputSerieRef = useRef(null);
@@ -84,7 +85,43 @@ const EditarTicket = () => {
     // URL base de la API
     const API_URL = 'http://127.0.0.1:8000/api';
 
-    // Esquema de validación
+    // Función para formatear fecha a DD/MM/YYYY para mostrar
+    const formatDateToDisplay = (dateString) => {
+        if (!dateString) return '';
+        try {
+            // Si viene en formato YYYY-MM-DD o con T
+            if (dateString.includes('T')) {
+                const [datePart] = dateString.split('T');
+                const [year, month, day] = datePart.split('-');
+                return `${day}/${month}/${year}`;
+            } else if (dateString.includes('-')) {
+                const [year, month, day] = dateString.split('-');
+                return `${day}/${month}/${year}`;
+            }
+            return dateString;
+        } catch (e) {
+            console.error('Error formateando fecha:', e);
+            return '';
+        }
+    };
+
+    // Función para formatear fecha a YYYY-MM-DD para el backend
+    const formatDateForBackend = (dateString) => {
+        if (!dateString) return '';
+        try {
+            // Si viene en formato DD/MM/YYYY
+            if (dateString.includes('/')) {
+                const [day, month, year] = dateString.split('/');
+                return `${year}-${month}-${day}`;
+            }
+            return dateString;
+        } catch (e) {
+            console.error('Error formateando fecha para backend:', e);
+            return '';
+        }
+    };
+
+    // Esquema de validación - MODIFICADO para trabajar con string en DD/MM/YYYY
     const validationSchema = Yup.object({
         nombreCompleto: Yup.string()
             .required('El nombre completo es requerido')
@@ -150,10 +187,22 @@ const EditarTicket = () => {
             .min(10, 'Describe la falla con más detalle (mínimo 10 caracteres)')
             .max(5000, 'Máximo 5000 caracteres'),
         
-        fechaCompra: Yup.date()
+        fechaCompra: Yup.string()
             .required('La fecha de compra es requerida')
-            .max(new Date(), 'La fecha no puede ser futura')
-            .typeError('Fecha inválida'),
+            .test('valid-date', 'Fecha inválida', function(value) {
+                if (!value) return false;
+                // Validar formato DD/MM/YYYY
+                const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+                if (!regex.test(value)) return false;
+                
+                const [day, month, year] = value.split('/').map(Number);
+                const date = new Date(year, month - 1, day);
+                
+                return date.getDate() === day && 
+                       date.getMonth() === month - 1 && 
+                       date.getFullYear() === year &&
+                       date <= new Date();
+            }),
         
         tiendaSedeCompra: Yup.string()
             .required('La tienda y sede de compra es requerida')
@@ -210,9 +259,16 @@ const EditarTicket = () => {
                 const formData = new FormData();
                 formData.append('_method', 'PUT');
                 
+                // Procesar cada valor
                 Object.keys(values).forEach(key => {
                     if (values[key] !== null && values[key] !== undefined && values[key] !== '') {
-                        formData.append(key, values[key]);
+                        if (key === 'fechaCompra') {
+                            // Convertir fecha de DD/MM/YYYY a YYYY-MM-DD
+                            const fechaBackend = formatDateForBackend(values[key]);
+                            formData.append(key, fechaBackend);
+                        } else {
+                            formData.append(key, values[key]);
+                        }
                     }
                 });
 
@@ -346,30 +402,67 @@ const EditarTicket = () => {
         }
     }, [formik.values.provincia, distritos]);
 
-    // Inicializar flatpickr
+    // Inicializar flatpickr - VERSIÓN CORREGIDA
     useEffect(() => {
-        if (fechaCompraRef.current && !loading) {
-            const fp = flatpickr(fechaCompraRef.current, {
-                locale: Spanish,
-                dateFormat: 'd/m/Y',
-                altInput: true,
-                altFormat: 'd/m/Y',
-                defaultDate: formik.values.fechaCompra,
-                maxDate: 'today',
-                onChange: (selectedDates, dateStr) => {
-                    if (selectedDates[0]) {
-                        const year = selectedDates[0].getFullYear();
-                        const month = String(selectedDates[0].getMonth() + 1).padStart(2, '0');
-                        const day = String(selectedDates[0].getDate()).padStart(2, '0');
-                        const fechaFormatoDB = `${year}-${month}-${day}`;
-                        formik.setFieldValue('fechaCompra', fechaFormatoDB);
-                    }
+        // Función para inicializar flatpickr
+        const initFlatpickr = () => {
+            if (fechaCompraRef.current && !loading) {
+                // Destruir instancia anterior si existe
+                if (flatpickrInstance.current) {
+                    flatpickrInstance.current.destroy();
                 }
-            });
 
-            return () => fp.destroy();
-        }
+                try {
+                    flatpickrInstance.current = flatpickr(fechaCompraRef.current, {
+                        locale: Spanish,
+                        dateFormat: 'd/m/Y',
+                        allowInput: true,
+                        maxDate: 'today',
+                        defaultDate: formik.values.fechaCompra,
+                        onChange: (selectedDates, dateStr) => {
+                            if (selectedDates[0]) {
+                                formik.setFieldValue('fechaCompra', dateStr);
+                            }
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error inicializando flatpickr:', error);
+                }
+            }
+        };
+
+        // Ejecutar después de un pequeño delay para asegurar que el DOM está listo
+        const timeoutId = setTimeout(initFlatpickr, 100);
+
+        return () => {
+            clearTimeout(timeoutId);
+            if (flatpickrInstance.current) {
+                flatpickrInstance.current.destroy();
+            }
+        };
     }, [loading, formik.values.fechaCompra]);
+
+    // Efecto adicional para asegurar que flatpickr se inicialice cuando el ref esté disponible
+    useEffect(() => {
+        if (!loading && fechaCompraRef.current && !flatpickrInstance.current) {
+            try {
+                flatpickrInstance.current = flatpickr(fechaCompraRef.current, {
+                    locale: Spanish,
+                    dateFormat: 'd/m/Y',
+                    allowInput: true,
+                    maxDate: 'today',
+                    defaultDate: formik.values.fechaCompra,
+                    onChange: (selectedDates, dateStr) => {
+                        if (selectedDates[0]) {
+                            formik.setFieldValue('fechaCompra', dateStr);
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error en reintento:', error);
+            }
+        }
+    }, [loading, fechaCompraRef.current]);
 
     // Funciones auxiliares
     const cargarMarcas = async () => {
@@ -419,9 +512,9 @@ const EditarTicket = () => {
             if (ticketResponse.data.success) {
                 const ticket = ticketResponse.data.data;
                 
-                // Formatear fecha para el input
-                const fechaCompra = ticket.fechaCompra ? 
-                    new Date(ticket.fechaCompra).toISOString().split('T')[0] : '';
+                // Formatear fecha para mostrar en DD/MM/YYYY
+                const fechaCompraDisplay = ticket.fechaCompra ? 
+                    formatDateToDisplay(ticket.fechaCompra) : '';
 
                 formik.setValues({
                     nombreCompleto: ticket.nombreCompleto || '',
@@ -439,7 +532,7 @@ const EditarTicket = () => {
                     idModelo: ticket.idModelo || '',
                     serieProducto: ticket.serieProducto || '',
                     detallesFalla: ticket.detallesFalla || '',
-                    fechaCompra: fechaCompra,
+                    fechaCompra: fechaCompraDisplay,
                     tiendaSedeCompra: ticket.tiendaSedeCompra || '',
                     fotoVideoFalla: ticket.fotoVideoFalla || '',
                     fotoBoletaFactura: ticket.fotoBoletaFactura || '',
@@ -1010,12 +1103,9 @@ const EditarTicket = () => {
                                             name="fechaCompra"
                                             type="text"
                                             className={`form-input ${formik.touched.fechaCompra && formik.errors.fechaCompra ? 'has-error' : ''}`}
-                                            value={formik.values.fechaCompra}
-                                            onChange={formik.handleChange}
-                                            onBlur={formik.handleBlur}
-                                            disabled={submitting}
                                             placeholder="DD/MM/AAAA"
                                             autoComplete="off"
+                                            readOnly={submitting}
                                         />
                                         {formik.touched.fechaCompra && formik.errors.fechaCompra && (
                                             <div className="text-danger text-sm mt-1">{formik.errors.fechaCompra}</div>
@@ -1045,7 +1135,7 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS - CORREGIDO */}
+                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faCamera} className="w-5 h-5 text-primary" />
@@ -1067,7 +1157,6 @@ const EditarTicket = () => {
                                     </label>
 
                                     <div className="flex flex-col items-center gap-3">
-                                        {/* Si hay preview de nueva imagen */}
                                         {previewFalla ? (
                                             <div className="relative w-full">
                                                 <img
@@ -1092,7 +1181,6 @@ const EditarTicket = () => {
                                                 </div>
                                             </div>
                                         ) : formik.values.fotoVideoFalla ? (
-                                            /* Si hay imagen existente */
                                             <div className="relative w-full">
                                                 <img
                                                     src={formik.values.fotoVideoFalla}
@@ -1119,7 +1207,6 @@ const EditarTicket = () => {
                                                 </div>
                                             </div>
                                         ) : (
-                                            /* Input para subir nueva imagen */
                                             <div className="w-full">
                                                 <input
                                                     ref={fileInputFallaRef}
