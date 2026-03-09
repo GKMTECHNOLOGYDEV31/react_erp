@@ -279,31 +279,31 @@ class TicketClienteGeneralController extends Controller
     /**
      * Display the specified resource.
      */
-    // public function show($id)
-    // {
-    //     try {
-    //         $ticket = TicketClienteGeneral::with(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador'])
-    //             ->find($id);
+    public function show($id)
+    {
+        try {
+            $ticket = TicketClienteGeneral::with(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador'])
+                ->find($id);
 
-    //         if (!$ticket) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Ticket no encontrado'
-    //             ], 404);
-    //         }
+            if (!$ticket) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ticket no encontrado'
+                ], 404);
+            }
 
-    //         return response()->json([
-    //             'success' => true,
-    //             'data' => $ticket
-    //         ], 200);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Error al obtener el ticket',
-    //             'error' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
+            return response()->json([
+                'success' => true,
+                'data' => $ticket
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener el ticket',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
  /**
  * Update the specified resource in storage.
@@ -682,12 +682,53 @@ public function getFormData()
     /**
      * Generar número de ticket automático
      */
-    private function generarNumeroTicket()
-    {
-        $ultimoTicket = TicketClienteGeneral::orderBy('idTicket', 'desc')->first();
-        $numero = $ultimoTicket ? intval(substr($ultimoTicket->numero_ticket, -6)) + 1 : 1;
-        return 'TKT-' . str_pad($numero, 6, '0', STR_PAD_LEFT);
+  private function generarNumeroTicket()
+{
+    // Obtener el usuario autenticado
+    $user = auth()->user();
+    
+    if (!$user || !$user->idClienteGeneral) {
+        // Si no hay cliente general, usar TKT como fallback
+        $prefijo = 'TKT';
+    } else {
+        // Obtener el cliente general
+        $clienteGeneral = Clientegeneral::find($user->idClienteGeneral);
+        
+        if ($clienteGeneral && $clienteGeneral->descripcion) {
+            // Obtener las primeras 3 letras de la descripción del cliente general
+            $descripcion = trim($clienteGeneral->descripcion);
+            $prefijo = strtoupper(substr($descripcion, 0, 3));
+            
+            // Limpiar caracteres especiales (solo letras y números)
+            $prefijo = preg_replace('/[^A-Z0-9]/', '', $prefijo);
+            
+            // Si después de limpiar queda vacío, usar TKT
+            if (empty($prefijo)) {
+                $prefijo = 'TKT';
+            }
+        } else {
+            $prefijo = 'TKT';
+        }
     }
+    
+    // Obtener el último ticket para el consecutivo
+    $ultimoTicket = TicketClienteGeneral::orderBy('idTicket', 'desc')->first();
+    
+    if ($ultimoTicket && $ultimoTicket->numero_ticket) {
+        // Extraer el número del último ticket
+        $partes = explode('-', $ultimoTicket->numero_ticket);
+        $ultimoNumero = isset($partes[1]) ? intval($partes[1]) : 0;
+        $nuevoNumero = $ultimoNumero + 1;
+    } else {
+        $nuevoNumero = 1;
+    }
+    
+    // Formatear el número con 6 dígitos
+    $numeroFormateado = str_pad($nuevoNumero, 6, '0', STR_PAD_LEFT);
+    
+    // Retornar el ticket completo
+    return $prefijo . '-' . $numeroFormateado;
+}
 
     /**
      * Subir imagen al servidor
@@ -807,42 +848,4 @@ public function getModelosByMarca($idMarca)
         ], 500);
     }
 }
-
-// En tu controlador de ClienteGeneral (o en el controlador que corresponda)
-public function show($id)
-{
-    try {
-        $cliente = Clientegeneral::find($id);
-        
-        if (!$cliente) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cliente no encontrado'
-            ], 404);
-        }
-
-        // Si la foto es BLOB, necesitas convertirla a base64 o URL
-        if ($cliente->foto) {
-            // Opción 1: Convertir a base64 (si es necesario)
-            $cliente->foto_base64 = base64_encode($cliente->foto);
-            
-            // Opción 2: Si tienes un endpoint para servir imágenes
-            // $cliente->foto_url = url('/api/clientes/' . $id . '/foto');
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => $cliente
-        ], 200);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Error al obtener cliente',
-            'error' => $e->getMessage()
-        ], 500);
-    }
-}
-
-
 }
