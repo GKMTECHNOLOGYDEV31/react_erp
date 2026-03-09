@@ -684,50 +684,100 @@ public function getFormData()
      */
   private function generarNumeroTicket()
 {
+    \Log::info('========== INICIO generarNumeroTicket ==========');
+    
     // Obtener el usuario autenticado
     $user = auth()->user();
     
+    \Log::info('Usuario autenticado:', [
+        'idUsuario' => $user ? $user->idUsuario : null,
+        'nombre' => $user ? $user->Nombre : null,
+        'idClienteGeneral' => $user ? $user->idClienteGeneral : null,
+        'tiene_usuario' => $user ? 'SÍ' : 'NO'
+    ]);
+    
     if (!$user || !$user->idClienteGeneral) {
-        // Si no hay cliente general, usar TKT como fallback
+        \Log::warning('No hay usuario autenticado o no tiene idClienteGeneral, usando prefijo TKT');
         $prefijo = 'TKT';
     } else {
+        \Log::info('Buscando cliente general con ID: ' . $user->idClienteGeneral);
+        
         // Obtener el cliente general
         $clienteGeneral = Clientegeneral::find($user->idClienteGeneral);
+        
+        \Log::info('Cliente general encontrado:', [
+            'encontrado' => $clienteGeneral ? 'SÍ' : 'NO',
+            'id' => $clienteGeneral ? $clienteGeneral->idClienteGeneral : null,
+            'descripcion' => $clienteGeneral ? $clienteGeneral->descripcion : null
+        ]);
         
         if ($clienteGeneral && $clienteGeneral->descripcion) {
             // Obtener las primeras 3 letras de la descripción del cliente general
             $descripcion = trim($clienteGeneral->descripcion);
-            $prefijo = strtoupper(substr($descripcion, 0, 3));
+            \Log::info('Descripción original: "' . $descripcion . '"');
+            
+            $prefijoSinLimpiar = strtoupper(substr($descripcion, 0, 3));
+            \Log::info('Prefijo sin limpiar (primeras 3 letras en mayúsculas): "' . $prefijoSinLimpiar . '"');
             
             // Limpiar caracteres especiales (solo letras y números)
-            $prefijo = preg_replace('/[^A-Z0-9]/', '', $prefijo);
+            $prefijo = preg_replace('/[^A-Z0-9]/', '', $prefijoSinLimpiar);
+            \Log::info('Prefijo después de limpiar caracteres especiales: "' . $prefijo . '"');
             
             // Si después de limpiar queda vacío, usar TKT
             if (empty($prefijo)) {
+                \Log::warning('Prefijo vacío después de limpiar, usando TKT');
                 $prefijo = 'TKT';
             }
         } else {
+            \Log::warning('No se encontró cliente general o descripción vacía, usando TKT');
             $prefijo = 'TKT';
         }
     }
     
+    \Log::info('Prefijo final seleccionado: "' . $prefijo . '"');
+    
     // Obtener el último ticket para el consecutivo
+    \Log::info('Buscando último ticket...');
     $ultimoTicket = TicketClienteGeneral::orderBy('idTicket', 'desc')->first();
+    
+    if ($ultimoTicket) {
+        \Log::info('Último ticket encontrado:', [
+            'idTicket' => $ultimoTicket->idTicket,
+            'numero_ticket' => $ultimoTicket->numero_ticket
+        ]);
+    } else {
+        \Log::info('No hay tickets previos, será el primer ticket');
+    }
     
     if ($ultimoTicket && $ultimoTicket->numero_ticket) {
         // Extraer el número del último ticket
         $partes = explode('-', $ultimoTicket->numero_ticket);
+        \Log::info('Partes del último ticket:', [
+            'partes' => $partes,
+            'cantidad_partes' => count($partes)
+        ]);
+        
         $ultimoNumero = isset($partes[1]) ? intval($partes[1]) : 0;
+        \Log::info('Número extraído del último ticket: ' . $ultimoNumero);
+        
         $nuevoNumero = $ultimoNumero + 1;
+        \Log::info('Nuevo número (incrementado): ' . $nuevoNumero);
     } else {
         $nuevoNumero = 1;
+        \Log::info('No se pudo extraer número, usando 1');
     }
     
     // Formatear el número con 6 dígitos
     $numeroFormateado = str_pad($nuevoNumero, 6, '0', STR_PAD_LEFT);
+    \Log::info('Número formateado con 6 dígitos: "' . $numeroFormateado . '"');
     
     // Retornar el ticket completo
-    return $prefijo . '-' . $numeroFormateado;
+    $ticketCompleto = $prefijo . '-' . $numeroFormateado;
+    \Log::info('Ticket generado: "' . $ticketCompleto . '"');
+    
+    \Log::info('========== FIN generarNumeroTicket ==========');
+    
+    return $ticketCompleto;
 }
 
     /**
