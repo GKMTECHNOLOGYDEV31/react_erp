@@ -1,5 +1,6 @@
-import { PropsWithChildren, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useRoutes } from 'react-router-dom';
 import { IRootState } from './store';
 import {
     toggleRTL,
@@ -12,12 +13,14 @@ import {
     toggleSemidark
 } from './store/themeConfigSlice';
 import { Toaster } from 'react-hot-toast';
+import { routes } from './router/routes';
 
-function App({ children }: PropsWithChildren) {
+function App() {
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
     const dispatch = useDispatch();
 
     useEffect(() => {
+        // Cargar configuración desde localStorage
         dispatch(toggleTheme(localStorage.getItem('theme') || themeConfig.theme));
         dispatch(toggleMenu(localStorage.getItem('menu') || themeConfig.menu));
         dispatch(toggleLayout(localStorage.getItem('layout') || themeConfig.layout));
@@ -27,6 +30,8 @@ function App({ children }: PropsWithChildren) {
         dispatch(toggleLocale(localStorage.getItem('i18nextLng') || themeConfig.locale));
         dispatch(toggleSemidark(localStorage.getItem('semidark') || themeConfig.semidark));
     }, [dispatch]);
+
+    const routing = useRoutes(routes);
 
     return (
         <div
@@ -38,7 +43,6 @@ function App({ children }: PropsWithChildren) {
                 main-section antialiased relative font-nunito text-sm font-normal
             `}
         >
-            {/* 🔥 Toaster Global */}
             <Toaster
                 position="top-right"
                 toastOptions={{
@@ -49,20 +53,11 @@ function App({ children }: PropsWithChildren) {
                         color: '#333',
                         boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
                     },
-                    success: {
-                        style: {
-                            border: '1px solid #22c55e',
-                        },
-                    },
-                    error: {
-                        style: {
-                            border: '1px solid #ef4444',
-                        },
-                    },
+                    success: { style: { border: '1px solid #22c55e' } },
+                    error: { style: { border: '1px solid #ef4444' } },
                 }}
             />
-
-            {children}
+            {routing}
         </div>
     );
 }

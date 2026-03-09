@@ -1,4 +1,6 @@
 import { lazy } from 'react';
+import ProtectedRoute from '../components/ProtectedRoute';
+
 const InicioPage = lazy(() => import('../pages/inicio')); // 👈 Agrega esta línea
 const Index = lazy(() => import('../pages/Index'));
 const Analytics = lazy(() => import('../pages/Analytics'));
@@ -118,28 +120,30 @@ const routes = [
     // },
     // analytics page
     {
-        path: '/analytics',
-        element: <Analytics />,
-    },
-    
-    {
-        path: '/tickets',  // La lista en la ruta principal
-        element: <ListaTickets />,
-    },
-    {
-        path: '/tickets/crear',
-        element: <CrearTicket />,
-    },
-    
-    {
-        path: '/tickets/editar/:id',
-        element: <EditarTicket />,
-    },
+    path: '/analytics',
+    element: (
+      <ProtectedRoute>
+        <Analytics />
+      </ProtectedRoute>
+    ),
+  },
 
-    {
-        path: '/tickets/consultar',
-        element: <ConsultarTicket />,
-    },
+ {
+    path: '/tickets',
+    element: <ProtectedRoute><ListaTickets /></ProtectedRoute>,
+  },
+  {
+    path: '/tickets/crear',
+    element: <ProtectedRoute><CrearTicket /></ProtectedRoute>,
+  },
+  {
+    path: '/tickets/editar/:id',
+    element: <ProtectedRoute><EditarTicket /></ProtectedRoute>,
+  },
+  {
+    path: '/tickets/consultar',
+    element: <ProtectedRoute><ConsultarTicket /></ProtectedRoute>,
+  },
     // finance page
     // {
     //     path: '/finance',
