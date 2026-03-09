@@ -120,10 +120,8 @@ const routes = [
     // },
     // analytics page
     {
-    path: '/analytics',
-    element: (
-      <Analytics />
-    ),
+path: '/analytics',
+        element: <ProtectedRoute><Analytics /></ProtectedRoute>,
   },
 
  {
