@@ -2,11 +2,11 @@ import toastr from 'toastr';
 import 'toastr/build/toastr.min.css';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { login } from '../../services/authService';
-import { Usuario } from '../../types/auth';
+import { useAuth } from '../../context/AuthContext'; // 👈 Importa el hook personalizado
+import { login as loginService } from '../../services/authService'; // Renombra para evitar conflicto
+// import { Usuario } from '../../types/auth'; // (opcional, si lo necesitas)
 
-// Configuración global de toastr
+// Configuración global de toastr (puede estar en otro lado, pero se deja igual)
 toastr.options = {
   closeButton: true,
   progressBar: true,
@@ -23,6 +23,9 @@ const InicioPage: React.FC = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const [captchaChecked, setCaptchaChecked] = useState(false);
+
+  // Obtener la función login del contexto
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -41,10 +44,12 @@ const InicioPage: React.FC = () => {
     toastr.info('Validando credenciales...', 'Espere por favor');
 
     try {
-      const data = await login(documento, clave);
+      // Llama al servicio de autenticación (devuelve LoginResponse)
+      const data = await loginService(documento, clave);
 
-      localStorage.setItem('token', data.access_token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      // Usa la función login del contexto para guardar usuario y token
+      // (esto también persiste en localStorage automáticamente)
+      login(data);
 
       // Limpiar todos los toasts
       toastr.clear();

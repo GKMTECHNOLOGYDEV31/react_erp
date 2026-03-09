@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import ProtectedRoute from '../components/ProtectedRoute';
+import PublicRoute from '../components/PublicRoute';
 
 const InicioPage = lazy(() => import('../pages/inicio')); // 👈 Agrega esta línea
 const Index = lazy(() => import('../pages/Index'));
@@ -109,11 +110,15 @@ const ConsultarTicket = lazy(() => import('../pages/tickets/ConsultarTicket'));
 
 const routes = [
     // dashboard
-    {
-        path: '/',
-        element: <InicioPage />,
-        layout: 'blank',  // Sin sidebar/header
-    },
+{
+    path: '/',
+    element: (
+      <PublicRoute>
+        <InicioPage />
+      </PublicRoute>
+    ),
+    layout: 'blank', // Importante: sin sidebar
+  },
     // {
     //     path: '/index',
     //     element: <Index />,

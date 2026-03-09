@@ -15,7 +15,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<Usuario | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  // Al montar, recuperar datos del localStorage
+  // Al montar el componente, leer del localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     const storedToken = localStorage.getItem('token');
@@ -24,7 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(JSON.parse(storedUser));
         setToken(storedToken);
       } catch (error) {
-        console.error('Error parsing stored user', error);
+        console.error('Error al restaurar sesión', error);
         localStorage.removeItem('user');
         localStorage.removeItem('token');
       }
@@ -34,6 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = (data: LoginResponse) => {
     setUser(data.user);
     setToken(data.access_token);
+    // Guardar en localStorage
     localStorage.setItem('user', JSON.stringify(data.user));
     localStorage.setItem('token', data.access_token);
   };
@@ -41,6 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     setToken(null);
+    // Limpiar localStorage
     localStorage.removeItem('user');
     localStorage.removeItem('token');
   };
@@ -54,7 +56,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-// Hook personalizado con verificación de seguridad
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
