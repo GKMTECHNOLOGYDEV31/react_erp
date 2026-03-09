@@ -14,8 +14,9 @@ import './tailwind.css';
 import './i18n';
 
 // Router
-import { RouterProvider } from 'react-router-dom';
+import { BrowserRouter, RouterProvider } from 'react-router-dom';
 import router from './router/index';
+import { AuthProvider } from './context/AuthContext'; // Ajusta la ruta
 
 // Redux
 import { Provider } from 'react-redux';
@@ -23,6 +24,7 @@ import store from './store/index';
 
 // Importar toastr (opcional, lo importarás donde lo uses)
 import toastr from 'toastr';
+import App from './App';
 
 // Configuración global de toastr
 toastr.options = {
@@ -39,9 +41,13 @@ toastr.options = {
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <React.StrictMode>
-        <Suspense>
+        <Suspense fallback={<div>Cargando...</div>}>
             <Provider store={store}>
-                <RouterProvider router={router} />
+                <BrowserRouter>
+                    <AuthProvider>
+                        <App />
+                    </AuthProvider>
+                </BrowserRouter>
             </Provider>
         </Suspense>
     </React.StrictMode>
