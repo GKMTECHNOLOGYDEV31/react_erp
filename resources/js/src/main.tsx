@@ -23,6 +23,7 @@ import store from './store/index';
 
 // Importar toastr (opcional, lo importarás donde lo uses)
 import toastr from 'toastr';
+import { AuthProvider } from './context/AuthContext';
 
 // Configuración global de toastr
 toastr.options = {
@@ -39,9 +40,11 @@ toastr.options = {
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <React.StrictMode>
-        <Suspense>
+        <Suspense fallback={<div>Cargando...</div>}>
             <Provider store={store}>
-                <RouterProvider router={router} />
+                <AuthProvider> {/* 👈 AÑADE AQUÍ */}
+                    <RouterProvider router={router} />
+                </AuthProvider>
             </Provider>
         </Suspense>
     </React.StrictMode>
