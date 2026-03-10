@@ -898,4 +898,370 @@ public function getModelosByMarca($idMarca)
         ], 500);
     }
 }
+
+
+/**
+ * Consultar ticket por número de ticket (información completa)
+ */
+public function consultarTicketCompleto($numeroTicket)
+{
+    try {
+        \Log::info('========== INICIO consultarTicketCompleto ==========');
+        \Log::info('Buscando ticket con número: ' . $numeroTicket);
+        
+        // Buscar el ticket en tickets_cliente_general
+        $ticketBase = TicketClienteGeneral::with([
+            'tipoDocumento',
+            'categoria',
+            'modelo.marca',
+            'usuarioCreador'
+        ])
+        ->where('numero_ticket', $numeroTicket)
+        ->first();
+
+        if (!$ticketBase) {
+            \Log::warning('Ticket no encontrado en tickets_cliente_general con número: ' . $numeroTicket);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ticket no encontrado'
+            ], 404);
+        }
+
+        \Log::info('Ticket base encontrado:', [
+            'idTicket' => $ticketBase->idTicket,
+            'numero_ticket' => $ticketBase->numero_ticket
+        ]);
+
+        // Obtener datos del cliente general por separado
+        $clienteGeneral = null;
+        if ($ticketBase->idClienteGeneral) {
+            $clienteGeneral = Clientegeneral::find($ticketBase->idClienteGeneral);
+        }
+
+        // Buscar la orden de trabajo asociada en tabla tickets
+        $ordenTrabajo = DB::table('tickets')
+            ->where('numero_ticket', $numeroTicket)
+            ->first();
+
+        $datosOrden = null;
+        $visitas = [];
+        $flujos = [];
+        $transiciones = [];
+        $anexos = [];
+        $fotosTicket = [];
+        $firmas = [];
+
+        if ($ordenTrabajo) {
+            \Log::info('Orden de trabajo encontrada:', [
+                'idTickets' => $ordenTrabajo->idTickets,
+                'numero_ticket' => $ordenTrabajo->numero_ticket
+            ]);
+
+            // Obtener datos de la orden
+            $datosOrden = [
+                'idTickets' => $ordenTrabajo->idTickets,
+                'idCliente' => $ordenTrabajo->idCliente,
+                'idTienda' => $ordenTrabajo->idTienda,
+                'tipoServicio' => $ordenTrabajo->tipoServicio,
+                'idTipotickets' => $ordenTrabajo->idTipotickets,
+                'idEstadoots' => $ordenTrabajo->idEstadoots,
+                'idTecnico' => $ordenTrabajo->idTecnico,
+                'esRecojo' => $ordenTrabajo->esRecojo,
+                'direccion' => $ordenTrabajo->direccion,
+                'lat' => $ordenTrabajo->lat,
+                'lng' => $ordenTrabajo->lng,
+                'idTicketFlujo' => $ordenTrabajo->idTicketFlujo,
+                'linkubicacion' => $ordenTrabajo->linkubicacion,
+                'envio' => $ordenTrabajo->envio,
+                'erma' => $ordenTrabajo->erma,
+                'nrmcotizacion' => $ordenTrabajo->nrmcotizacion,
+                'evaluaciontienda' => $ordenTrabajo->evaluaciontienda,
+                'es_custodia' => $ordenTrabajo->es_custodia
+            ];
+
+            // Obtener el estado de la orden
+            if ($ordenTrabajo->idEstadoots) {
+                $estadoOT = DB::table('estado_ots')
+                    ->where('idEstadoots', $ordenTrabajo->idEstadoots)
+                    ->first();
+                if ($estadoOT) {
+                    $datosOrden['estado_ot'] = [
+                        'id' => $estadoOT->idEstadoots,
+                        'descripcion' => $estadoOT->descripcion,
+                        'color' => $estadoOT->color
+                    ];
+                }
+            }
+
+            // Obtener el tipo de ticket
+            if ($ordenTrabajo->idTipotickets) {
+                $tipoTicket = DB::table('tipotickets')
+                    ->where('idTipotickets', $ordenTrabajo->idTipotickets)
+                    ->first();
+                if ($tipoTicket) {
+                    $datosOrden['tipo_ticket'] = $tipoTicket->nombre;
+                }
+            }
+
+            // Obtener todos los flujos del ticket
+            $flujos = DB::table('ticketflujo')
+                ->where('idTicket', $ordenTrabajo->idTickets)
+                ->orderBy('fecha_creacion', 'desc')
+                ->get()
+                ->map(function($flujo) {
+                    $estadoFlujo = DB::table('estado_flujo')
+                        ->where('idEstadflujo', $flujo->idEstadflujo)
+                        ->first();
+                    
+                    return [
+                        'id' => $flujo->idTicketFlujo,
+                        'idEstadflujo' => $flujo->idEstadflujo,
+                        'estado' => $estadoFlujo ? $estadoFlujo->descripcion : null,
+                        'color' => $estadoFlujo ? $estadoFlujo->color : null,
+                        'idUsuario' => $flujo->idUsuario,
+                        'fecha_creacion' => $flujo->fecha_creacion,
+                        'idVisitas' => $flujo->idVisitas,
+                        'comentario' => $flujo->comentarioflujo
+                    ];
+                });
+
+            // Obtener todas las visitas del ticket
+            $visitasData = DB::table('visitas')
+                ->where('idTickets', $ordenTrabajo->idTickets)
+                ->orderBy('fecha_programada', 'desc')
+                ->get();
+
+            foreach ($visitasData as $visita) {
+                // Obtener anexos de la visita
+                $anexosVisita = DB::table('anexos_visitas')
+                    ->where('idVisitas', $visita->idVisitas)
+                    ->get()
+                    ->map(function($anexo) {
+                        return [
+                            'id' => $anexo->idAnexoVisitas,
+                            'foto' => $anexo->foto ? 'data:image/jpeg;base64,' . base64_encode($anexo->foto) : null,
+                            'descripcion' => $anexo->descripcion,
+                            'idTipovisita' => $anexo->idTipovisita,
+                            'lat' => $anexo->lat,
+                            'lng' => $anexo->lng,
+                            'ubicacion' => $anexo->ubicacion
+                        ];
+                    });
+
+                // Obtener tipo de visita
+                $tipoVisita = DB::table('tipo_visita')
+                    ->where('idTipovisita', $visita->tipoServicio)
+                    ->first();
+
+                // Obtener firmas de la visita
+                $firmasVisita = DB::table('firmas')
+                    ->where('idVisitas', $visita->idVisitas)
+                    ->get()
+                    ->map(function($firma) {
+                        return [
+                            'id' => $firma->idFirmas,
+                            'firma_tecnico' => $firma->firma_tecnico ? 'data:image/png;base64,' . base64_encode($firma->firma_tecnico) : null,
+                            'firma_cliente' => $firma->firma_cliente ? 'data:image/png;base64,' . base64_encode($firma->firma_cliente) : null,
+                            'idTickets' => $firma->idTickets,
+                            'idVisitas' => $firma->idVisitas,
+                            'idCliente' => $firma->idCliente,
+                            'nombreencargado' => $firma->nombreencargado,
+                            'tipodocumento' => $firma->tipodocumento,
+                            'documento' => $firma->documento
+                        ];
+                    });
+
+                $visitas[] = [
+                    'id' => $visita->idVisitas,
+                    'nombre' => $visita->nombre,
+                    'fecha_programada' => $visita->fecha_programada,
+                    'fecha_asignada' => $visita->fecha_asignada,
+                    'fecha_llegada' => $visita->fecha_llegada,
+                    'fecha_inicio' => $visita->fecha_inicio,
+                    'fecha_final' => $visita->fecha_final,
+                    'estado' => $visita->estado,
+                    'idUsuario' => $visita->idUsuario,
+                    'tipoServicio' => $visita->tipoServicio,
+                    'tipoVisita' => $tipoVisita ? $tipoVisita->nombre : null,
+                    'necesita_apoyo' => $visita->necesita_apoyo,
+                    'visto' => $visita->visto,
+                    'recojo' => $visita->recojo,
+                    'celularcliente' => $visita->celularclientetienda,
+                    'dnicliente' => $visita->dniclientetienda,
+                    'nombrecliente' => $visita->nombreclientetienda,
+                    'anexos' => $anexosVisita,
+                    'firmas' => $firmasVisita
+                ];
+
+                // Acumular anexos para la lista general
+                $anexos = array_merge($anexos, $anexosVisita->toArray());
+                
+                // Acumular firmas para la lista general
+                $firmas = array_merge($firmas, $firmasVisita->toArray());
+            }
+
+            // Obtener fotos del ticket (fotostickest)
+            $fotosTicket = DB::table('fotostickest')
+                ->where('idTickets', $ordenTrabajo->idTickets)
+                ->orderBy('idfotostickest', 'desc')
+                ->get()
+                ->map(function($foto) {
+                    return [
+                        'id' => $foto->idfotostickest,
+                        'foto' => $foto->foto ? 'data:image/jpeg;base64,' . base64_encode($foto->foto) : null,
+                        'descripcion' => $foto->descripcion,
+                        'idVisitas' => $foto->idVisitas
+                    ];
+                });
+
+            // Obtener transiciones de estado (transicion_status_ticket)
+            $transiciones = DB::table('transicion_status_ticket')
+                ->where('idTickets', $ordenTrabajo->idTickets)
+                ->orderBy('fechaRegistro', 'desc')
+                ->get()
+                ->map(function($transicion) {
+                    $estadoOT = DB::table('estado_ots')
+                        ->where('idEstadoots', $transicion->idEstadoots)
+                        ->first();
+                    
+                    return [
+                        'id' => $transicion->idTransicionStatus,
+                        'idEstadoots' => $transicion->idEstadoots,
+                        'estado' => $estadoOT ? $estadoOT->descripcion : null,
+                        'color' => $estadoOT ? $estadoOT->color : null,
+                        'idVisitas' => $transicion->idVisitas,
+                        'justificacion' => $transicion->justificacion,
+                        'fechaRegistro' => $transicion->fechaRegistro,
+                        'estado_transicion' => $transicion->estado
+                    ];
+                });
+
+            // Obtener firmas generales del ticket (sin visita específica)
+            $firmasGenerales = DB::table('firmas')
+                ->where('idTickets', $ordenTrabajo->idTickets)
+                ->whereNull('idVisitas') // Firmas sin visita asociada
+                ->orWhere(function($query) use ($ordenTrabajo) {
+                    $query->where('idTickets', $ordenTrabajo->idTickets)
+                          ->where('idVisitas', 0); // Firmas con idVisitas = 0
+                })
+                ->get()
+                ->map(function($firma) {
+                    return [
+                        'id' => $firma->idFirmas,
+                        'firma_tecnico' => $firma->firma_tecnico ? 'data:image/png;base64,' . base64_encode($firma->firma_tecnico) : null,
+                        'firma_cliente' => $firma->firma_cliente ? 'data:image/png;base64,' . base64_encode($firma->firma_cliente) : null,
+                        'idTickets' => $firma->idTickets,
+                        'idVisitas' => $firma->idVisitas,
+                        'idCliente' => $firma->idCliente,
+                        'nombreencargado' => $firma->nombreencargado,
+                        'tipodocumento' => $firma->tipodocumento,
+                        'documento' => $firma->documento
+                    ];
+                });
+
+            // Combinar todas las firmas
+            $firmas = array_merge($firmas, $firmasGenerales->toArray());
+        }
+
+        // Transformar los datos del ticket base
+        $ticketTransformado = [
+            'id' => $ticketBase->idTicket,
+            'numeroTicket' => $ticketBase->numero_ticket,
+            
+            // Datos del contacto
+            'nombreCompleto' => $ticketBase->nombreCompleto,
+            'correoElectronico' => $ticketBase->correoElectronico,
+            'telefonoCelular' => $ticketBase->telefonoCelular,
+            'telefonoFijo' => $ticketBase->telefonoFijo,
+            'tipoDocumento' => $ticketBase->tipoDocumento ? $ticketBase->tipoDocumento->nombre : 'N/A',
+            'dni_ruc_ce' => $ticketBase->dni_ruc_ce,
+            
+            // Datos del cliente general
+            'clienteGeneral' => $clienteGeneral ? $clienteGeneral->descripcion : 'N/A',
+            
+            // Dirección
+            'direccionCompleta' => $ticketBase->direccionCompleta,
+            'referenciaDomicilio' => $ticketBase->referenciaDomicilio,
+            'departamento' => $ticketBase->departamento,
+            'provincia' => $ticketBase->provincia,
+            'distrito' => $ticketBase->distrito,
+            'ubicacionGoogleMaps' => $ticketBase->ubicacionGoogleMaps,
+            
+            // Datos del producto
+            'tipoProducto' => $ticketBase->categoria ? $ticketBase->categoria->nombre : 'N/A',
+            'marca' => $ticketBase->modelo && $ticketBase->modelo->marca ? $ticketBase->modelo->marca->nombre : 'N/A',
+            'modelo' => $ticketBase->modelo ? $ticketBase->modelo->nombre : 'N/A',
+            'serie' => $ticketBase->serieProducto,
+            
+            // Falla
+            'detallesFalla' => $ticketBase->detallesFalla,
+            
+            // Fechas
+            'fechaCompra' => $ticketBase->fechaCompra,
+            'fechaCreacion' => $ticketBase->fechaCreacion,
+            'tiendaSedeCompra' => $ticketBase->tiendaSedeCompra,
+            
+            // Estado
+            'estado' => $ticketBase->estado === 1 ? 'evaluando' : 
+                       ($ticketBase->estado === 2 ? 'gestionando' : 'finalizado'),
+            
+            // Evidencias originales
+            'fotoVideoFalla' => $ticketBase->fotoVideoFalla,
+            'fotoBoletaFactura' => $ticketBase->fotoBoletaFactura,
+            'fotoNumeroSerie' => $ticketBase->fotoNumeroSerie,
+            
+            // Usuario creador
+            'usuarioCreador' => $ticketBase->usuarioCreador ? 
+                $ticketBase->usuarioCreador->Nombre . ' ' . $ticketBase->usuarioCreador->apellidoPaterno : 'N/A',
+            
+            // Datos de la orden de trabajo (si existe)
+            'ordenTrabajo' => $datosOrden,
+            
+            // Datos relacionados
+            'flujos' => $flujos,
+            'visitas' => $visitas,
+            'transiciones' => $transiciones,
+            'anexos' => $anexos,
+            'fotosTicket' => $fotosTicket,
+            'firmas' => $firmas, // NUEVO: Firmas del ticket
+            
+            // Estadísticas adicionales
+            'estadisticas' => [
+                'total_fotos' => count($fotosTicket),
+                'total_visitas' => count($visitas),
+                'total_firmas' => count($firmas),
+                'total_transiciones' => count($transiciones)
+            ],
+            
+            // Indicador de si tiene orden de trabajo
+            'tieneOrdenTrabajo' => $ordenTrabajo ? true : false
+        ];
+
+        \Log::info('========== FIN consultarTicketCompleto ==========');
+        \Log::info('Datos obtenidos:', [
+            'tiene_orden' => $ticketTransformado['tieneOrdenTrabajo'],
+            'total_fotos' => $ticketTransformado['estadisticas']['total_fotos'],
+            'total_visitas' => $ticketTransformado['estadisticas']['total_visitas'],
+            'total_firmas' => $ticketTransformado['estadisticas']['total_firmas']
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $ticketTransformado
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('========== ERROR en consultarTicketCompleto ==========');
+        \Log::error('Mensaje: ' . $e->getMessage());
+        \Log::error('Archivo: ' . $e->getFile() . ':' . $e->getLine());
+        \Log::error('Trace: ' . $e->getTraceAsString());
+        \Log::error('===================================================');
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al consultar el ticket',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }

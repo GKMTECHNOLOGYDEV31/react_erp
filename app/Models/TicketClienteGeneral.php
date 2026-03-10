@@ -77,4 +77,10 @@ class TicketClienteGeneral extends Model
         $numero = $ultimoTicket ? intval(substr($ultimoTicket->numero_ticket, -6)) + 1 : 1;
         return 'TKT-' . str_pad($numero, 6, '0', STR_PAD_LEFT);
     }
+    // app/Models/TicketClienteGeneral.php
+
+public function clienteGeneral()
+{
+    return $this->belongsTo(Clientegeneral::class, 'idClienteGeneral', 'idClienteGeneral');
+}
 }

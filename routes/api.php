@@ -36,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Datos auxiliares para formularios
     Route::get('tickets-form-data', [TicketClienteGeneralController::class, 'getFormData']);
     Route::get('modelos-por-categoria/{idCategoria}', [TicketClienteGeneralController::class, 'getModelosByCategoria']);
+     Route::get('/tickets/consultar-completo/{numeroTicket}', [TicketClienteGeneralController::class, 'consultarTicketCompleto']);
 });
 
 

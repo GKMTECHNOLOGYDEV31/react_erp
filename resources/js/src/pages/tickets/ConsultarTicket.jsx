@@ -1,15 +1,64 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTicket, faSearch, faFilePdf, faDownload, faCopy } from '@fortawesome/free-solid-svg-icons';
+import { 
+    faTicket, 
+    faSearch, 
+    faFilePdf, 
+    faDownload, 
+    faCopy,
+    faUser,
+    faIdCard,
+    faPhone,
+    faMobile,
+    faEnvelope,
+    faMapMarkerAlt,
+    faHome,
+    faCity,
+    faGlobe,
+    faBuilding,
+    faRoad,
+    faCalendarAlt,
+    faStore,
+    faLaptop,
+    faHashtag,
+    faExclamationTriangle,
+    faComment,
+    faCamera,
+    faVideo,
+    faFileInvoice,
+    faImage,
+    faMap,
+    faSpinner,
+    faCheckDouble,
+    faTools,
+    faSearchLocation,
+    faHistory,
+    faList,
+    faEye,
+    faTimes,
+    faClock,
+    faUserCircle,
+    faClipboardList,
+    faSignature,
+    faPen,
+    faUserTie,
+    faFileSignature
+} from '@fortawesome/free-solid-svg-icons';
 import toastr from 'toastr';
 import 'toastr/build/toastr.min.css';
+import axios from 'axios';
 
 const ConsultarTicket = () => {
     const [ticketId, setTicketId] = useState('');
     const [ticket, setTicket] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [modalImage, setModalImage] = useState(null);
+    const [activeTab, setActiveTab] = useState('general');
+    const [expandedVisita, setExpandedVisita] = useState(null);
+
+    const API_URL = 'http://127.0.0.1:8000/api';
 
     // Configurar toastr
     toastr.options = {
@@ -21,112 +70,62 @@ const ConsultarTicket = () => {
         hideDuration: 500,
     };
 
-    // Datos estáticos de ejemplo
-    const ticketsData = {
-        'TICKET-001': {
-            id: 'TICKET-001',
-            titulo: 'Problema con el sistema de facturación electrónica',
-            descripcion: 'El sistema no genera facturas electrónicas correctamente. Al intentar generar una factura, muestra error de conexión con AFIP. Esto está afectando las ventas del día.',
-            cliente: 'Empresa ABC S.A.',
-            contacto: 'Juan Pérez',
-            email: 'juan.perez@empresaabc.com',
-            telefono: '+54 11 1234-5678',
-            estado: 'en_proceso',
-            fechaCreacion: '2024-01-15T10:30:00',
-            fechaAsignacion: '2024-01-15T11:00:00',
-            fechaCierre: null,
-            tecnicoAsignado: 'Carlos Rodríguez',
-            visitas: 5,
-            solucion: 'En proceso de revisión del módulo de facturación. Se detectó error en la comunicación con AFIP debido a un certificado vencido. Se está gestionando la renovación del certificado. Se espera resolver en 24-48 horas hábiles.',
-            tiempoTotal: '2h 30m',
-            archivos: [
-                { nombre: 'error_factura.png', tamaño: '245 KB', url: '#' },
-                { nombre: 'log_sistema.txt', tamaño: '12 KB', url: '#' },
-                { nombre: 'captura_error.jpg', tamaño: '1.2 MB', url: '#' }
-            ],
-            historial: [
-                { fecha: '2024-01-15 10:30', accion: 'Ticket creado', usuario: 'Juan Pérez' },
-                { fecha: '2024-01-15 11:00', accion: 'Asignado a Carlos Rodríguez', usuario: 'Sistema' },
-                { fecha: '2024-01-15 14:30', accion: 'En proceso de revisión', usuario: 'Carlos Rodríguez' },
-                { fecha: '2024-01-16 09:15', accion: 'Contactado cliente para más información', usuario: 'Carlos Rodríguez' }
-            ]
-        },
-        'TICKET-002': {
-            id: 'TICKET-002',
-            titulo: 'No se puede acceder al módulo de ventas',
-            descripcion: 'Varios usuarios reportan que no pueden acceder al módulo de ventas. Aparece error de permisos.',
-            cliente: 'Distribuidora XYZ',
-            contacto: 'María González',
-            email: 'maria@distribuidoraxyz.com',
-            telefono: '+54 11 8765-4321',
-            estado: 'cerrado',
-            fechaCreacion: '2024-01-10T09:00:00',
-            fechaAsignacion: '2024-01-10T09:30:00',
-            fechaCierre: '2024-01-12T16:45:00',
-            tecnicoAsignado: 'Ana Martínez',
-            visitas: 12,
-            solucion: 'Se detectó que los permisos de usuario fueron modificados incorrectamente durante una actualización. Se restauraron los permisos desde el backup del día anterior y se verificó el correcto funcionamiento. Se actualizó la documentación del procedimiento.',
-            tiempoTotal: '3h 15m',
-            archivos: [
-                { nombre: 'reporte_incidencia.pdf', tamaño: '500 KB', url: '#' },
-                { nombre: 'backup_permisos.sql', tamaño: '45 KB', url: '#' }
-            ],
-            historial: [
-                { fecha: '2024-01-10 09:00', accion: 'Ticket creado', usuario: 'María González' },
-                { fecha: '2024-01-10 09:30', accion: 'Asignado a Ana Martínez', usuario: 'Sistema' },
-                { fecha: '2024-01-10 10:15', accion: 'Diagnóstico iniciado', usuario: 'Ana Martínez' },
-                { fecha: '2024-01-10 11:30', accion: 'Problema identificado', usuario: 'Ana Martínez' },
-                { fecha: '2024-01-12 15:00', accion: 'Solución aplicada', usuario: 'Ana Martínez' },
-                { fecha: '2024-01-12 16:45', accion: 'Ticket cerrado', usuario: 'Ana Martínez' }
-            ]
-        },
-        'TICKET-003': {
-            id: 'TICKET-003',
-            titulo: 'Error al generar reportes de inventario',
-            descripcion: 'Al intentar generar el reporte mensual de inventario, el sistema se queda cargando indefinidamente y no muestra resultados.',
-            cliente: 'Farmacias del Centro',
-            contacto: 'Roberto Sánchez',
-            email: 'roberto@farmaciascentro.com',
-            telefono: '+54 11 2345-6789',
-            estado: 'abierto',
-            fechaCreacion: '2024-01-16T08:20:00',
-            fechaAsignacion: null,
-            fechaCierre: null,
-            tecnicoAsignado: 'Pendiente de asignación',
-            visitas: 3,
-            solucion: 'Pendiente de análisis. Se recomienda ejecutar el reporte en horarios de menor carga y verificar si el problema persiste.',
-            tiempoTotal: '45m',
-            archivos: [],
-            historial: [
-                { fecha: '2024-01-16 08:20', accion: 'Ticket creado', usuario: 'Roberto Sánchez' },
-                { fecha: '2024-01-16 09:00', accion: 'En espera de asignación', usuario: 'Sistema' }
-            ]
-        }
+    const getStatusBadge = (estado) => {
+        const statusConfig = {
+            evaluando: 'bg-purple-100 text-purple-800 border-purple-200',
+            gestionando: 'bg-blue-100 text-blue-800 border-blue-200',
+            finalizado: 'bg-green-100 text-green-800 border-green-200'
+        };
+        return statusConfig[estado] || 'bg-gray-100 text-gray-800 border-gray-200';
+    };
+
+    const getEstadoOTBadge = (color) => {
+        const colores = {
+            'rojo': 'bg-red-100 text-red-800 border-red-200',
+            'verde': 'bg-green-100 text-green-800 border-green-200',
+            'amarillo': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+            'azul': 'bg-blue-100 text-blue-800 border-blue-200',
+            'morado': 'bg-purple-100 text-purple-800 border-purple-200',
+            'naranja': 'bg-orange-100 text-orange-800 border-orange-200'
+        };
+        return colores[color?.toLowerCase()] || 'bg-gray-100 text-gray-800 border-gray-200';
     };
 
     const handleConsultar = async () => {
         if (!ticketId) {
-            toastr.warning('Por favor ingresa un ID de ticket', 'Campo requerido');
+            toastr.warning('Por favor ingresa un número de ticket', 'Campo requerido');
             return;
         }
-        
+
         setLoading(true);
         setError('');
         
-        // Simulamos una carga de 1 segundo
-        setTimeout(() => {
-            const ticketEncontrado = ticketsData[ticketId.toUpperCase()];
-            
-            if (ticketEncontrado) {
-                setTicket(ticketEncontrado);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.get(`${API_URL}/tickets/consultar-completo/${ticketId.toUpperCase()}`, {
+                headers: {
+                    'Authorization': token ? `Bearer ${token}` : '',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.data.success) {
+                setTicket(response.data.data);
                 toastr.success(`Ticket ${ticketId.toUpperCase()} encontrado`, 'Éxito');
-            } else {
-                setError('Ticket no encontrado. IDs disponibles: TICKET-001, TICKET-002, TICKET-003');
-                toastr.error('Ticket no encontrado', 'Error');
-                setTicket(null);
             }
+        } catch (error) {
+            console.error('Error:', error);
+            if (error.response && error.response.status === 404) {
+                setError('Ticket no encontrado. Verifique el número de ticket.');
+                toastr.error('Ticket no encontrado', 'Error');
+            } else {
+                setError('Error al conectar con el servidor');
+                toastr.error('Error al consultar el ticket', 'Error');
+            }
+            setTicket(null);
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
 
     const handleCopyTicket = (numeroTicket) => {
@@ -134,20 +133,10 @@ const ConsultarTicket = () => {
         toastr.success(`Ticket ${numeroTicket} copiado al portapapeles`, 'Copiado');
     };
 
-    const getEstadoBadge = (estado) => {
-        const estados = {
-            'abierto': 'bg-blue-100 text-blue-800 border border-blue-200',
-            'en_proceso': 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-            'cerrado': 'bg-green-100 text-green-800 border border-green-200',
-            'pendiente': 'bg-orange-100 text-orange-800 border border-orange-200'
-        };
-        return estados[estado] || 'bg-gray-100 text-gray-800 border border-gray-200';
-    };
-
     const formatDate = (dateString) => {
-        if (!dateString) return 'Pendiente';
+        if (!dateString) return 'No registrada';
         const date = new Date(dateString);
-        return date.toLocaleString('es-ES', {
+        return date.toLocaleString('es-PE', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
@@ -156,8 +145,127 @@ const ConsultarTicket = () => {
         });
     };
 
+    const formatDateOnly = (dateString) => {
+        if (!dateString) return 'No registrada';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('es-PE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    };
+
+    const ImageModal = ({ image, onClose }) => {
+        if (!image) return null;
+
+        return (
+            <div
+                className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
+                onClick={onClose}
+            >
+                <div className="relative max-w-4xl w-full max-h-[90vh] flex items-center justify-center">
+                    <button
+                        onClick={onClose}
+                        className="absolute top-4 right-4 bg-white text-gray-800 rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-gray-100 transition-colors z-10"
+                    >
+                        <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
+                    </button>
+                    <img
+                        src={image}
+                        alt="Vista ampliada"
+                        className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            </div>
+        );
+    };
+
+    const InfoRow = ({ label, value, icon }) => (
+        <div className="flex items-start">
+            <span className="text-xl mr-3">{icon}</span>
+            <div className="flex-1">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">{label}</span>
+                <span className="text-gray-800 font-medium text-lg">{value || 'N/A'}</span>
+            </div>
+        </div>
+    );
+
+    const TimelineItem = ({ fecha, estado, comentario, usuario, color }) => (
+        <div className="flex gap-4 mb-4">
+            <div className="relative">
+                <div className={`w-3 h-3 rounded-full mt-1.5 ${color ? `bg-${color}-500` : 'bg-gray-400'}`}></div>
+                {usuario && <div className="absolute top-4 left-1.5 w-0.5 h-full bg-gray-200"></div>}
+            </div>
+            <div className="flex-1 pb-4">
+                <div className="flex justify-between items-start">
+                    <span className="font-medium text-gray-800">{estado}</span>
+                    <span className="text-xs text-gray-500">{formatDate(fecha)}</span>
+                </div>
+                {comentario && <p className="text-sm text-gray-600 mt-1">{comentario}</p>}
+                {usuario && <p className="text-xs text-gray-500 mt-1">por {usuario}</p>}
+            </div>
+        </div>
+    );
+
+    // Componente para mostrar firmas
+    const FirmasSection = ({ firmas, title }) => {
+        if (!firmas || firmas.length === 0) return null;
+
+        return (
+            <div className="mt-6">
+                <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <FontAwesomeIcon icon={faSignature} className="text-blue-600" />
+                    {title || 'Firmas'}
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {firmas.map((firma, idx) => (
+                        <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div className="flex items-center gap-2 mb-2 text-gray-700">
+                                <FontAwesomeIcon icon={faUserTie} className="text-purple-600" />
+                                <span className="font-medium">{firma.nombreencargado || 'Sin nombre'}</span>
+                            </div>
+                            {firma.tipodocumento && firma.documento && (
+                                <p className="text-xs text-gray-600 mb-2">
+                                    {firma.tipodocumento}: {firma.documento}
+                                </p>
+                            )}
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                {firma.firma_tecnico && (
+                                    <div className="text-center">
+                                        <p className="text-xs text-gray-500 mb-1">Firma Técnico</p>
+                                        <img 
+                                            src={firma.firma_tecnico} 
+                                            alt="Firma técnico"
+                                            className="max-h-16 mx-auto cursor-pointer border border-gray-300 rounded"
+                                            onClick={() => setModalImage(firma.firma_tecnico)}
+                                        />
+                                    </div>
+                                )}
+                                {firma.firma_cliente && (
+                                    <div className="text-center">
+                                        <p className="text-xs text-gray-500 mb-1">Firma Cliente</p>
+                                        <img 
+                                            src={firma.firma_cliente} 
+                                            alt="Firma cliente"
+                                            className="max-h-16 mx-auto cursor-pointer border border-gray-300 rounded"
+                                            onClick={() => setModalImage(firma.firma_cliente)}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+            {/* Modal de imagen ampliada */}
+            <ImageModal image={modalImage} onClose={() => setModalImage(null)} />
+
             {/* Breadcrumb */}
             <ul className="flex space-x-2 rtl:space-x-reverse items-center mb-5">
                 <li>
@@ -176,10 +284,7 @@ const ConsultarTicket = () => {
             <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
                 <div className="text-center mb-6">
                     <h1 className="text-4xl font-bold text-gray-800 mb-2">🔍 Consultar Ticket</h1>
-                    <p className="text-gray-600 text-lg">Ingrese el ID del ticket para ver toda la información detallada</p>
-                    <p className="text-sm text-gray-500 mt-2 bg-blue-50 inline-block px-4 py-2 rounded-full">
-                        IDs de prueba: TICKET-001, TICKET-002, TICKET-003
-                    </p>
+                    <p className="text-gray-600 text-lg">Ingrese el número de ticket para ver toda la información detallada</p>
                 </div>
 
                 <div className="max-w-3xl mx-auto">
@@ -189,9 +294,9 @@ const ConsultarTicket = () => {
                                 <input
                                     type="text"
                                     className="w-full pl-12 pr-4 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
-                                    placeholder="Ej: TICKET-001"
+                                    placeholder="Ej: GKM-000001"
                                     value={ticketId}
-                                    onChange={(e) => setTicketId(e.target.value)}
+                                    onChange={(e) => setTicketId(e.target.value.toUpperCase())}
                                     onKeyPress={(e) => e.key === 'Enter' && handleConsultar()}
                                 />
                                 <FontAwesomeIcon icon={faSearch} className="w-6 h-6 absolute left-4 top-4 text-gray-400" />
@@ -204,10 +309,7 @@ const ConsultarTicket = () => {
                         >
                             {loading ? (
                                 <>
-                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
+                                    <FontAwesomeIcon icon={faSpinner} className="w-5 h-5 animate-spin" />
                                     <span>Consultando...</span>
                                 </>
                             ) : (
@@ -241,154 +343,517 @@ const ConsultarTicket = () => {
                             <div>
                                 <div className="flex items-center gap-3 mb-3">
                                     <button
-                                        onClick={() => handleCopyTicket(ticket.id)}
+                                        onClick={() => handleCopyTicket(ticket.numeroTicket)}
                                         className="px-3 py-1 bg-blue-500 bg-opacity-20 rounded-full text-sm font-semibold text-blue-200 hover:bg-blue-500 hover:bg-opacity-30 transition-all flex items-center gap-2 group"
                                         title="Copiar número de ticket"
                                     >
-                                        #{ticket.id}
+                                        #{ticket.numeroTicket}
                                         <FontAwesomeIcon icon={faCopy} className="w-3 h-3 text-blue-200 opacity-70 group-hover:opacity-100 transition-opacity" />
                                     </button>
                                     <span className="text-gray-400">|</span>
-                                    <span className="text-gray-300">{ticket.tiempoTotal} de atención</span>
+                                    <span className="text-gray-300">{formatDate(ticket.fechaCreacion)}</span>
+                                    {ticket.tieneOrdenTrabajo && (
+                                        <>
+                                            <span className="text-gray-400">|</span>
+                                            <span className="px-3 py-1 bg-green-600 bg-opacity-30 rounded-full text-xs font-semibold text-green-300">
+                                                Orden de Trabajo Creada
+                                            </span>
+                                        </>
+                                    )}
                                 </div>
-                                <h2 className="text-3xl font-bold mb-2">{ticket.titulo}</h2>
-                                <p className="text-gray-300 text-lg">{ticket.descripcion}</p>
+                                <h2 className="text-3xl font-bold mb-2">{ticket.clienteGeneral}</h2>
+                                <p className="text-gray-300 text-lg">{ticket.detallesFalla}</p>
                             </div>
                             <div>
-                                <span className={`px-4 py-2 rounded-xl text-sm font-bold text-center block ${getEstadoBadge(ticket.estado)}`}>
-                                    {ticket.estado.replace('_', ' ').toUpperCase()}
+                                <span className={`px-4 py-2 rounded-xl text-sm font-bold text-center block ${getStatusBadge(ticket.estado)}`}>
+                                    {ticket.estado?.toUpperCase()}
                                 </span>
                             </div>
                         </div>
+                        
+                        {/* Estadísticas rápidas */}
+                        {ticket.estadisticas && (
+                            <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-700">
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-blue-400">{ticket.estadisticas.total_visitas}</div>
+                                    <div className="text-xs text-gray-400">Visitas</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-green-400">{ticket.estadisticas.total_fotos}</div>
+                                    <div className="text-xs text-gray-400">Fotos</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-purple-400">{ticket.estadisticas.total_firmas}</div>
+                                    <div className="text-xs text-gray-400">Firmas</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-yellow-400">{ticket.estadisticas.total_transiciones}</div>
+                                    <div className="text-xs text-gray-400">Cambios</div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Grid de Información */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* INFORMACION DEL TICKET */}
-                        <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
+                    {/* Tabs de navegación */}
+                    <div className="bg-white rounded-xl shadow-lg p-2">
+                        <div className="flex space-x-2 overflow-x-auto">
+                            <button
+                                className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+                                    activeTab === 'general' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                                }`}
+                                onClick={() => setActiveTab('general')}
+                            >
+                                <FontAwesomeIcon icon={faTicket} />
+                                General
+                            </button>
+                            {ticket.tieneOrdenTrabajo && (
+                                <>
+                                    <button
+                                        className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+                                            activeTab === 'orden' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                        onClick={() => setActiveTab('orden')}
+                                    >
+                                        <FontAwesomeIcon icon={faClipboardList} />
+                                        Orden de Trabajo
+                                    </button>
+                                    <button
+                                        className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+                                            activeTab === 'flujos' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                        onClick={() => setActiveTab('flujos')}
+                                    >
+                                        <FontAwesomeIcon icon={faHistory} />
+                                        Flujos
+                                    </button>
+                                    <button
+                                        className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+                                            activeTab === 'visitas' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                        onClick={() => setActiveTab('visitas')}
+                                    >
+                                        <FontAwesomeIcon icon={faEye} />
+                                        Visitas
+                                    </button>
+                                    <button
+                                        className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+                                            activeTab === 'firmas' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                        onClick={() => setActiveTab('firmas')}
+                                    >
+                                        <FontAwesomeIcon icon={faSignature} />
+                                        Firmas
+                                    </button>
+                                    <button
+                                        className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+                                            activeTab === 'fotos' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                        onClick={() => setActiveTab('fotos')}
+                                    >
+                                        <FontAwesomeIcon icon={faCamera} />
+                                        Fotos Adicionales
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Contenido según tab activo */}
+                    {activeTab === 'general' && (
+                        <>
+                            {/* Grid de Información General */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* INFORMACION DEL TICKET */}
+                                <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
+                                    <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-blue-500 flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faTicket} className="w-6 h-6 text-blue-600" />
+                                        INFORMACIÓN DEL TICKET
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <InfoRow label="Fecha Creación" value={formatDate(ticket.fechaCreacion)} icon="📅" />
+                                        <InfoRow label="Fecha Compra" value={formatDateOnly(ticket.fechaCompra)} icon="📅" />
+                                        <InfoRow label="Tienda de Compra" value={ticket.tiendaSedeCompra} icon="🏪" />
+                                        <InfoRow label="Creado por" value={ticket.usuarioCreador} icon="👤" />
+                                    </div>
+                                </div>
+
+                                {/* DATOS DEL CONTACTO */}
+                                <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
+                                    <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-purple-500 flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faUser} className="w-6 h-6 text-purple-600" />
+                                        DATOS DEL CONTACTO
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <InfoRow label="Nombre Completo" value={ticket.nombreCompleto} icon="👤" />
+                                        <InfoRow label="Documento" value={`${ticket.tipoDocumento}: ${ticket.dni_ruc_ce}`} icon="🆔" />
+                                        <InfoRow label="Email" value={ticket.correoElectronico} icon="📧" />
+                                        <InfoRow label="Teléfonos" value={`${ticket.telefonoCelular} ${ticket.telefonoFijo ? '/ ' + ticket.telefonoFijo : ''}`} icon="📞" />
+                                    </div>
+                                </div>
+
+                                {/* DIRECCIÓN */}
+                                <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
+                                    <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-green-500 flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faMapMarkerAlt} className="w-6 h-6 text-green-600" />
+                                        DIRECCIÓN
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <InfoRow label="Dirección" value={ticket.direccionCompleta} icon="🏠" />
+                                        <InfoRow label="Referencia" value={ticket.referenciaDomicilio || 'No registrada'} icon="📍" />
+                                        <InfoRow label="Ubicación" value={`${ticket.distrito}, ${ticket.provincia}, ${ticket.departamento}`} icon="🗺️" />
+                                        {ticket.ubicacionGoogleMaps && (
+                                            <div className="mt-2">
+                                                <a 
+                                                    href={ticket.ubicacionGoogleMaps} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                                                >
+                                                    <FontAwesomeIcon icon={faMap} className="w-3 h-3" />
+                                                    Ver en Google Maps
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* PRODUCTO */}
+                                <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
+                                    <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-orange-500 flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faLaptop} className="w-6 h-6 text-orange-600" />
+                                        PRODUCTO
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <InfoRow label="Categoría" value={ticket.tipoProducto} icon="📦" />
+                                        <InfoRow label="Marca" value={ticket.marca} icon="🏷️" />
+                                        <InfoRow label="Modelo" value={ticket.modelo} icon="💻" />
+                                        <InfoRow label="N° Serie" value={ticket.serie} icon="🔢" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* EVIDENCIAS */}
+                            <div className="bg-white rounded-2xl shadow-xl p-6">
+                                <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-gray-300 flex items-center gap-2">
+                                    <FontAwesomeIcon icon={faCamera} className="w-6 h-6 text-gray-600" />
+                                    EVIDENCIAS
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* Foto Falla */}
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                        <div className="flex items-center gap-2 mb-2 text-gray-700">
+                                            <FontAwesomeIcon icon={faVideo} className="w-4 h-4 text-blue-600" />
+                                            <span className="font-medium">Foto de la Falla</span>
+                                        </div>
+                                        {ticket.fotoVideoFalla ? (
+                                            <div className="relative group cursor-pointer" onClick={() => setModalImage(ticket.fotoVideoFalla)}>
+                                                <img 
+                                                    src={ticket.fotoVideoFalla} 
+                                                    alt="Falla" 
+                                                    className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                                                />
+                                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
+                                                    <FontAwesomeIcon icon={faSearch} className="text-white opacity-0 group-hover:opacity-100 text-2xl" />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+                                                <span className="text-gray-500">Sin imagen</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Foto Boleta */}
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                        <div className="flex items-center gap-2 mb-2 text-gray-700">
+                                            <FontAwesomeIcon icon={faFileInvoice} className="w-4 h-4 text-green-600" />
+                                            <span className="font-medium">Foto Boleta</span>
+                                        </div>
+                                        {ticket.fotoBoletaFactura ? (
+                                            <div className="relative group cursor-pointer" onClick={() => setModalImage(ticket.fotoBoletaFactura)}>
+                                                <img 
+                                                    src={ticket.fotoBoletaFactura} 
+                                                    alt="Boleta" 
+                                                    className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                                                />
+                                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
+                                                    <FontAwesomeIcon icon={faSearch} className="text-white opacity-0 group-hover:opacity-100 text-2xl" />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+                                                <span className="text-gray-500">Sin imagen</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Foto Serie */}
+                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                        <div className="flex items-center gap-2 mb-2 text-gray-700">
+                                            <FontAwesomeIcon icon={faImage} className="w-4 h-4 text-purple-600" />
+                                            <span className="font-medium">Foto Serie</span>
+                                        </div>
+                                        {ticket.fotoNumeroSerie ? (
+                                            <div className="relative group cursor-pointer" onClick={() => setModalImage(ticket.fotoNumeroSerie)}>
+                                                <img 
+                                                    src={ticket.fotoNumeroSerie} 
+                                                    alt="Serie" 
+                                                    className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                                                />
+                                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
+                                                    <FontAwesomeIcon icon={faSearch} className="text-white opacity-0 group-hover:opacity-100 text-2xl" />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+                                                <span className="text-gray-500">Sin imagen</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Tab de Orden de Trabajo */}
+                    {activeTab === 'orden' && ticket.ordenTrabajo && (
+                        <div className="bg-white rounded-2xl shadow-xl p-6">
                             <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-blue-500 flex items-center gap-2">
-                                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                INFORMACIÓN DEL TICKET
+                                <FontAwesomeIcon icon={faClipboardList} className="w-6 h-6 text-blue-600" />
+                                ORDEN DE TRABAJO
                             </h3>
-                            <div className="space-y-4">
-                                <InfoRow label="Fecha Creación" value={formatDate(ticket.fechaCreacion)} icon="📅" />
-                                <InfoRow label="Fecha Asignación" value={formatDate(ticket.fechaAsignacion)} icon="⏰" />
-                                <InfoRow label="Fecha Cierre" value={formatDate(ticket.fechaCierre)} icon="✅" />
-                                <InfoRow label="Tiempo Total" value={ticket.tiempoTotal} icon="⏱️" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <InfoRow label="ID Orden" value={ticket.ordenTrabajo.idTickets} icon="🔢" />
+                                    <InfoRow label="Tipo de Servicio" value={ticket.ordenTrabajo.tipoServicio} icon="⚙️" />
+                                    <InfoRow label="Tipo de Ticket" value={ticket.ordenTrabajo.tipo_ticket} icon="🎫" />
+                                    <InfoRow label="Es Recojo" value={ticket.ordenTrabajo.esRecojo === '1' ? 'Sí' : 'No'} icon="📦" />
+                                </div>
+                                <div>
+                                    <InfoRow label="Envío" value={ticket.ordenTrabajo.envio === 1 ? 'Sí' : 'No'} icon="🚚" />
+                                    <InfoRow label="ERMA" value={ticket.ordenTrabajo.erma} icon="📋" />
+                                    <InfoRow label="N° Cotización" value={ticket.ordenTrabajo.nrmcotizacion} icon="💰" />
+                                    <InfoRow label="Es Custodia" value={ticket.ordenTrabajo.es_custodia === 1 ? 'Sí' : 'No'} icon="🔒" />
+                                </div>
+                                {ticket.ordenTrabajo.estado_ot && (
+                                    <div className="md:col-span-2">
+                                        <div className={`p-4 rounded-xl border ${getEstadoOTBadge(ticket.ordenTrabajo.estado_ot.color)}`}>
+                                            <p className="font-medium">Estado: {ticket.ordenTrabajo.estado_ot.descripcion}</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
+                    )}
 
-                        {/* ESTADO DEL TICKET */}
-                        <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
-                            <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-yellow-500 flex items-center gap-2">
-                                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                ESTADO DEL TICKET
-                            </h3>
-                            <div className="space-y-4">
-                                <InfoRow label="Estado Actual" value={ticket.estado.replace('_', ' ').toUpperCase()} icon="📊" />
-                                <InfoRow label="Técnico Asignado" value={ticket.tecnicoAsignado} icon="👨‍💻" />
-                                <InfoRow label="Tiempo Restante" value={ticket.estado === 'cerrado' ? 'Completado' : 'En progreso'} icon="⌛" />
-                            </div>
-                        </div>
-
-                        {/* ATENCION DEL TICKET */}
-                        <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
-                            <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-green-500 flex items-center gap-2">
-                                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                </svg>
-                                ATENCIÓN DEL TICKET
-                            </h3>
-                            <div className="space-y-4">
-                                <InfoRow label="Cliente" value={ticket.cliente} icon="🏢" />
-                                <InfoRow label="Contacto" value={ticket.contacto} icon="👤" />
-                                <InfoRow label="Email" value={ticket.email} icon="📧" />
-                                <InfoRow label="Teléfono" value={ticket.telefono} icon="📞" />
-                            </div>
-                        </div>
-
-                        {/* SEGUIMIENTO */}
-                        <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
+                    {/* Tab de Flujos */}
+                    {activeTab === 'flujos' && ticket.flujos && ticket.flujos.length > 0 && (
+                        <div className="bg-white rounded-2xl shadow-xl p-6">
                             <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-purple-500 flex items-center gap-2">
-                                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                </svg>
-                                SEGUIMIENTO
+                                <FontAwesomeIcon icon={faHistory} className="w-6 h-6 text-purple-600" />
+                                HISTORIAL DE FLUJOS ({ticket.flujos.length})
                             </h3>
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl">
-                                    <span className="font-bold text-gray-700 flex items-center gap-2">
-                                        <span className="text-2xl">👁️</span>
-                                        Cantidad de Visitas:
-                                    </span>
-                                    <span className="text-3xl font-bold text-purple-600">{ticket.visitas}</span>
-                                </div>
-                                <div className="mt-4">
-                                    <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                                        <span className="text-xl">💡</span>
-                                        SOLUCIÓN APLICADA
-                                    </label>
-                                    <div className="p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
-                                        <p className="text-gray-700 leading-relaxed">{ticket.solucion}</p>
+                            <div className="space-y-2 max-h-96 overflow-y-auto">
+                                {ticket.flujos.map((flujo, index) => (
+                                    <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoOTBadge(flujo.color)}`}>
+                                                    {flujo.estado || 'Sin estado'}
+                                                </span>
+                                                <p className="text-sm text-gray-600 mt-2">{flujo.comentario || 'Sin comentario'}</p>
+                                            </div>
+                                            <span className="text-xs text-gray-500">{formatDate(flujo.fecha_creacion)}</span>
+                                        </div>
                                     </div>
-                                </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Historial de Actividades */}
-                    <div className="bg-white rounded-2xl shadow-xl p-6">
-                        <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-gray-300 flex items-center gap-2">
-                            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            HISTORIAL DE ACTIVIDADES
-                        </h3>
-                        <div className="space-y-3">
-                            {ticket.historial.map((item, index) => (
-                                <div key={index} className="flex items-start gap-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                                    <div className="w-24 text-sm font-medium text-gray-500">{item.fecha}</div>
-                                    <div className="flex-1">
-                                        <span className="font-medium text-gray-800">{item.accion}</span>
-                                        <span className="text-sm text-gray-500 ml-2">por {item.usuario}</span>
+                    {/* Tab de Visitas */}
+                    {activeTab === 'visitas' && ticket.visitas && ticket.visitas.length > 0 && (
+                        <div className="space-y-6">
+                            {ticket.visitas.map((visita, index) => (
+                                <div key={index} className="bg-white rounded-2xl shadow-xl p-6">
+                                    <div 
+                                        className="flex justify-between items-center cursor-pointer"
+                                        onClick={() => setExpandedVisita(expandedVisita === index ? null : index)}
+                                    >
+                                        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                            <FontAwesomeIcon icon={faEye} className="text-green-600" />
+                                            Visita: {visita.nombre || `Visita #${index + 1}`}
+                                        </h3>
+                                        <FontAwesomeIcon 
+                                            icon={expandedVisita === index ? faTimes : faEye} 
+                                            className="text-gray-500"
+                                        />
                                     </div>
+                                    
+                                    {expandedVisita === index && (
+                                        <>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                                <div>
+                                                    <InfoRow label="Fecha Programada" value={formatDate(visita.fecha_programada)} icon="📅" />
+                                                    <InfoRow label="Fecha Asignada" value={formatDate(visita.fecha_asignada)} icon="📅" />
+                                                    <InfoRow label="Fecha Llegada" value={formatDate(visita.fecha_llegada)} icon="📅" />
+                                                    <InfoRow label="Tipo de Visita" value={visita.tipoVisita || 'No especificado'} icon="🔍" />
+                                                </div>
+                                                <div>
+                                                    <InfoRow label="Estado" value={visita.estado === 1 ? 'Activo' : 'Inactivo'} icon="⚡" />
+                                                    <InfoRow label="Necesita Apoyo" value={visita.necesita_apoyo ? 'Sí' : 'No'} icon="🤝" />
+                                                    <InfoRow label="Recojo" value={visita.recojo ? 'Sí' : 'No'} icon="📦" />
+                                                    {visita.celularcliente && (
+                                                        <InfoRow label="Celular Cliente" value={visita.celularcliente} icon="📱" />
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Anexos de la visita */}
+                                            {visita.anexos && visita.anexos.length > 0 && (
+                                                <div className="mt-4">
+                                                    <h4 className="font-semibold text-gray-700 mb-2">Anexos de la Visita ({visita.anexos.length})</h4>
+                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                        {visita.anexos.map((anexo, idx) => (
+                                                            <div key={idx} className="relative group">
+                                                                {anexo.foto ? (
+                                                                    <img 
+                                                                        src={anexo.foto} 
+                                                                        alt={anexo.descripcion || 'Anexo'} 
+                                                                        className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-300"
+                                                                        onClick={() => setModalImage(anexo.foto)}
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-full h-24 bg-gray-200 rounded-lg flex items-center justify-center">
+                                                                        <span className="text-gray-500 text-xs">Sin foto</span>
+                                                                    </div>
+                                                                )}
+                                                                {anexo.descripcion && (
+                                                                    <p className="text-xs text-gray-600 mt-1 truncate">{anexo.descripcion}</p>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Firmas de la visita */}
+                                            {visita.firmas && visita.firmas.length > 0 && (
+                                                <FirmasSection firmas={visita.firmas} title={`Firmas de la Visita (${visita.firmas.length})`} />
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    )}
 
-                    {/* Archivos Adjuntos */}
-                    {ticket.archivos && ticket.archivos.length > 0 && (
+                    {/* Tab de Firmas */}
+                    {activeTab === 'firmas' && (
                         <div className="bg-white rounded-2xl shadow-xl p-6">
-                            <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-gray-300 flex items-center gap-2">
-                                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                                </svg>
-                                ARCHIVOS ADJUNTOS
+                            <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-purple-500 flex items-center gap-2">
+                                <FontAwesomeIcon icon={faSignature} className="w-6 h-6 text-purple-600" />
+                                FIRMAS DEL TICKET
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {ticket.archivos.map((archivo, index) => (
-                                    <a 
-                                        key={index} 
-                                        href={archivo.url} 
-                                        className="flex items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all hover:shadow-md border border-gray-200"
-                                        onClick={() => toastr.info(`Descargando ${archivo.nombre}`, 'Descarga')}
-                                    >
-                                        <svg className="w-6 h-6 text-gray-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                        </svg>
-                                        <div className="flex-1">
-                                            <span className="text-gray-800 font-medium block">{archivo.nombre}</span>
-                                            <span className="text-xs text-gray-500">{archivo.tamaño}</span>
+                            
+                            {ticket.firmas && ticket.firmas.length > 0 ? (
+                                <div className="space-y-6">
+                                    {ticket.firmas.map((firma, idx) => (
+                                        <div key={idx} className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <InfoRow label="Nombre del Encargado" value={firma.nombreencargado} icon="👤" />
+                                                    {firma.tipodocumento && firma.documento && (
+                                                        <InfoRow 
+                                                            label="Documento" 
+                                                            value={`${firma.tipodocumento}: ${firma.documento}`} 
+                                                            icon="🆔" 
+                                                        />
+                                                    )}
+                                                    {firma.idVisitas > 0 && (
+                                                        <InfoRow label="ID Visita" value={firma.idVisitas} icon="👁️" />
+                                                    )}
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    {firma.firma_tecnico && (
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-700 mb-2">Firma del Técnico</p>
+                                                            <img 
+                                                                src={firma.firma_tecnico} 
+                                                                alt="Firma técnico"
+                                                                className="max-h-24 border border-gray-300 rounded cursor-pointer"
+                                                                onClick={() => setModalImage(firma.firma_tecnico)}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {firma.firma_cliente && (
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-700 mb-2">Firma del Cliente</p>
+                                                            <img 
+                                                                src={firma.firma_cliente} 
+                                                                alt="Firma cliente"
+                                                                className="max-h-24 border border-gray-300 rounded cursor-pointer"
+                                                                onClick={() => setModalImage(firma.firma_cliente)}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </a>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 text-gray-500">
+                                    <FontAwesomeIcon icon={faSignature} className="w-12 h-12 mb-3 text-gray-400" />
+                                    <p>No hay firmas registradas para este ticket</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Tab de Fotos Adicionales */}
+                    {activeTab === 'fotos' && (
+                        <div className="bg-white rounded-2xl shadow-xl p-6">
+                            <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-green-500 flex items-center gap-2">
+                                <FontAwesomeIcon icon={faCamera} className="w-6 h-6 text-green-600" />
+                                FOTOS ADICIONALES DEL TICKET
+                            </h3>
+                            
+                            {ticket.fotosTicket && ticket.fotosTicket.length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                    {ticket.fotosTicket.map((foto, idx) => (
+                                        <div key={idx} className="relative group">
+                                            {foto.foto ? (
+                                                <>
+                                                    <img 
+                                                        src={foto.foto} 
+                                                        alt={foto.descripcion || 'Foto adicional'} 
+                                                        className="w-full h-32 object-cover rounded-lg cursor-pointer border border-gray-300"
+                                                        onClick={() => setModalImage(foto.foto)}
+                                                    />
+                                                    {foto.idVisitas > 0 && (
+                                                        <span className="absolute top-1 right-1 bg-blue-500 text-white text-xs px-1 rounded">
+                                                            V{foto.idVisitas}
+                                                        </span>
+                                                    )}
+                                                    {foto.descripcion && (
+                                                        <p className="text-xs text-gray-600 mt-1 truncate">{foto.descripcion}</p>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+                                                    <span className="text-gray-500 text-xs">Sin imagen</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 text-gray-500">
+                                    <FontAwesomeIcon icon={faCamera} className="w-12 h-12 mb-3 text-gray-400" />
+                                    <p>No hay fotos adicionales para este ticket</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -414,16 +879,5 @@ const ConsultarTicket = () => {
         </div>
     );
 };
-
-// Componente auxiliar
-const InfoRow = ({ label, value, icon }) => (
-    <div className="flex items-start">
-        <span className="text-xl mr-3">{icon}</span>
-        <div className="flex-1">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block">{label}</span>
-            <span className="text-gray-800 font-medium text-lg">{value}</span>
-        </div>
-    </div>
-);
 
 export default ConsultarTicket;
