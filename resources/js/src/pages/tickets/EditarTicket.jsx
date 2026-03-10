@@ -35,13 +35,19 @@ import {
     faMap,
     faImage,
     faSearch,
-    faExternalLinkAlt
+    faExternalLinkAlt,
+    faPlus
 } from '@fortawesome/free-solid-svg-icons';
 import toastr from 'toastr';
 import flatpickr from 'flatpickr';
 import { Spanish } from 'flatpickr/dist/l10n/es.js';
 import 'flatpickr/dist/flatpickr.css';
 import axios from 'axios';
+import Select from 'react-select'; // <-- IMPORTAR REACT-SELECT
+
+// Importar modales (si los tienes)
+import ModalCategoria from './components/ModalCategoria';
+import ModalModelo from './components/ModalModelo';
 
 const EditarTicket = () => {
     const dispatch = useDispatch();
@@ -62,6 +68,10 @@ const EditarTicket = () => {
     const [modelosFiltrados, setModelosFiltrados] = useState([]);
     const [loadingModelos, setLoadingModelos] = useState(false);
     const [marcas, setMarcas] = useState([]);
+    
+    // Estados para modales
+    const [modalCategoria, setModalCategoria] = useState(false);
+    const [modalModelo, setModalModelo] = useState(false);
     
     // Estados para ubigeo
     const [departamentos, setDepartamentos] = useState([]);
@@ -121,7 +131,7 @@ const EditarTicket = () => {
         }
     };
 
-    // Esquema de validación - MODIFICADO para trabajar con string en DD/MM/YYYY
+    // Esquema de validación
     const validationSchema = Yup.object({
         nombreCompleto: Yup.string()
             .required('El nombre completo es requerido')
@@ -191,7 +201,6 @@ const EditarTicket = () => {
             .required('La fecha de compra es requerida')
             .test('valid-date', 'Fecha inválida', function(value) {
                 if (!value) return false;
-                // Validar formato DD/MM/YYYY
                 const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
                 if (!regex.test(value)) return false;
                 
@@ -263,7 +272,6 @@ const EditarTicket = () => {
                 Object.keys(values).forEach(key => {
                     if (values[key] !== null && values[key] !== undefined && values[key] !== '') {
                         if (key === 'fechaCompra') {
-                            // Convertir fecha de DD/MM/YYYY a YYYY-MM-DD
                             const fechaBackend = formatDateForBackend(values[key]);
                             formData.append(key, fechaBackend);
                         } else {
@@ -323,6 +331,82 @@ const EditarTicket = () => {
             }
         }
     });
+
+    // ============================================
+    // CONFIGURACIÓN DE REACT-SELECT
+    // ============================================
+    const selectStyles = {
+        control: (base, state) => ({
+            ...base,
+            borderColor: state.isFocused ? '#4361ee' : '#e5e7eb',
+            boxShadow: state.isFocused ? '0 0 0 1px #4361ee' : 'none',
+            '&:hover': {
+                borderColor: '#4361ee'
+            },
+            minHeight: '38px',
+            borderRadius: '6px'
+        }),
+        option: (base, { isFocused, isSelected }) => ({
+            ...base,
+            backgroundColor: isSelected ? '#4361ee' : isFocused ? '#e0e7ff' : 'white',
+            color: isSelected ? 'white' : '#111827',
+            cursor: 'pointer',
+            '&:active': {
+                backgroundColor: '#4361ee'
+            }
+        }),
+        menu: (base) => ({
+            ...base,
+            zIndex: 50
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#9ca3af'
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#111827'
+        })
+    };
+
+    // Convertir categorías al formato que react-select entiende
+    const categoriaOptions = categorias.map(cat => ({
+        value: cat.idCategoria,
+        label: cat.nombre
+    }));
+
+    // Convertir modelos filtrados al formato que react-select entiende
+    const modeloOptions = modelosFiltrados.map(mod => ({
+        value: mod.idModelo,
+        label: mod.nombre
+    }));
+
+    // Manejar cambio de categoría
+    const handleCategoriaChange = (selectedOption) => {
+        formik.setFieldValue('idCategoria', selectedOption ? selectedOption.value : '');
+    };
+
+    // Manejar cambio de modelo
+    const handleModeloChange = (selectedOption) => {
+        formik.setFieldValue('idModelo', selectedOption ? selectedOption.value : '');
+    };
+
+    // Handlers para modales
+    const handleCategoriaCreada = (nuevaCategoria) => {
+        setCategorias(prev => [...prev, nuevaCategoria]);
+        formik.setFieldValue('idCategoria', nuevaCategoria.idCategoria);
+        cargarModelosPorCategoria(nuevaCategoria.idCategoria);
+        toastr.success('Categoría creada exitosamente');
+    };
+
+    const handleModeloCreado = (nuevoModelo) => {
+        setModelos(prev => [...prev, nuevoModelo]);
+        if (nuevoModelo.idCategoria === formik.values.idCategoria) {
+            setModelosFiltrados(prev => [...prev, nuevoModelo]);
+        }
+        formik.setFieldValue('idModelo', nuevoModelo.idModelo);
+        toastr.success('Modelo creado exitosamente');
+    };
 
     // Cargar datos iniciales
     useEffect(() => {
@@ -402,12 +486,10 @@ const EditarTicket = () => {
         }
     }, [formik.values.provincia, distritos]);
 
-    // Inicializar flatpickr - VERSIÓN CORREGIDA
+    // Inicializar flatpickr
     useEffect(() => {
-        // Función para inicializar flatpickr
         const initFlatpickr = () => {
             if (fechaCompraRef.current && !loading) {
-                // Destruir instancia anterior si existe
                 if (flatpickrInstance.current) {
                     flatpickrInstance.current.destroy();
                 }
@@ -431,7 +513,6 @@ const EditarTicket = () => {
             }
         };
 
-        // Ejecutar después de un pequeño delay para asegurar que el DOM está listo
         const timeoutId = setTimeout(initFlatpickr, 100);
 
         return () => {
@@ -441,28 +522,6 @@ const EditarTicket = () => {
             }
         };
     }, [loading, formik.values.fechaCompra]);
-
-    // Efecto adicional para asegurar que flatpickr se inicialice cuando el ref esté disponible
-    useEffect(() => {
-        if (!loading && fechaCompraRef.current && !flatpickrInstance.current) {
-            try {
-                flatpickrInstance.current = flatpickr(fechaCompraRef.current, {
-                    locale: Spanish,
-                    dateFormat: 'd/m/Y',
-                    allowInput: true,
-                    maxDate: 'today',
-                    defaultDate: formik.values.fechaCompra,
-                    onChange: (selectedDates, dateStr) => {
-                        if (selectedDates[0]) {
-                            formik.setFieldValue('fechaCompra', dateStr);
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Error en reintento:', error);
-            }
-        }
-    }, [loading, fechaCompraRef.current]);
 
     // Funciones auxiliares
     const cargarMarcas = async () => {
@@ -487,7 +546,6 @@ const EditarTicket = () => {
         try {
             const token = localStorage.getItem('token');
             
-            // Cargar datos del formulario
             const formDataResponse = await axios.get(`${API_URL}/tickets-form-data`, {
                 headers: {
                     'Authorization': token ? `Bearer ${token}` : '',
@@ -501,7 +559,6 @@ const EditarTicket = () => {
                 setModelos(formDataResponse.data.data.modelos || []);
             }
 
-            // Cargar datos del ticket
             const ticketResponse = await axios.get(`${API_URL}/tickets/${id}`, {
                 headers: {
                     'Authorization': token ? `Bearer ${token}` : '',
@@ -512,7 +569,6 @@ const EditarTicket = () => {
             if (ticketResponse.data.success) {
                 const ticket = ticketResponse.data.data;
                 
-                // Formatear fecha para mostrar en DD/MM/YYYY
                 const fechaCompraDisplay = ticket.fechaCompra ? 
                     formatDateToDisplay(ticket.fechaCompra) : '';
 
@@ -540,7 +596,6 @@ const EditarTicket = () => {
                     ubicacionGoogleMaps: ticket.ubicacionGoogleMaps || ''
                 });
 
-                // Después de establecer valores, cargar modelos de la categoría
                 if (ticket.idCategoria) {
                     await cargarModelosPorCategoria(ticket.idCategoria);
                 }
@@ -601,7 +656,6 @@ const EditarTicket = () => {
             };
             reader.readAsDataURL(file);
 
-            // Limpiar la URL existente cuando se selecciona un nuevo archivo
             if (fieldName) {
                 formik.setFieldValue(fieldName, '');
             }
@@ -694,7 +748,7 @@ const EditarTicket = () => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Nombre Completo */}
+                                {/* ... (resto de campos de datos personales igual) ... */}
                                 <div className="md:col-span-1">
                                     <label htmlFor="nombreCompleto" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-500" />
@@ -716,7 +770,6 @@ const EditarTicket = () => {
                                     )}
                                 </div>
 
-                                {/* Correo Electrónico */}
                                 <div className="md:col-span-1">
                                     <label htmlFor="correoElectronico" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 text-gray-500" />
@@ -738,7 +791,6 @@ const EditarTicket = () => {
                                     )}
                                 </div>
 
-                                {/* Tipo de Documento */}
                                 <div>
                                     <label htmlFor="idTipoDocumento" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faIdCard} className="w-4 h-4 text-gray-500" />
@@ -765,7 +817,6 @@ const EditarTicket = () => {
                                     )}
                                 </div>
 
-                                {/* Número de Documento */}
                                 <div>
                                     <label htmlFor="dni_ruc_ce" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faHashtag} className="w-4 h-4 text-gray-500" />
@@ -787,7 +838,6 @@ const EditarTicket = () => {
                                     )}
                                 </div>
 
-                                {/* Teléfono Fijo */}
                                 <div>
                                     <label htmlFor="telefonoFijo" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faPhone} className="w-4 h-4 text-gray-500" />
@@ -806,7 +856,6 @@ const EditarTicket = () => {
                                     />
                                 </div>
 
-                                {/* Teléfono Celular */}
                                 <div>
                                     <label htmlFor="telefonoCelular" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faMobile} className="w-4 h-4 text-gray-500" />
@@ -829,7 +878,8 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 2: DIRECCIÓN */}
+                            {/* SECCIÓN 2: DIRECCIÓN (sin cambios) */}
+                            {/* ... (código de dirección igual) ... */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faMapMarkerAlt} className="w-5 h-5 text-primary" />
@@ -880,7 +930,6 @@ const EditarTicket = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {/* DEPARTAMENTO */}
                                     <div>
                                         <label htmlFor="departamento" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faGlobe} className="w-4 h-4 text-gray-500" />
@@ -907,7 +956,6 @@ const EditarTicket = () => {
                                         )}
                                     </div>
 
-                                    {/* PROVINCIA */}
                                     <div>
                                         <label htmlFor="provincia" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faBuilding} className="w-4 h-4 text-gray-500" />
@@ -938,7 +986,6 @@ const EditarTicket = () => {
                                         )}
                                     </div>
 
-                                    {/* DISTRITO */}
                                     <div>
                                         <label htmlFor="distrito" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faCity} className="w-4 h-4 text-gray-500" />
@@ -971,7 +1018,7 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 3: DATOS DEL PRODUCTO */}
+                            {/* SECCIÓN 3: DATOS DEL PRODUCTO - CON SELECT2 Y BOTONES */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faLaptop} className="w-5 h-5 text-primary" />
@@ -980,57 +1027,72 @@ const EditarTicket = () => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Categoría con SELECT2 */}
                                 <div>
-                                    <label htmlFor="idCategoria" className="flex items-center gap-1 font-medium">
-                                        <FontAwesomeIcon icon={faLaptop} className="w-4 h-4 text-gray-500" />
-                                        Categoría <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label htmlFor="idCategoria" className="flex items-center gap-1 font-medium">
+                                            <FontAwesomeIcon icon={faLaptop} className="w-4 h-4 text-gray-500" />
+                                            Categoría <span className="text-red-500">*</span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setModalCategoria(true)}
+                                            className="text-xs bg-primary text-white px-2 py-1 rounded-full hover:bg-primary/80 transition-colors flex items-center gap-1"
+                                        >
+                                            <FontAwesomeIcon icon={faPlus} className="w-3 h-3" />
+                                            Nueva
+                                        </button>
+                                    </div>
+                                    <Select
                                         id="idCategoria"
                                         name="idCategoria"
-                                        className={`form-select ${formik.touched.idCategoria && formik.errors.idCategoria ? 'has-error' : ''}`}
-                                        value={formik.values.idCategoria}
-                                        onChange={formik.handleChange}
-                                        onBlur={formik.handleBlur}
-                                        disabled={submitting}
-                                    >
-                                        <option value="">Seleccione categoría</option>
-                                        {categorias.map(cat => (
-                                            <option key={cat.idCategoria} value={cat.idCategoria}>
-                                                {cat.nombre}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        options={categoriaOptions}
+                                        value={categoriaOptions.find(option => option.value === formik.values.idCategoria)}
+                                        onChange={handleCategoriaChange}
+                                        onBlur={() => formik.setFieldTouched('idCategoria', true)}
+                                        placeholder="Seleccione categoría"
+                                        isClearable
+                                        isSearchable
+                                        styles={selectStyles}
+                                        className={formik.touched.idCategoria && formik.errors.idCategoria ? 'has-error' : ''}
+                                        isDisabled={submitting}
+                                    />
                                     {formik.touched.idCategoria && formik.errors.idCategoria && (
                                         <div className="text-danger text-sm mt-1">{formik.errors.idCategoria}</div>
                                     )}
                                 </div>
 
+                                {/* Modelo con SELECT2 */}
                                 <div>
-                                    <label htmlFor="idModelo" className="flex items-center gap-1 font-medium">
-                                        <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500" />
-                                        Modelo <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label htmlFor="idModelo" className="flex items-center gap-1 font-medium">
+                                            <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500" />
+                                            Modelo <span className="text-red-500">*</span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setModalModelo(true)}
+                                            className="text-xs bg-primary text-white px-2 py-1 rounded-full hover:bg-primary/80 transition-colors flex items-center gap-1"
+                                        >
+                                            <FontAwesomeIcon icon={faPlus} className="w-3 h-3" />
+                                            Nuevo
+                                        </button>
+                                    </div>
+                                    <Select
                                         id="idModelo"
                                         name="idModelo"
-                                        className={`form-select ${formik.touched.idModelo && formik.errors.idModelo ? 'has-error' : ''}`}
-                                        value={formik.values.idModelo}
-                                        onChange={formik.handleChange}
-                                        onBlur={formik.handleBlur}
-                                        disabled={!formik.values.idCategoria || submitting || loadingModelos}
-                                    >
-                                        <option value="">
-                                            {loadingModelos ? 'Cargando...' : 
-                                             !formik.values.idCategoria ? 'Primero seleccione categoría' : 
-                                             'Seleccione modelo'}
-                                        </option>
-                                        {modelosFiltrados.map(modelo => (
-                                            <option key={modelo.idModelo} value={modelo.idModelo}>
-                                                {modelo.nombre}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        options={modeloOptions}
+                                        value={modeloOptions.find(option => option.value === formik.values.idModelo)}
+                                        onChange={handleModeloChange}
+                                        onBlur={() => formik.setFieldTouched('idModelo', true)}
+                                        placeholder={loadingModelos ? 'Cargando...' : !formik.values.idCategoria ? 'Primero seleccione categoría' : 'Seleccione modelo'}
+                                        isClearable
+                                        isSearchable
+                                        styles={selectStyles}
+                                        className={formik.touched.idModelo && formik.errors.idModelo ? 'has-error' : ''}
+                                        isDisabled={!formik.values.idCategoria || submitting || loadingModelos}
+                                        isLoading={loadingModelos}
+                                    />
                                     {formik.touched.idModelo && formik.errors.idModelo && (
                                         <div className="text-danger text-sm mt-1">{formik.errors.idModelo}</div>
                                     )}
@@ -1058,7 +1120,8 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 4: DETALLES DE LA FALLA Y COMPRA */}
+                            {/* SECCIÓN 4: DETALLES DE LA FALLA Y COMPRA (sin cambios) */}
+                            {/* ... (código de falla y compra igual) ... */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faExclamationTriangle} className="w-5 h-5 text-primary" />
@@ -1135,7 +1198,8 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS */}
+                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS (sin cambios) */}
+                            {/* ... (código de archivos igual) ... */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faCamera} className="w-5 h-5 text-primary" />
@@ -1465,6 +1529,23 @@ const EditarTicket = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Modales */}
+            <ModalCategoria
+                modal={modalCategoria}
+                setModal={setModalCategoria}
+                onCategoriaCreada={handleCategoriaCreada}
+                API_URL={API_URL}
+            />
+
+            <ModalModelo
+                modal={modalModelo}
+                setModal={setModalModelo}
+                onModeloCreado={handleModeloCreado}
+                categorias={categorias}
+                marcas={marcas}
+                API_URL={API_URL}
+            />
         </div>
     );
 };

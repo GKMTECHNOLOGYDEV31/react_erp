@@ -143,7 +143,7 @@ const ModalModelo = ({ modal, setModal, onModeloCreado, categorias, marcas }) =>
                             type="text"
                             name="nombre"
                             className="form-input w-full"
-                            placeholder="Ej: Samsung 40 pulgadas 4K"
+                            placeholder="Ej: M93463"
                             value={formData.nombre}
                             onChange={handleChange}
                             autoFocus
