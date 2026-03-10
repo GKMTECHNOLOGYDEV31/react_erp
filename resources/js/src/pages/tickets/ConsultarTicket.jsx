@@ -410,15 +410,6 @@ const ConsultarTicket = () => {
                                 <>
                                     <button
                                         className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
-                                            activeTab === 'orden' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-                                        }`}
-                                        onClick={() => setActiveTab('orden')}
-                                    >
-                                        <FontAwesomeIcon icon={faClipboardList} />
-                                        Orden de Trabajo
-                                    </button>
-                                    <button
-                                        className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
                                             activeTab === 'flujos' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                                         }`}
                                         onClick={() => setActiveTab('flujos')}
@@ -615,29 +606,6 @@ const ConsultarTicket = () => {
                         </>
                     )}
 
-                    {/* Tab de Orden de Trabajo */}
-                    {activeTab === 'orden' && ticket.ordenTrabajo && (
-                        <div className="bg-white rounded-2xl shadow-xl p-6">
-                            <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-blue-500 flex items-center gap-2">
-                                <FontAwesomeIcon icon={faClipboardList} className="w-6 h-6 text-blue-600" />
-                                ORDEN DE TRABAJO
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <InfoRow label="ID Orden" value={ticket.ordenTrabajo.idTickets} icon="🔢" />
-                                    <InfoRow label="Es Recojo" value={ticket.ordenTrabajo.esRecojo === '1' ? 'Sí' : 'No'} icon="📦" />
-                                </div>
-                             
-                                {ticket.ordenTrabajo.estado_ot && (
-                                    <div className="md:col-span-2">
-                                        <div className={`p-4 rounded-xl border ${getEstadoOTBadge(ticket.ordenTrabajo.estado_ot.color)}`}>
-                                            <p className="font-medium">Estado: {ticket.ordenTrabajo.estado_ot.descripcion}</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
 
                     {/* Tab de Flujos */}
                     {activeTab === 'flujos' && ticket.flujos && ticket.flujos.length > 0 && (
@@ -688,9 +656,7 @@ const ConsultarTicket = () => {
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                                                 <div>
                                                     <InfoRow label="Fecha Programada" value={formatDate(visita.fecha_programada)} icon="📅" />
-                                                    <InfoRow label="Fecha Asignada" value={formatDate(visita.fecha_asignada)} icon="📅" />
                                                     <InfoRow label="Fecha Llegada" value={formatDate(visita.fecha_llegada)} icon="📅" />
-                                                    <InfoRow label="Tipo de Visita" value={visita.tipoVisita || 'No especificado'} icon="🔍" />
                                                 </div>
                                                 <div>
                                                     
