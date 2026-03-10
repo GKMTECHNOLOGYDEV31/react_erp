@@ -625,16 +625,9 @@ const ConsultarTicket = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <InfoRow label="ID Orden" value={ticket.ordenTrabajo.idTickets} icon="🔢" />
-                                    <InfoRow label="Tipo de Servicio" value={ticket.ordenTrabajo.tipoServicio} icon="⚙️" />
-                                    <InfoRow label="Tipo de Ticket" value={ticket.ordenTrabajo.tipo_ticket} icon="🎫" />
                                     <InfoRow label="Es Recojo" value={ticket.ordenTrabajo.esRecojo === '1' ? 'Sí' : 'No'} icon="📦" />
                                 </div>
-                                <div>
-                                    <InfoRow label="Envío" value={ticket.ordenTrabajo.envio === 1 ? 'Sí' : 'No'} icon="🚚" />
-                                    <InfoRow label="ERMA" value={ticket.ordenTrabajo.erma} icon="📋" />
-                                    <InfoRow label="N° Cotización" value={ticket.ordenTrabajo.nrmcotizacion} icon="💰" />
-                                    <InfoRow label="Es Custodia" value={ticket.ordenTrabajo.es_custodia === 1 ? 'Sí' : 'No'} icon="🔒" />
-                                </div>
+                             
                                 {ticket.ordenTrabajo.estado_ot && (
                                     <div className="md:col-span-2">
                                         <div className={`p-4 rounded-xl border ${getEstadoOTBadge(ticket.ordenTrabajo.estado_ot.color)}`}>
@@ -700,7 +693,7 @@ const ConsultarTicket = () => {
                                                     <InfoRow label="Tipo de Visita" value={visita.tipoVisita || 'No especificado'} icon="🔍" />
                                                 </div>
                                                 <div>
-                                                    <InfoRow label="Estado" value={visita.estado === 1 ? 'Activo' : 'Inactivo'} icon="⚡" />
+                                                    
                                                     <InfoRow label="Necesita Apoyo" value={visita.necesita_apoyo ? 'Sí' : 'No'} icon="🤝" />
                                                     <InfoRow label="Recojo" value={visita.recojo ? 'Sí' : 'No'} icon="📦" />
                                                     {visita.celularcliente && (
