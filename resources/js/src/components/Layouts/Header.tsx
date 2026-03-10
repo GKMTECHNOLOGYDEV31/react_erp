@@ -1,14 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { IRootState } from '../../store';
 import { toggleRTL, toggleTheme, toggleSidebar } from '../../store/themeConfigSlice';
 import { useTranslation } from 'react-i18next';
-import i18next from 'i18next';
 import Dropdown from '../Dropdown';
+import { useAuth } from '../../context/AuthContext';
 
 const Header = () => {
+    const { user, logout } = useAuth(); // Datos del usuario y función de logout
+    const navigate = useNavigate();
     const location = useLocation();
+    // 👇 LOG PARA VER QUÉ RECIBE EL USER
+    useEffect(() => {
+        console.log('🔍 Usuario desde contexto:', user);
+        if (user) {
+            console.log('📸 Avatar:', user.avatar);
+            console.log('📸 Tipo de avatar:', typeof user.avatar);
+        }
+    }, [user]);
+
+    // Efecto para manejar la activación de enlaces en el menú horizontal (si existe)
     useEffect(() => {
         const selector = document.querySelector('ul.horizontal-menu a[href="' + window.location.pathname + '"]');
         if (selector) {
@@ -30,75 +42,27 @@ const Header = () => {
         }
     }, [location]);
 
-    const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
-
+    const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl';
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
     const dispatch = useDispatch();
 
-    function createMarkup(messages: any) {
-        return { __html: messages };
-    }
+    // Datos de ejemplo para mensajes y notificaciones (puedes reemplazar con datos reales)
     const [messages, setMessages] = useState([
-        {
-            id: 1,
-            image: '<span class="grid place-content-center w-9 h-9 rounded-full bg-success-light dark:bg-success text-success dark:text-success-light"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>',
-            title: 'Congratulations!',
-            message: 'Your OS has been updated.',
-            time: '1hr',
-        },
-        {
-            id: 2,
-            image: '<span class="grid place-content-center w-9 h-9 rounded-full bg-info-light dark:bg-info text-info dark:text-info-light"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></span>',
-            title: 'Did you know?',
-            message: 'You can switch between artboards.',
-            time: '2hr',
-        },
-        {
-            id: 3,
-            image: '<span class="grid place-content-center w-9 h-9 rounded-full bg-danger-light dark:bg-danger text-danger dark:text-danger-light"> <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>',
-            title: 'Something went wrong!',
-            message: 'Send Reposrt',
-            time: '2days',
-        },
-        {
-            id: 4,
-            image: '<span class="grid place-content-center w-9 h-9 rounded-full bg-warning-light dark:bg-warning text-warning dark:text-warning-light"><svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">    <circle cx="12" cy="12" r="10"></circle>    <line x1="12" y1="8" x2="12" y2="12"></line>    <line x1="12" y1="16" x2="12.01" y2="16"></line></svg></span>',
-            title: 'Warning',
-            message: 'Your password strength is low.',
-            time: '5days',
-        },
+        // ... (igual que antes)
     ]);
 
     const removeMessage = (value: number) => {
-        setMessages(messages.filter((user) => user.id !== value));
     };
 
     const [notifications, setNotifications] = useState([
-        {
-            id: 1,
-            profile: 'user-profile.jpeg',
-            message: '<strong class="text-sm mr-1">John Doe</strong>invite you to <strong>Prototyping</strong>',
-            time: '45 min ago',
-        },
-        {
-            id: 2,
-            profile: 'profile-34.jpeg',
-            message: '<strong class="text-sm mr-1">Adam Nolan</strong>mentioned you to <strong>UX Basics</strong>',
-            time: '9h Ago',
-        },
-        {
-            id: 3,
-            profile: 'profile-16.jpeg',
-            message: '<strong class="text-sm mr-1">Anna Morgan</strong>Upload a file',
-            time: '9h Ago',
-        },
+        // ... (igual que antes)
     ]);
 
     const removeNotification = (value: number) => {
-        setNotifications(notifications.filter((user) => user.id !== value));
     };
 
     const [search, setSearch] = useState(false);
+    const { t } = useTranslation();
 
     const setLocale = (flag: string) => {
         setFlag(flag);
@@ -110,24 +74,45 @@ const Header = () => {
     };
     const [flag, setFlag] = useState(themeConfig.locale);
 
-    const { t } = useTranslation();
+    // Función para obtener la URL del avatar
+    const getAvatarUrl = () => {
+  if (user?.avatar) {
+    // Si ya viene con el prefijo data:image, lo usamos directo
+    if (typeof user.avatar === 'string' && user.avatar.startsWith('data:image')) {
+      return user.avatar;
+    }
+    // Si viene como base64 puro, le agregamos el prefijo (asumiendo jpeg - ajusta según corresponda)
+    return `data:image/jpeg;base64,${user.avatar}`;
+  }
+  return '/assets/images/user-profile.jpeg';
+};
+
+    // Manejar logout
+    const handleLogout = () => {
+        logout();
+        navigate('/'); // Redirige al login
+    };
 
     return (
         <header className={`z-40 ${themeConfig.semidark && themeConfig.menu === 'horizontal' ? 'dark' : ''}`}>
             <div className="shadow-sm">
                 <div className="relative bg-white flex w-full items-center px-5 py-2.5 dark:bg-black">
+                    {/* Logo para móvil y botón de menú */}
                     <div className="horizontal-logo flex lg:hidden justify-between items-center ltr:mr-2 rtl:ml-2">
                         <Link to="/" className="main-logo flex items-center shrink-0">
-                            <img className="w-8 ltr:-ml-1 rtl:-mr-1 inline" src="/assets/images/LOGO-GKM-1.webp" alt="logo" />
-                            
-                            <span className="text-2xl ltr:ml-1.5 rtl:mr-1.5  font-semibold  align-middle hidden md:inline dark:text-white-light transition-all duration-300">GKM TECHNOLOGY</span>
+                            <img
+                                className="w-8 ltr:-ml-1 rtl:-mr-1 inline"
+                                src="/assets/images/LOGO-GKM-1.webp"
+                                alt="logo"
+                            />
+                            <span className="text-2xl ltr:ml-1.5 rtl:mr-1.5 font-semibold align-middle hidden md:inline dark:text-white-light transition-all duration-300">
+                                GKM TECHNOLOGY
+                            </span>
                         </Link>
                         <button
                             type="button"
                             className="collapse-icon flex-none dark:text-[#d0d2d6] hover:text-primary dark:hover:text-primary flex lg:hidden ltr:ml-2 rtl:mr-2 p-2 rounded-full bg-white-light/40 dark:bg-dark/40 hover:bg-white-light/90 dark:hover:bg-dark/60"
-                            onClick={() => {
-                                dispatch(toggleSidebar());
-                            }}
+                            onClick={() => dispatch(toggleSidebar())}
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M20 7L4 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -137,10 +122,10 @@ const Header = () => {
                         </button>
                     </div>
 
-
+                    {/* Barra de herramientas derecha */}
                     <div className="sm:flex-1 ltr:sm:ml-0 ltr:ml-auto sm:rtl:mr-0 rtl:mr-auto flex items-center space-x-1.5 lg:space-x-2 rtl:space-x-reverse dark:text-[#d0d2d6]">
+                        {/* Botón de búsqueda móvil */}
                         <div className="sm:ltr:mr-auto sm:rtl:ml-auto">
-
                             <button
                                 type="button"
                                 onClick={() => setSearch(!search)}
@@ -152,16 +137,13 @@ const Header = () => {
                                 </svg>
                             </button>
                         </div>
+
+                        {/* Selector de tema */}
                         <div>
-                            {themeConfig.theme === 'light' ? (
+                            {themeConfig.theme === 'light' && (
                                 <button
-                                    className={`${
-                                        themeConfig.theme === 'light' &&
-                                        'flex items-center p-2 rounded-full bg-white-light/40 dark:bg-dark/40 hover:text-primary hover:bg-white-light/90 dark:hover:bg-dark/60'
-                                    }`}
-                                    onClick={() => {
-                                        dispatch(toggleTheme('dark'));
-                                    }}
+                                    className="flex items-center p-2 rounded-full bg-white-light/40 dark:bg-dark/40 hover:text-primary hover:bg-white-light/90 dark:hover:bg-dark/60"
+                                    onClick={() => dispatch(toggleTheme('dark'))}
                                 >
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="1.5" />
@@ -175,18 +157,11 @@ const Header = () => {
                                         <path opacity="0.5" d="M19.7778 19.7773L17.5558 17.5551" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                                     </svg>
                                 </button>
-                            ) : (
-                                ''
                             )}
                             {themeConfig.theme === 'dark' && (
                                 <button
-                                    className={`${
-                                        themeConfig.theme === 'dark' &&
-                                        'flex items-center p-2 rounded-full bg-white-light/40 dark:bg-dark/40 hover:text-primary hover:bg-white-light/90 dark:hover:bg-dark/60'
-                                    }`}
-                                    onClick={() => {
-                                        dispatch(toggleTheme('system'));
-                                    }}
+                                    className="flex items-center p-2 rounded-full bg-white-light/40 dark:bg-dark/40 hover:text-primary hover:bg-white-light/90 dark:hover:bg-dark/60"
+                                    onClick={() => dispatch(toggleTheme('system'))}
                                 >
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path
@@ -198,13 +173,8 @@ const Header = () => {
                             )}
                             {themeConfig.theme === 'system' && (
                                 <button
-                                    className={`${
-                                        themeConfig.theme === 'system' &&
-                                        'flex items-center p-2 rounded-full bg-white-light/40 dark:bg-dark/40 hover:text-primary hover:bg-white-light/90 dark:hover:bg-dark/60'
-                                    }`}
-                                    onClick={() => {
-                                        dispatch(toggleTheme('light'));
-                                    }}
+                                    className="flex items-center p-2 rounded-full bg-white-light/40 dark:bg-dark/40 hover:text-primary hover:bg-white-light/90 dark:hover:bg-dark/60"
+                                    onClick={() => dispatch(toggleTheme('light'))}
                                 >
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path
@@ -218,6 +188,8 @@ const Header = () => {
                                 </button>
                             )}
                         </div>
+
+                        {/* Dropdown de mensajes (puedes personalizar) */}
                         <div className="dropdown shrink-0">
                             <Dropdown
                                 offset={[0, 8]}
@@ -241,27 +213,41 @@ const Header = () => {
                                     </svg>
                                 }
                             >
+                                {/* Contenido del dropdown de mensajes (si tienes) */}
                             </Dropdown>
                         </div>
 
+                        {/* Dropdown de usuario */}
                         <div className="dropdown shrink-0 flex">
                             <Dropdown
                                 offset={[0, 8]}
                                 placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
                                 btnClassName="relative group block"
-                                button={<img className="w-9 h-9 rounded-full object-cover saturate-50 group-hover:saturate-100" src="/assets/images/user-profile.jpeg" alt="userProfile" />}
+                                button={
+                                    <img
+                                        className="w-9 h-9 rounded-full object-cover saturate-50 group-hover:saturate-100"
+                                        src={getAvatarUrl()}
+                                        alt="Avatar"
+                                    />
+                                }
                             >
                                 <ul className="text-dark dark:text-white-dark !py-0 w-[230px] font-semibold dark:text-white-light/90">
                                     <li>
                                         <div className="flex items-center px-4 py-4">
-                                            <img className="rounded-md w-10 h-10 object-cover" src="/assets/images/user-profile.jpeg" alt="userProfile" />
+                                            <img
+                                                className="rounded-md w-10 h-10 object-cover"
+                                                src={getAvatarUrl()}
+                                                alt="Avatar"
+                                            />
                                             <div className="ltr:pl-4 rtl:pr-4 truncate">
-                                                <h4 className="text-base">
-                                                    John Doe
-                                                    <span className="text-xs bg-success-light rounded text-success px-1 ltr:ml-2 rtl:ml-2">Pro</span>
+                                                <h4 className="text-base flex items-center gap-2">
+                                                    {user ? `${user.nombre} ${user.apellidoPaterno || ''} ${user.apellidoMaterno || ''}` : 'Usuario'}
+                                                    {user?.idRol === 1 && (
+                                                        <span className="text-xs bg-success-light rounded text-success px-1">Admin</span>
+                                                    )}
                                                 </h4>
                                                 <button type="button" className="text-black/60 hover:text-primary dark:text-dark-light/60 dark:hover:text-white">
-                                                    johndoe@gmail.com
+                                                    {user?.correo || user?.usuario || 'correo@ejemplo.com'}
                                                 </button>
                                             </div>
                                         </div>
@@ -277,7 +263,7 @@ const Header = () => {
                                                     strokeWidth="1.5"
                                                 />
                                             </svg>
-                                            Profile
+                                            Perfil
                                         </Link>
                                     </li>
                                     <li>
@@ -296,7 +282,7 @@ const Header = () => {
                                                     strokeLinecap="round"
                                                 />
                                             </svg>
-                                            Inbox
+                                            Bandeja de entrada
                                         </Link>
                                     </li>
                                     <li>
@@ -310,21 +296,18 @@ const Header = () => {
                                                 <path opacity="0.5" d="M6 10V8C6 4.68629 8.68629 2 12 2C15.3137 2 18 4.68629 18 8V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                                                 <g opacity="0.5">
                                                     <path d="M9 16C9 16.5523 8.55228 17 8 17C7.44772 17 7 16.5523 7 16C7 15.4477 7.44772 15 8 15C8.55228 15 9 15.4477 9 16Z" fill="currentColor" />
-                                                    <path
-                                                        d="M13 16C13 16.5523 12.5523 17 12 17C11.4477 17 11 16.5523 11 16C11 15.4477 11.4477 15 12 15C12.5523 15 13 15.4477 13 16Z"
-                                                        fill="currentColor"
-                                                    />
-                                                    <path
-                                                        d="M17 16C17 16.5523 16.5523 17 16 17C15.4477 17 15 16.5523 15 16C15 15.4477 15.4477 15 16 15C16.5523 15 17 15.4477 17 16Z"
-                                                        fill="currentColor"
-                                                    />
+                                                    <path d="M13 16C13 16.5523 12.5523 17 12 17C11.4477 17 11 16.5523 11 16C11 15.4477 11.4477 15 12 15C12.5523 15 13 15.4477 13 16Z" fill="currentColor" />
+                                                    <path d="M17 16C17 16.5523 16.5523 17 16 17C15.4477 17 15 16.5523 15 16C15 15.4477 15.4477 15 16 15C16.5523 15 17 15.4477 17 16Z" fill="currentColor" />
                                                 </g>
                                             </svg>
-                                            Lock Screen
+                                            Bloquear pantalla
                                         </Link>
                                     </li>
                                     <li className="border-t border-white-light dark:border-white-light/10">
-                                        <Link to="/auth/boxed-signin" className="text-danger !py-3">
+                                        <button
+                                            onClick={handleLogout}
+                                            className="text-danger !py-3 flex items-center w-full px-4 dark:hover:text-white"
+                                        >
                                             <svg className="ltr:mr-2 rtl:ml-2 rotate-90 shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <path
                                                     opacity="0.5"
@@ -335,14 +318,15 @@ const Header = () => {
                                                 />
                                                 <path d="M12 15L12 2M12 2L15 5.5M12 2L9 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                             </svg>
-                                            Sign Out
-                                        </Link>
+                                            Cerrar sesión
+                                        </button>
                                     </li>
                                 </ul>
                             </Dropdown>
                         </div>
                     </div>
                 </div>
+
 
                 {/* horizontal menu */}
                 <ul className="horizontal-menu hidden py-1.5 font-semibold px-6 lg:space-x-1.5 xl:space-x-8 rtl:space-x-reverse bg-white border-t border-[#ebedf2] dark:border-[#191e3a] dark:bg-black text-black dark:text-white-dark">

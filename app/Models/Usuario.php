@@ -13,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 /**
  * Class Usuario
- * 
+ *
  * @property int $idUsuario
  * @property string|null $apellidoPaterno
  * @property string|null $apellidoMaterno
@@ -44,7 +44,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string|null $token
  * @property float|null $sueldoMensual
  * @property int|null $estadocivil
- * 
+ *
  * @property Clientegeneral|null $clientegeneral
  * @property Collection|Actividade[] $actividades
  * @property Collection|AprobacionHorario[] $aprobacion_horarios
@@ -88,252 +88,254 @@ use Laravel\Sanctum\HasApiTokens;
  */
 class Usuario extends Model
 {
-	use HasApiTokens;
-	protected $table = 'usuarios';
-	protected $primaryKey = 'idUsuario';
-	public $timestamps = false;
+    use HasApiTokens;
+    protected $table = 'usuarios';
+    protected $primaryKey = 'idUsuario';
+    public $timestamps = false;
 
-	protected $casts = [
-		'fechaNacimiento' => 'datetime',
-		'sueldoPorHora' => 'float',
-		'idSucursal' => 'int',
-		'idClienteGeneral' => 'int',
-		'idTipoDocumento' => 'int',
-		'idTipoUsuario' => 'int',
-		'idSexo' => 'int',
-		'idRol' => 'int',
-		'idTipoArea' => 'int',
-		'estado' => 'int',
-		'sueldoMensual' => 'float',
-		'estadocivil' => 'int'
-	];
+    protected $casts = [
+        'fechaNacimiento' => 'datetime',
+        'sueldoPorHora' => 'float',
+        'idSucursal' => 'int',
+        'idClienteGeneral' => 'int',
+        'idTipoDocumento' => 'int',
+        'idTipoUsuario' => 'int',
+        'idSexo' => 'int',
+        'idRol' => 'int',
+        'idTipoArea' => 'int',
+        'estado' => 'int',
+        'sueldoMensual' => 'float',
+        'estadocivil' => 'int',
 
-	protected $hidden = [
-		'token',
-		'clave',
 
-	];
+    ];
 
-	protected $fillable = [
-		'apellidoPaterno',
-		'apellidoMaterno',
-		'Nombre',
-		'fechaNacimiento',
-		'telefono',
-		'correo',
-		'correo_personal',
-		'usuario',
-		'clave',
-		'nacionalidad',
-		'departamento',
-		'provincia',
-		'distrito',
-		'direccion',
-		'avatar',
-		'documento',
-		'sueldoPorHora',
-		'idSucursal',
-		'idClienteGeneral',
-		'idTipoDocumento',
-		'idTipoUsuario',
-		'idSexo',
-		'idRol',
-		'idTipoArea',
-		'firma',
-		'estado',
-		'token',
-		'sueldoMensual',
-		'estadocivil'
-	];
+    protected $hidden = [
+        'token',
+        'clave',
 
-	public function clientegeneral()
-	{
-		return $this->belongsTo(Clientegeneral::class, 'idClienteGeneral');
-	}
+    ];
 
-	public function actividades()
-	{
-		return $this->hasMany(Actividade::class, 'user_id');
-	}
+    protected $fillable = [
+        'apellidoPaterno',
+        'apellidoMaterno',
+        'Nombre',
+        'fechaNacimiento',
+        'telefono',
+        'correo',
+        'correo_personal',
+        'usuario',
+        'clave',
+        'nacionalidad',
+        'departamento',
+        'provincia',
+        'distrito',
+        'direccion',
+        'avatar',
+        'documento',
+        'sueldoPorHora',
+        'idSucursal',
+        'idClienteGeneral',
+        'idTipoDocumento',
+        'idTipoUsuario',
+        'idSexo',
+        'idRol',
+        'idTipoArea',
+        'firma',
+        'estado',
+        'token',
+        'sueldoMensual',
+        'estadocivil'
+    ];
 
-	public function aprobacion_horarios()
-	{
-		return $this->hasMany(AprobacionHorario::class, 'idUsuario');
-	}
+    public function clientegeneral()
+    {
+        return $this->belongsTo(Clientegeneral::class, 'idClienteGeneral');
+    }
 
-	public function aprobacion_horas()
-	{
-		return $this->hasMany(AprobacionHora::class, 'idUsuario');
-	}
+    public function actividades()
+    {
+        return $this->hasMany(Actividade::class, 'user_id');
+    }
 
-	public function asignaciones()
-	{
-		return $this->hasMany(Asignacione::class, 'idUsuario');
-	}
+    public function aprobacion_horarios()
+    {
+        return $this->hasMany(AprobacionHorario::class, 'idUsuario');
+    }
 
-	public function asistencias()
-	{
-		return $this->hasMany(Asistencia::class, 'idUsuario');
-	}
+    public function aprobacion_horas()
+    {
+        return $this->hasMany(AprobacionHora::class, 'idUsuario');
+    }
 
-	public function autorizacion_horas_extras()
-	{
-		return $this->hasMany(AutorizacionHorasExtra::class, 'idUsuario');
-	}
+    public function asignaciones()
+    {
+        return $this->hasMany(Asignacione::class, 'idUsuario');
+    }
 
-	public function cambio_horarios()
-	{
-		return $this->hasMany(CambioHorario::class, 'idUsuario');
-	}
+    public function asistencias()
+    {
+        return $this->hasMany(Asistencia::class, 'idUsuario');
+    }
 
-	public function chats()
-	{
-		return $this->belongsToMany(Chat::class, 'chat_usuarios', 'idUsuario', 'idChat')
-			->withPivot('idChatUsuario', 'esAdmin', 'archivado');
-	}
+    public function autorizacion_horas_extras()
+    {
+        return $this->hasMany(AutorizacionHorasExtra::class, 'idUsuario');
+    }
 
-	public function cuentasbancarias()
-	{
-		return $this->hasMany(Cuentasbancaria::class, 'idUsuario');
-	}
+    public function cambio_horarios()
+    {
+        return $this->hasMany(CambioHorario::class, 'idUsuario');
+    }
 
-	public function custodia_fotos()
-	{
-		return $this->hasMany(CustodiaFoto::class, 'uploaded_by');
-	}
+    public function chats()
+    {
+        return $this->belongsToMany(Chat::class, 'chat_usuarios', 'idUsuario', 'idChat')
+            ->withPivot('idChatUsuario', 'esAdmin', 'archivado');
+    }
 
-	public function datos_envios()
-	{
-		return $this->hasMany(DatosEnvio::class, 'idUsuario');
-	}
+    public function cuentasbancarias()
+    {
+        return $this->hasMany(Cuentasbancaria::class, 'idUsuario');
+    }
 
-	public function documentos_usuarios()
-	{
-		return $this->hasMany(DocumentosUsuario::class, 'idUsuario');
-	}
+    public function custodia_fotos()
+    {
+        return $this->hasMany(CustodiaFoto::class, 'uploaded_by');
+    }
 
-	public function etiquetas()
-	{
-		return $this->hasMany(Etiqueta::class, 'user_id');
-	}
+    public function datos_envios()
+    {
+        return $this->hasMany(DatosEnvio::class, 'idUsuario');
+    }
 
-	public function guardia_tecnicos()
-	{
-		return $this->hasMany(GuardiaTecnico::class, 'idUsuario');
-	}
+    public function documentos_usuarios()
+    {
+        return $this->hasMany(DocumentosUsuario::class, 'idUsuario');
+    }
 
-	public function inventario_tecnicos()
-	{
-		return $this->hasMany(InventarioTecnico::class, 'idUsuario');
-	}
+    public function etiquetas()
+    {
+        return $this->hasMany(Etiqueta::class, 'user_id');
+    }
 
-	public function invitados()
-	{
-		return $this->hasMany(Invitado::class, 'id_usuarios');
-	}
+    public function guardia_tecnicos()
+    {
+        return $this->hasMany(GuardiaTecnico::class, 'idUsuario');
+    }
 
-	public function manejo_envios()
-	{
-		return $this->hasMany(ManejoEnvio::class, 'idUsuario');
-	}
+    public function inventario_tecnicos()
+    {
+        return $this->hasMany(InventarioTecnico::class, 'idUsuario');
+    }
 
-	public function mensajes()
-	{
-		return $this->hasMany(Mensaje::class, 'idRemitente');
-	}
+    public function invitados()
+    {
+        return $this->hasMany(Invitado::class, 'id_usuarios');
+    }
 
-	public function mensajes_vistos()
-	{
-		return $this->hasMany(MensajesVisto::class, 'idUsuario');
-	}
+    public function manejo_envios()
+    {
+        return $this->hasMany(ManejoEnvio::class, 'idUsuario');
+    }
 
-	public function movimientos_inventarios()
-	{
-		return $this->hasMany(MovimientosInventario::class, 'idUsuario');
-	}
+    public function mensajes()
+    {
+        return $this->hasMany(Mensaje::class, 'idRemitente');
+    }
 
-	public function notes()
-	{
-		return $this->hasMany(Note::class, 'user_id');
-	}
+    public function mensajes_vistos()
+    {
+        return $this->hasMany(MensajesVisto::class, 'idUsuario');
+    }
 
-	public function notificaciones()
-	{
-		return $this->hasMany(Notificacione::class, 'idUsuario');
-	}
+    public function movimientos_inventarios()
+    {
+        return $this->hasMany(MovimientosInventario::class, 'idUsuario');
+    }
 
-	public function notificaciones_observaciones()
-	{
-		return $this->hasMany(NotificacionesObservacione::class, 'idUsuario');
-	}
+    public function notes()
+    {
+        return $this->hasMany(Note::class, 'user_id');
+    }
 
-	public function observaciones()
-	{
-		return $this->hasMany(Observacione::class, 'idUsuario');
-	}
+    public function notificaciones()
+    {
+        return $this->hasMany(Notificacione::class, 'idUsuario');
+    }
 
-	public function repuestos_entregas()
-	{
-		return $this->hasMany(RepuestosEntrega::class, 'usuario_entrego_id');
-	}
+    public function notificaciones_observaciones()
+    {
+        return $this->hasMany(NotificacionesObservacione::class, 'idUsuario');
+    }
 
-	public function repuestos_envios_provincia()
-	{
-		return $this->hasMany(RepuestosEnviosProvincium::class, 'usuario_entrego_id');
-	}
+    public function observaciones()
+    {
+        return $this->hasMany(Observacione::class, 'idUsuario');
+    }
 
-	public function seguimientos()
-	{
-		return $this->hasMany(Seguimiento::class, 'idUsuario');
-	}
+    public function repuestos_entregas()
+    {
+        return $this->hasMany(RepuestosEntrega::class, 'usuario_entrego_id');
+    }
 
-	public function solicitudentregas()
-	{
-		return $this->hasMany(Solicitudentrega::class, 'idUsuario');
-	}
+    public function repuestos_envios_provincia()
+    {
+        return $this->hasMany(RepuestosEnviosProvincium::class, 'usuario_entrego_id');
+    }
 
-	public function sticker_packs()
-	{
-		return $this->hasMany(StickerPack::class, 'idUsuario');
-	}
+    public function seguimientos()
+    {
+        return $this->hasMany(Seguimiento::class, 'idUsuario');
+    }
 
-	public function stickers()
-	{
-		return $this->hasMany(Sticker::class, 'idUsuario');
-	}
+    public function solicitudentregas()
+    {
+        return $this->hasMany(Solicitudentrega::class, 'idUsuario');
+    }
 
-	public function tags()
-	{
-		return $this->hasMany(Tag::class, 'user_id');
-	}
+    public function sticker_packs()
+    {
+        return $this->hasMany(StickerPack::class, 'idUsuario');
+    }
 
-	public function ticket_receptors()
-	{
-		return $this->hasMany(TicketReceptor::class, 'idReceptor');
-	}
+    public function stickers()
+    {
+        return $this->hasMany(Sticker::class, 'idUsuario');
+    }
 
-	public function tickets()
-	{
-		return $this->hasMany(Ticket::class, 'ejecutor');
-	}
+    public function tags()
+    {
+        return $this->hasMany(Tag::class, 'user_id');
+    }
 
-	public function tickets_cliente_generals()
-	{
-		return $this->hasMany(TicketsClienteGeneral::class, 'idUsuarioCreador');
-	}
+    public function ticket_receptors()
+    {
+        return $this->hasMany(TicketReceptor::class, 'idReceptor');
+    }
 
-	public function tutorial_usuarios()
-	{
-		return $this->hasMany(TutorialUsuario::class, 'idUsuario');
-	}
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class, 'ejecutor');
+    }
 
-	public function ubicaciones_empleado()
-	{
-		return $this->hasOne(UbicacionesEmpleado::class, 'idUsuario');
-	}
+    public function tickets_cliente_generals()
+    {
+        return $this->hasMany(TicketsClienteGeneral::class, 'idUsuarioCreador');
+    }
 
-	public function vehiculos()
-	{
-		return $this->hasMany(Vehiculo::class, 'idUsuario');
-	}
+    public function tutorial_usuarios()
+    {
+        return $this->hasMany(TutorialUsuario::class, 'idUsuario');
+    }
+
+    public function ubicaciones_empleado()
+    {
+        return $this->hasOne(UbicacionesEmpleado::class, 'idUsuario');
+    }
+
+    public function vehiculos()
+    {
+        return $this->hasMany(Vehiculo::class, 'idUsuario');
+    }
 }

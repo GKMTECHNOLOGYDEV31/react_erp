@@ -26,14 +26,34 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Preparar los datos del usuario, convirtiendo avatar a base64 si existe
+        $userData = [
+            'idUsuario'        => $user->idUsuario,
+            'nombre'           => $user->Nombre,
+            'apellidoPaterno'  => $user->apellidoPaterno,
+            'apellidoMaterno'  => $user->apellidoMaterno,
+            'correo'           => $user->correo,
+            'usuario'          => $user->usuario,
+            'documento'        => $user->documento,
+            'idRol'            => $user->idRol,
+            'estado'           => $user->estado,
+            // Agrega aquí los campos adicionales que necesites
+        ];
+
+        // Si el avatar existe, lo convertimos a base64
+        if ($user->avatar) {
+            // Asumiendo que el campo avatar es un BLOB binario
+            $userData['avatar'] = base64_encode($user->avatar);
+            // Opcionalmente podrías agregar el tipo MIME si lo conoces
+            // Por ejemplo: 'data:image/jpeg;base64,' . base64_encode($user->avatar)
+        } else {
+            $userData['avatar'] = null;
+        }
+
         return response()->json([
             'access_token' => $token,
             'token_type'   => 'Bearer',
-            'user' => [
-                'id'        => $user->idUsuario,
-                'nombre'    => $user->Nombre,
-                'documento' => $user->documento
-            ]
+            'user'         => $userData
         ], 200);
     }
 }
