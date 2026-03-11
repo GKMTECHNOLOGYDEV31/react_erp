@@ -449,8 +449,8 @@ const ListaTickets = () => {
                     {/* Botón Editar - Deshabilitado para estados 2 y 3 */}
                     <button
                         className={`p-1.5 rounded-full transition-colors group ${
-                            isEditDisabled(row.estado_valor) 
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800' 
+                            isEditDisabled(row.estado_valor)
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800'
                                 : 'hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400'
                         }`}
                         onClick={() => {
@@ -467,8 +467,8 @@ const ListaTickets = () => {
                     {/* Botón Eliminar - Deshabilitado para estados 2 y 3 */}
                     <button
                         className={`p-1.5 rounded-full transition-colors group ${
-                            isDeleteDisabled(row.estado_valor) 
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800' 
+                            isDeleteDisabled(row.estado_valor)
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800'
                                 : 'hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400'
                         }`}
                         onClick={() => {

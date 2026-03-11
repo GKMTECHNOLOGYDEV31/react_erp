@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-    faTicket, 
-    faSearch, 
-    faFilePdf, 
-    faDownload, 
+import {
+    faTicket,
+    faSearch,
+    faFilePdf,
+    faDownload,
     faCopy,
     faUser,
     faIdCard,
@@ -99,7 +99,7 @@ const ConsultarTicket = () => {
 
         setLoading(true);
         setError('');
-        
+
         try {
             const token = localStorage.getItem('token');
             const response = await axios.get(`${API_URL}/tickets/consultar-completo/${ticketId.toUpperCase()}`, {
@@ -234,8 +234,8 @@ const ConsultarTicket = () => {
                                 {firma.firma_tecnico && (
                                     <div className="text-center">
                                         <p className="text-xs text-gray-500 mb-1">Firma Técnico</p>
-                                        <img 
-                                            src={firma.firma_tecnico} 
+                                        <img
+                                            src={firma.firma_tecnico}
                                             alt="Firma técnico"
                                             className="max-h-16 mx-auto cursor-pointer border border-gray-300 rounded"
                                             onClick={() => setModalImage(firma.firma_tecnico)}
@@ -245,8 +245,8 @@ const ConsultarTicket = () => {
                                 {firma.firma_cliente && (
                                     <div className="text-center">
                                         <p className="text-xs text-gray-500 mb-1">Firma Cliente</p>
-                                        <img 
-                                            src={firma.firma_cliente} 
+                                        <img
+                                            src={firma.firma_cliente}
                                             alt="Firma cliente"
                                             className="max-h-16 mx-auto cursor-pointer border border-gray-300 rounded"
                                             onClick={() => setModalImage(firma.firma_cliente)}
@@ -262,7 +262,7 @@ const ConsultarTicket = () => {
     };
 
     return (
-        <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+        <div className="p-6 min-h-screen">
             {/* Modal de imagen ampliada */}
             <ImageModal image={modalImage} onClose={() => setModalImage(null)} />
 
@@ -281,7 +281,7 @@ const ConsultarTicket = () => {
             </ul>
 
             {/* Panel de Búsqueda */}
-            <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
+            <div className="panel rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
                 <div className="text-center mb-6">
                     <h1 className="text-4xl font-bold text-gray-800 mb-2">🔍 Consultar Ticket</h1>
                     <p className="text-gray-600 text-lg">Ingrese el número de ticket para ver toda la información detallada</p>
@@ -302,7 +302,7 @@ const ConsultarTicket = () => {
                                 <FontAwesomeIcon icon={faSearch} className="w-6 h-6 absolute left-4 top-4 text-gray-400" />
                             </div>
                         </div>
-                        <button 
+                        <button
                             className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg hover:shadow-xl"
                             onClick={handleConsultar}
                             disabled={loading}
@@ -320,7 +320,7 @@ const ConsultarTicket = () => {
                             )}
                         </button>
                     </div>
-                    
+
                     {error && (
                         <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
                             <p className="text-red-600 flex items-center gap-2">
@@ -370,7 +370,7 @@ const ConsultarTicket = () => {
                                 </span>
                             </div>
                         </div>
-                        
+
                         {/* Estadísticas rápidas */}
                         {ticket.estadisticas && (
                             <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-700">
@@ -494,9 +494,9 @@ const ConsultarTicket = () => {
                                         <InfoRow label="Ubicación" value={`${ticket.distrito}, ${ticket.provincia}, ${ticket.departamento}`} icon="🗺️" />
                                         {ticket.ubicacionGoogleMaps && (
                                             <div className="mt-2">
-                                                <a 
-                                                    href={ticket.ubicacionGoogleMaps} 
-                                                    target="_blank" 
+                                                <a
+                                                    href={ticket.ubicacionGoogleMaps}
+                                                    target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-sm text-blue-600 hover:underline flex items-center gap-1"
                                                 >
@@ -538,9 +538,9 @@ const ConsultarTicket = () => {
                                         </div>
                                         {ticket.fotoVideoFalla ? (
                                             <div className="relative group cursor-pointer" onClick={() => setModalImage(ticket.fotoVideoFalla)}>
-                                                <img 
-                                                    src={ticket.fotoVideoFalla} 
-                                                    alt="Falla" 
+                                                <img
+                                                    src={ticket.fotoVideoFalla}
+                                                    alt="Falla"
                                                     className="w-full h-32 object-cover rounded-lg border border-gray-300"
                                                 />
                                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
@@ -562,9 +562,9 @@ const ConsultarTicket = () => {
                                         </div>
                                         {ticket.fotoBoletaFactura ? (
                                             <div className="relative group cursor-pointer" onClick={() => setModalImage(ticket.fotoBoletaFactura)}>
-                                                <img 
-                                                    src={ticket.fotoBoletaFactura} 
-                                                    alt="Boleta" 
+                                                <img
+                                                    src={ticket.fotoBoletaFactura}
+                                                    alt="Boleta"
                                                     className="w-full h-32 object-cover rounded-lg border border-gray-300"
                                                 />
                                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
@@ -586,9 +586,9 @@ const ConsultarTicket = () => {
                                         </div>
                                         {ticket.fotoNumeroSerie ? (
                                             <div className="relative group cursor-pointer" onClick={() => setModalImage(ticket.fotoNumeroSerie)}>
-                                                <img 
-                                                    src={ticket.fotoNumeroSerie} 
-                                                    alt="Serie" 
+                                                <img
+                                                    src={ticket.fotoNumeroSerie}
+                                                    alt="Serie"
                                                     className="w-full h-32 object-cover rounded-lg border border-gray-300"
                                                 />
                                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
@@ -637,7 +637,7 @@ const ConsultarTicket = () => {
                         <div className="space-y-6">
                             {ticket.visitas.map((visita, index) => (
                                 <div key={index} className="bg-white rounded-2xl shadow-xl p-6">
-                                    <div 
+                                    <div
                                         className="flex justify-between items-center cursor-pointer"
                                         onClick={() => setExpandedVisita(expandedVisita === index ? null : index)}
                                     >
@@ -645,12 +645,12 @@ const ConsultarTicket = () => {
                                             <FontAwesomeIcon icon={faEye} className="text-green-600" />
                                             Visita: {visita.nombre || `Visita #${index + 1}`}
                                         </h3>
-                                        <FontAwesomeIcon 
-                                            icon={expandedVisita === index ? faTimes : faEye} 
+                                        <FontAwesomeIcon
+                                            icon={expandedVisita === index ? faTimes : faEye}
                                             className="text-gray-500"
                                         />
                                     </div>
-                                    
+
                                     {expandedVisita === index && (
                                         <>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
@@ -659,7 +659,7 @@ const ConsultarTicket = () => {
                                                     <InfoRow label="Fecha Llegada" value={formatDate(visita.fecha_llegada)} icon="📅" />
                                                 </div>
                                                 <div>
-                                                    
+
                                                     <InfoRow label="Necesita Apoyo" value={visita.necesita_apoyo ? 'Sí' : 'No'} icon="🤝" />
                                                     <InfoRow label="Recojo" value={visita.recojo ? 'Sí' : 'No'} icon="📦" />
                                                     {visita.celularcliente && (
@@ -676,9 +676,9 @@ const ConsultarTicket = () => {
                                                         {visita.anexos.map((anexo, idx) => (
                                                             <div key={idx} className="relative group">
                                                                 {anexo.foto ? (
-                                                                    <img 
-                                                                        src={anexo.foto} 
-                                                                        alt={anexo.descripcion || 'Anexo'} 
+                                                                    <img
+                                                                        src={anexo.foto}
+                                                                        alt={anexo.descripcion || 'Anexo'}
                                                                         className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-300"
                                                                         onClick={() => setModalImage(anexo.foto)}
                                                                     />
@@ -714,7 +714,7 @@ const ConsultarTicket = () => {
                                 <FontAwesomeIcon icon={faSignature} className="w-6 h-6 text-purple-600" />
                                 FIRMAS DEL TICKET
                             </h3>
-                            
+
                             {ticket.firmas && ticket.firmas.length > 0 ? (
                                 <div className="space-y-6">
                                     {ticket.firmas.map((firma, idx) => (
@@ -723,10 +723,10 @@ const ConsultarTicket = () => {
                                                 <div>
                                                     <InfoRow label="Nombre del Encargado" value={firma.nombreencargado} icon="👤" />
                                                     {firma.tipodocumento && firma.documento && (
-                                                        <InfoRow 
-                                                            label="Documento" 
-                                                            value={`${firma.tipodocumento}: ${firma.documento}`} 
-                                                            icon="🆔" 
+                                                        <InfoRow
+                                                            label="Documento"
+                                                            value={`${firma.tipodocumento}: ${firma.documento}`}
+                                                            icon="🆔"
                                                         />
                                                     )}
                                                     {firma.idVisitas > 0 && (
@@ -737,8 +737,8 @@ const ConsultarTicket = () => {
                                                     {firma.firma_tecnico && (
                                                         <div>
                                                             <p className="text-sm font-medium text-gray-700 mb-2">Firma del Técnico</p>
-                                                            <img 
-                                                                src={firma.firma_tecnico} 
+                                                            <img
+                                                                src={firma.firma_tecnico}
                                                                 alt="Firma técnico"
                                                                 className="max-h-24 border border-gray-300 rounded cursor-pointer"
                                                                 onClick={() => setModalImage(firma.firma_tecnico)}
@@ -748,8 +748,8 @@ const ConsultarTicket = () => {
                                                     {firma.firma_cliente && (
                                                         <div>
                                                             <p className="text-sm font-medium text-gray-700 mb-2">Firma del Cliente</p>
-                                                            <img 
-                                                                src={firma.firma_cliente} 
+                                                            <img
+                                                                src={firma.firma_cliente}
                                                                 alt="Firma cliente"
                                                                 className="max-h-24 border border-gray-300 rounded cursor-pointer"
                                                                 onClick={() => setModalImage(firma.firma_cliente)}
@@ -777,16 +777,16 @@ const ConsultarTicket = () => {
                                 <FontAwesomeIcon icon={faCamera} className="w-6 h-6 text-green-600" />
                                 FOTOS ADICIONALES DEL TICKET
                             </h3>
-                            
+
                             {ticket.fotosTicket && ticket.fotosTicket.length > 0 ? (
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                                     {ticket.fotosTicket.map((foto, idx) => (
                                         <div key={idx} className="relative group">
                                             {foto.foto ? (
                                                 <>
-                                                    <img 
-                                                        src={foto.foto} 
-                                                        alt={foto.descripcion || 'Foto adicional'} 
+                                                    <img
+                                                        src={foto.foto}
+                                                        alt={foto.descripcion || 'Foto adicional'}
                                                         className="w-full h-32 object-cover rounded-lg cursor-pointer border border-gray-300"
                                                         onClick={() => setModalImage(foto.foto)}
                                                     />
@@ -818,14 +818,14 @@ const ConsultarTicket = () => {
 
                     {/* Botones de Acción */}
                     <div className="flex justify-end gap-4 mt-8">
-                        <button 
+                        <button
                             className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
                             onClick={() => toastr.info('Generando PDF...', 'PDF')}
                         >
                             <FontAwesomeIcon icon={faFilePdf} className="w-5 h-5" />
                             GENERAR PDF
                         </button>
-                        <button 
+                        <button
                             className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
                             onClick={() => toastr.success('Ticket exportado correctamente', 'Exportar')}
                         >
