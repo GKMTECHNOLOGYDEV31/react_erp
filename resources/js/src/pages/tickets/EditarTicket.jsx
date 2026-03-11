@@ -43,9 +43,9 @@ import flatpickr from 'flatpickr';
 import { Spanish } from 'flatpickr/dist/l10n/es.js';
 import 'flatpickr/dist/flatpickr.css';
 import axios from 'axios';
-import Select from 'react-select'; // <-- IMPORTAR REACT-SELECT
+import Select from 'react-select';
 
-// Importar modales (si los tienes)
+// Importar modales
 import ModalCategoria from './components/ModalCategoria';
 import ModalModelo from './components/ModalModelo';
 
@@ -95,7 +95,11 @@ const EditarTicket = () => {
     // URL base de la API
     const API_URL = 'http://127.0.0.1:8000/api';
 
-    // Función para formatear fecha a DD/MM/YYYY para mostrar
+    // ============================================
+    // FUNCIONES PARA MANEJO DE FECHAS
+    // ============================================
+
+    // Función para formatear fecha de YYYY-MM-DD a DD/MM/YYYY para mostrar
     const formatDateToDisplay = (dateString) => {
         if (!dateString) return '';
         try {
@@ -115,7 +119,7 @@ const EditarTicket = () => {
         }
     };
 
-    // Función para formatear fecha a YYYY-MM-DD para el backend
+    // Función para formatear fecha de DD/MM/YYYY a YYYY-MM-DD para el backend
     const formatDateForBackend = (dateString) => {
         if (!dateString) return '';
         try {
@@ -131,7 +135,7 @@ const EditarTicket = () => {
         }
     };
 
-    // Esquema de validación
+    // Esquema de validación - CON VALIDACIÓN PARA DD/MM/YYYY
     const validationSchema = Yup.object({
         nombreCompleto: Yup.string().required('El nombre completo es requerido').min(3, 'Mínimo 3 caracteres').max(255, 'Máximo 255 caracteres'),
 
@@ -177,6 +181,7 @@ const EditarTicket = () => {
             .required('La fecha de compra es requerida')
             .test('valid-date', 'Fecha inválida', function (value) {
                 if (!value) return false;
+                // Validar formato DD/MM/YYYY
                 const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
                 if (!regex.test(value)) return false;
 
@@ -238,6 +243,7 @@ const EditarTicket = () => {
                 Object.keys(values).forEach((key) => {
                     if (values[key] !== null && values[key] !== undefined && values[key] !== '') {
                         if (key === 'fechaCompra') {
+                            // Convertir fecha de DD/MM/YYYY a YYYY-MM-DD para el backend
                             const fechaBackend = formatDateForBackend(values[key]);
                             formData.append(key, fechaBackend);
                         } else {
@@ -451,10 +457,14 @@ const EditarTicket = () => {
         }
     }, [formik.values.provincia, distritos]);
 
-    // Inicializar flatpickr
+    // ============================================
+    // INICIALIZACIÓN DE FLATPICKR PARA FECHA
+    // ============================================
     useEffect(() => {
+        // Función para inicializar flatpickr
         const initFlatpickr = () => {
             if (fechaCompraRef.current && !loading) {
+                // Destruir instancia anterior si existe
                 if (flatpickrInstance.current) {
                     flatpickrInstance.current.destroy();
                 }
@@ -470,7 +480,7 @@ const EditarTicket = () => {
                             if (selectedDates[0]) {
                                 formik.setFieldValue('fechaCompra', dateStr);
                             }
-                        },
+                        }
                     });
                 } catch (error) {
                     console.error('Error inicializando flatpickr:', error);
@@ -478,6 +488,7 @@ const EditarTicket = () => {
             }
         };
 
+        // Ejecutar después de un pequeño delay para asegurar que el DOM está listo
         const timeoutId = setTimeout(initFlatpickr, 100);
 
         return () => {
@@ -487,6 +498,28 @@ const EditarTicket = () => {
             }
         };
     }, [loading, formik.values.fechaCompra]);
+
+    // Efecto adicional para asegurar que flatpickr se inicialice cuando el ref esté disponible
+    useEffect(() => {
+        if (!loading && fechaCompraRef.current && !flatpickrInstance.current) {
+            try {
+                flatpickrInstance.current = flatpickr(fechaCompraRef.current, {
+                    locale: Spanish,
+                    dateFormat: 'd/m/Y',
+                    allowInput: true,
+                    maxDate: 'today',
+                    defaultDate: formik.values.fechaCompra,
+                    onChange: (selectedDates, dateStr) => {
+                        if (selectedDates[0]) {
+                            formik.setFieldValue('fechaCompra', dateStr);
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error en reintento:', error);
+            }
+        }
+    }, [loading, fechaCompraRef.current]);
 
     // Funciones auxiliares
     const cargarMarcas = async () => {
@@ -534,6 +567,7 @@ const EditarTicket = () => {
             if (ticketResponse.data.success) {
                 const ticket = ticketResponse.data.data;
 
+                // Formatear fecha para mostrar en DD/MM/YYYY
                 const fechaCompraDisplay = ticket.fechaCompra ? formatDateToDisplay(ticket.fechaCompra) : '';
 
                 formik.setValues({
@@ -706,7 +740,6 @@ const EditarTicket = () => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* ... (resto de campos de datos personales igual) ... */}
                                 <div className="md:col-span-1">
                                     <label htmlFor="nombreCompleto" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-500" />
@@ -826,8 +859,7 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 2: DIRECCIÓN (sin cambios) */}
-                            {/* ... (código de dirección igual) ... */}
+                            {/* SECCIÓN 2: DIRECCIÓN */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faMapMarkerAlt} className="w-5 h-5 text-primary" />
@@ -1076,6 +1108,7 @@ const EditarTicket = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* CAMPO DE FECHA CON FLATPICKR - CON SOPORTE MODO OSCURO */}
                                     <div>
                                         <label htmlFor="fechaCompra" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faCalendar} className="w-4 h-4 text-gray-500" />
@@ -1086,20 +1119,18 @@ const EditarTicket = () => {
                                             id="fechaCompra"
                                             name="fechaCompra"
                                             type="text"
-                                            className={`form-input ${formik.touched.fechaCompra && formik.errors.fechaCompra ? 'has-error' : ''}`}
+                                            className={`form-input ${formik.touched.fechaCompra && formik.errors.fechaCompra ? 'has-error' : ''} dark:bg-gray-700 dark:border-gray-600 dark:text-white-dark`}
                                             placeholder="DD/MM/AAAA"
                                             autoComplete="off"
                                             disabled={submitting}
                                             style={{
                                                 cursor: 'pointer',
-                                                backgroundColor: 'white',
                                                 position: 'relative',
                                                 zIndex: 1,
                                             }}
                                         />
                                         {formik.touched.fechaCompra && formik.errors.fechaCompra && <div className="text-danger text-sm mt-1">{formik.errors.fechaCompra}</div>}
                                     </div>
-
                                     <div>
                                         <label htmlFor="tiendaSedeCompra" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faStore} className="w-4 h-4 text-gray-500" />
@@ -1121,8 +1152,7 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS (sin cambios) */}
-                            {/* ... (código de archivos igual) ... */}
+                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faCamera} className="w-5 h-5 text-primary" />
