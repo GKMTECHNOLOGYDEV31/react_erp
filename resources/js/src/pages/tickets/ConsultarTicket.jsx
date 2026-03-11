@@ -395,7 +395,7 @@ const ConsultarTicket = () => {
                     </div>
 
                     {/* Tabs de navegación */}
-                    <div className="bg-white rounded-xl shadow-lg p-2">
+                    <div className="panel rounded-xl shadow-lg p-2">
                         <div className="flex space-x-2 overflow-x-auto">
                             <button
                                 className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
@@ -455,7 +455,7 @@ const ConsultarTicket = () => {
                             {/* Grid de Información General */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* INFORMACION DEL TICKET */}
-                                <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
+                                <div className="panel rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
                                     <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-blue-500 flex items-center gap-2">
                                         <FontAwesomeIcon icon={faTicket} className="w-6 h-6 text-blue-600" />
                                         INFORMACIÓN DEL TICKET
@@ -469,7 +469,7 @@ const ConsultarTicket = () => {
                                 </div>
 
                                 {/* DATOS DEL CONTACTO */}
-                                <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
+                                <div className="panel rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
                                     <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-purple-500 flex items-center gap-2">
                                         <FontAwesomeIcon icon={faUser} className="w-6 h-6 text-purple-600" />
                                         DATOS DEL CONTACTO
@@ -483,7 +483,7 @@ const ConsultarTicket = () => {
                                 </div>
 
                                 {/* DIRECCIÓN */}
-                                <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
+                                <div className="panel rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
                                     <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-green-500 flex items-center gap-2">
                                         <FontAwesomeIcon icon={faMapMarkerAlt} className="w-6 h-6 text-green-600" />
                                         DIRECCIÓN
@@ -509,7 +509,7 @@ const ConsultarTicket = () => {
                                 </div>
 
                                 {/* PRODUCTO */}
-                                <div className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
+                                <div className="panel rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
                                     <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-orange-500 flex items-center gap-2">
                                         <FontAwesomeIcon icon={faLaptop} className="w-6 h-6 text-orange-600" />
                                         PRODUCTO
@@ -524,14 +524,14 @@ const ConsultarTicket = () => {
                             </div>
 
                             {/* EVIDENCIAS */}
-                            <div className="bg-white rounded-2xl shadow-xl p-6">
+                            <div className="panel rounded-2xl shadow-xl p-6">
                                 <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-gray-300 flex items-center gap-2">
                                     <FontAwesomeIcon icon={faCamera} className="w-6 h-6 text-gray-600" />
                                     EVIDENCIAS
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     {/* Foto Falla */}
-                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                    <div className="panel p-4 rounded-xl border border-gray-200">
                                         <div className="flex items-center gap-2 mb-2 text-gray-700">
                                             <FontAwesomeIcon icon={faVideo} className="w-4 h-4 text-blue-600" />
                                             <span className="font-medium">Foto de la Falla</span>
@@ -555,7 +555,7 @@ const ConsultarTicket = () => {
                                     </div>
 
                                     {/* Foto Boleta */}
-                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                    <div className="panel p-4 rounded-xl border border-gray-200">
                                         <div className="flex items-center gap-2 mb-2 text-gray-700">
                                             <FontAwesomeIcon icon={faFileInvoice} className="w-4 h-4 text-green-600" />
                                             <span className="font-medium">Foto Boleta</span>
@@ -579,7 +579,7 @@ const ConsultarTicket = () => {
                                     </div>
 
                                     {/* Foto Serie */}
-                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                    <div className="panel p-4 rounded-xl border border-gray-200">
                                         <div className="flex items-center gap-2 mb-2 text-gray-700">
                                             <FontAwesomeIcon icon={faImage} className="w-4 h-4 text-purple-600" />
                                             <span className="font-medium">Foto Serie</span>
