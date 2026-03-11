@@ -9,6 +9,7 @@ import flatpickr from 'flatpickr';
 import { Spanish } from 'flatpickr/dist/l10n/es.js';
 import 'flatpickr/dist/flatpickr.css';
 import axios from 'axios';
+import Select from 'react-select'; // <-- IMPORTAR REACT-SELECT
 
 // Importar modales
 import ModalCategoria from './components/ModalCategoria';
@@ -512,6 +513,65 @@ const CrearTicket = () => {
         );
     };
 
+    // ============================================
+    // CONFIGURACIÓN DE REACT-SELECT
+    // ============================================
+    const selectStyles = {
+        control: (base, state) => ({
+            ...base,
+            borderColor: state.isFocused ? '#4361ee' : '#e5e7eb',
+            boxShadow: state.isFocused ? '0 0 0 1px #4361ee' : 'none',
+            '&:hover': {
+                borderColor: '#4361ee'
+            },
+            minHeight: '38px',
+            borderRadius: '6px'
+        }),
+        option: (base, { isFocused, isSelected }) => ({
+            ...base,
+            backgroundColor: isSelected ? '#4361ee' : isFocused ? '#e0e7ff' : 'white',
+            color: isSelected ? 'white' : '#111827',
+            cursor: 'pointer',
+            '&:active': {
+                backgroundColor: '#4361ee'
+            }
+        }),
+        menu: (base) => ({
+            ...base,
+            zIndex: 50
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#9ca3af'
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#111827'
+        })
+    };
+
+    // Convertir categorías al formato que react-select entiende
+    const categoriaOptions = categorias.map(cat => ({
+        value: cat.idCategoria,
+        label: cat.nombre
+    }));
+
+    // Convertir modelos filtrados al formato que react-select entiende
+    const modeloOptions = modelosFiltrados.map(mod => ({
+        value: mod.idModelo,
+        label: mod.nombre
+    }));
+
+    // Manejar cambio de categoría
+    const handleCategoriaChange = (selectedOption) => {
+        formik.setFieldValue('idCategoria', selectedOption ? selectedOption.value : '');
+    };
+
+    // Manejar cambio de modelo
+    const handleModeloChange = (selectedOption) => {
+        formik.setFieldValue('idModelo', selectedOption ? selectedOption.value : '');
+    };
+
     return (
         <div>
             {/* Breadcrumb */}
@@ -807,7 +867,7 @@ const CrearTicket = () => {
                                     </div>
                                 </div>
 
-                                {/* SECCIÓN 3: DATOS DEL PRODUCTO - CON BOTONES PARA CREAR */}
+                                {/* SECCIÓN 3: DATOS DEL PRODUCTO - CON BOTONES PARA CREAR Y SELECT2 */}
                                 <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                     <h2 className="text-xl font-semibold flex items-center gap-2">
                                         <FontAwesomeIcon icon={faLaptop} className="w-5 h-5 text-primary" />
@@ -816,7 +876,7 @@ const CrearTicket = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Categoría con botón + */}
+                                    {/* Categoría con botón + y SELECT2 */}
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
                                             <label htmlFor="idCategoria" className="flex items-center gap-1 font-medium">
@@ -832,61 +892,60 @@ const CrearTicket = () => {
                                                 Nueva
                                             </button>
                                         </div>
-                                        <select
+                                        <Select
                                             id="idCategoria"
                                             name="idCategoria"
-                                            className={`form-select ${formik.touched.idCategoria && formik.errors.idCategoria ? 'has-error' : ''}`}
-                                            value={formik.values.idCategoria}
-                                            onChange={formik.handleChange}
-                                            onBlur={formik.handleBlur}
-                                            disabled={submitting}
-                                        >
-                                            <option value="">Seleccione categoría</option>
-                                            {categorias.map((cat) => (
-                                                <option key={cat.idCategoria} value={cat.idCategoria}>
-                                                    {cat.nombre}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {formik.touched.idCategoria && formik.errors.idCategoria && <div className="text-danger text-sm mt-1">{formik.errors.idCategoria}</div>}
+                                            options={categoriaOptions}
+                                            value={categoriaOptions.find(option => option.value === formik.values.idCategoria)}
+                                            onChange={handleCategoriaChange}
+                                            onBlur={() => formik.setFieldTouched('idCategoria', true)}
+                                            placeholder="Seleccione categoría"
+                                            isClearable
+                                            isSearchable
+                                            styles={selectStyles}
+                                            className={formik.touched.idCategoria && formik.errors.idCategoria ? 'has-error' : ''}
+                                            isDisabled={submitting}
+                                        />
+                                        {formik.touched.idCategoria && formik.errors.idCategoria && (
+                                            <div className="text-danger text-sm mt-1">{formik.errors.idCategoria}</div>
+                                        )}
                                     </div>
 
-                                  {/* Modelo con botón + */}
-<div>
-    <div className="flex items-center justify-between mb-2">
-        <label htmlFor="idModelo" className="flex items-center gap-1 font-medium">
-            <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500" />
-            Modelo <span className="text-red-500">*</span>
-        </label>
-        <button
-            type="button"
-            onClick={() => setModalModelo(true)}
-            className="text-xs bg-primary text-white px-2 py-1 rounded-full hover:bg-primary/80 transition-colors flex items-center gap-1"
-            // ELIMINA ESTA LÍNEA: disabled={!formik.values.idCategoria}
-            // ELIMINA ESTA LÍNEA: title={!formik.values.idCategoria ? "Primero seleccione una categoría" : ""}
-        >
-            <FontAwesomeIcon icon={faPlus} className="w-3 h-3" />
-            Nuevo
-        </button>
-    </div>
-    <select
-        id="idModelo"
-        name="idModelo"
-        className={`form-select ${formik.touched.idModelo && formik.errors.idModelo ? 'has-error' : ''}`}
-        value={formik.values.idModelo}
-        onChange={formik.handleChange}
-        onBlur={formik.handleBlur}
-        disabled={!formik.values.idCategoria || submitting || loadingModelos}
-    >
-        <option value="">{loadingModelos ? 'Cargando...' : !formik.values.idCategoria ? 'Primero seleccione categoría' : 'Seleccione modelo'}</option>
-        {modelosFiltrados.map((modelo) => (
-            <option key={modelo.idModelo} value={modelo.idModelo}>
-                {modelo.nombre}
-            </option>
-        ))}
-    </select>
-    {formik.touched.idModelo && formik.errors.idModelo && <div className="text-danger text-sm mt-1">{formik.errors.idModelo}</div>}
-</div>
+                                    {/* Modelo con botón + y SELECT2 */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label htmlFor="idModelo" className="flex items-center gap-1 font-medium">
+                                                <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500" />
+                                                Modelo <span className="text-red-500">*</span>
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setModalModelo(true)}
+                                                className="text-xs bg-primary text-white px-2 py-1 rounded-full hover:bg-primary/80 transition-colors flex items-center gap-1"
+                                            >
+                                                <FontAwesomeIcon icon={faPlus} className="w-3 h-3" />
+                                                Nuevo
+                                            </button>
+                                        </div>
+                                        <Select
+                                            id="idModelo"
+                                            name="idModelo"
+                                            options={modeloOptions}
+                                            value={modeloOptions.find(option => option.value === formik.values.idModelo)}
+                                            onChange={handleModeloChange}
+                                            onBlur={() => formik.setFieldTouched('idModelo', true)}
+                                            placeholder={loadingModelos ? 'Cargando...' : !formik.values.idCategoria ? 'Primero seleccione categoría' : 'Seleccione modelo'}
+                                            isClearable
+                                            isSearchable
+                                            styles={selectStyles}
+                                            className={formik.touched.idModelo && formik.errors.idModelo ? 'has-error' : ''}
+                                            isDisabled={!formik.values.idCategoria || submitting || loadingModelos}
+                                            isLoading={loadingModelos}
+                                        />
+                                        {formik.touched.idModelo && formik.errors.idModelo && (
+                                            <div className="text-danger text-sm mt-1">{formik.errors.idModelo}</div>
+                                        )}
+                                    </div>
 
                                     <div className="md:col-span-2">
                                         <label htmlFor="serieProducto" className="flex items-center gap-1 font-medium">

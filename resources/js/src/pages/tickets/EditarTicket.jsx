@@ -35,13 +35,19 @@ import {
     faMap,
     faImage,
     faSearch,
-    faExternalLinkAlt
+    faExternalLinkAlt,
+    faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 import toastr from 'toastr';
 import flatpickr from 'flatpickr';
 import { Spanish } from 'flatpickr/dist/l10n/es.js';
 import 'flatpickr/dist/flatpickr.css';
 import axios from 'axios';
+import Select from 'react-select'; // <-- IMPORTAR REACT-SELECT
+
+// Importar modales (si los tienes)
+import ModalCategoria from './components/ModalCategoria';
+import ModalModelo from './components/ModalModelo';
 
 const EditarTicket = () => {
     const dispatch = useDispatch();
@@ -62,7 +68,11 @@ const EditarTicket = () => {
     const [modelosFiltrados, setModelosFiltrados] = useState([]);
     const [loadingModelos, setLoadingModelos] = useState(false);
     const [marcas, setMarcas] = useState([]);
-    
+
+    // Estados para modales
+    const [modalCategoria, setModalCategoria] = useState(false);
+    const [modalModelo, setModalModelo] = useState(false);
+
     // Estados para ubigeo
     const [departamentos, setDepartamentos] = useState([]);
     const [provincias, setProvincias] = useState({});
@@ -121,105 +131,70 @@ const EditarTicket = () => {
         }
     };
 
-    // Esquema de validación - MODIFICADO para trabajar con string en DD/MM/YYYY
+    // Esquema de validación
     const validationSchema = Yup.object({
-        nombreCompleto: Yup.string()
-            .required('El nombre completo es requerido')
-            .min(3, 'Mínimo 3 caracteres')
-            .max(255, 'Máximo 255 caracteres'),
-        
-        correoElectronico: Yup.string()
-            .email('Correo electrónico inválido')
-            .required('El correo electrónico es requerido')
-            .max(255, 'Máximo 255 caracteres'),
-        
-        idTipoDocumento: Yup.number()
-            .required('El tipo de documento es requerido')
-            .positive('Seleccione un tipo de documento válido'),
-        
+        nombreCompleto: Yup.string().required('El nombre completo es requerido').min(3, 'Mínimo 3 caracteres').max(255, 'Máximo 255 caracteres'),
+
+        correoElectronico: Yup.string().email('Correo electrónico inválido').required('El correo electrónico es requerido').max(255, 'Máximo 255 caracteres'),
+
+        idTipoDocumento: Yup.number().required('El tipo de documento es requerido').positive('Seleccione un tipo de documento válido'),
+
         dni_ruc_ce: Yup.string()
             .required('El número de documento es requerido')
             .min(8, 'Mínimo 8 caracteres')
             .max(20, 'Máximo 20 caracteres')
             .matches(/^[0-9]+$/, 'Solo se permiten números'),
-        
+
         telefonoCelular: Yup.string()
             .required('El teléfono celular es requerido')
             .min(9, 'Mínimo 9 dígitos')
             .max(20, 'Máximo 20 dígitos')
             .matches(/^[0-9]+$/, 'Solo se permiten números'),
-        
+
         telefonoFijo: Yup.string()
             .nullable()
             .matches(/^[0-9-]+$/, 'Formato inválido'),
 
-        direccionCompleta: Yup.string()
-            .required('La dirección completa es requerida')
-            .max(500, 'Máximo 500 caracteres'),
-        
-        referenciaDomicilio: Yup.string()
-            .nullable()
-            .max(500, 'Máximo 500 caracteres'),
-        
-        departamento: Yup.string()
-            .required('El departamento es requerido'),
-        
-        provincia: Yup.string()
-            .required('La provincia es requerida'),
-        
-        distrito: Yup.string()
-            .required('El distrito es requerido'),
+        direccionCompleta: Yup.string().required('La dirección completa es requerida').max(500, 'Máximo 500 caracteres'),
 
-        idCategoria: Yup.number()
-            .required('La categoría del producto es requerida')
-            .positive('Seleccione una categoría válida'),
-        
-        idModelo: Yup.number()
-            .required('El modelo del producto es requerido')
-            .positive('Seleccione un modelo válido'),
-        
-        serieProducto: Yup.string()
-            .required('El número de serie es requerido')
-            .max(100, 'Máximo 100 caracteres'),
+        referenciaDomicilio: Yup.string().nullable().max(500, 'Máximo 500 caracteres'),
 
-        detallesFalla: Yup.string()
-            .required('Los detalles de la falla son requeridos')
-            .min(10, 'Describe la falla con más detalle (mínimo 10 caracteres)')
-            .max(5000, 'Máximo 5000 caracteres'),
-        
+        departamento: Yup.string().required('El departamento es requerido'),
+
+        provincia: Yup.string().required('La provincia es requerida'),
+
+        distrito: Yup.string().required('El distrito es requerido'),
+
+        idCategoria: Yup.number().required('La categoría del producto es requerida').positive('Seleccione una categoría válida'),
+
+        idModelo: Yup.number().required('El modelo del producto es requerido').positive('Seleccione un modelo válido'),
+
+        serieProducto: Yup.string().required('El número de serie es requerido').max(100, 'Máximo 100 caracteres'),
+
+        detallesFalla: Yup.string().required('Los detalles de la falla son requeridos').min(10, 'Describe la falla con más detalle (mínimo 10 caracteres)').max(5000, 'Máximo 5000 caracteres'),
+
         fechaCompra: Yup.string()
             .required('La fecha de compra es requerida')
-            .test('valid-date', 'Fecha inválida', function(value) {
+            .test('valid-date', 'Fecha inválida', function (value) {
                 if (!value) return false;
-                // Validar formato DD/MM/YYYY
                 const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
                 if (!regex.test(value)) return false;
-                
+
                 const [day, month, year] = value.split('/').map(Number);
                 const date = new Date(year, month - 1, day);
-                
-                return date.getDate() === day && 
-                       date.getMonth() === month - 1 && 
-                       date.getFullYear() === year &&
-                       date <= new Date();
-            }),
-        
-        tiendaSedeCompra: Yup.string()
-            .required('La tienda y sede de compra es requerida')
-            .max(255, 'Máximo 255 caracteres'),
 
-        fotoVideoFalla: Yup.string()
-            .nullable(),
-        
-        fotoBoletaFactura: Yup.string()
-            .nullable(),
-        
-        fotoNumeroSerie: Yup.string()
-            .nullable(),
-        
-        ubicacionGoogleMaps: Yup.string()
-            .nullable()
-            .url('Debe ser una URL válida de Google Maps')
+                return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year && date <= new Date();
+            }),
+
+        tiendaSedeCompra: Yup.string().required('La tienda y sede de compra es requerida').max(255, 'Máximo 255 caracteres'),
+
+        fotoVideoFalla: Yup.string().nullable(),
+
+        fotoBoletaFactura: Yup.string().nullable(),
+
+        fotoNumeroSerie: Yup.string().nullable(),
+
+        ubicacionGoogleMaps: Yup.string().nullable().url('Debe ser una URL válida de Google Maps'),
     });
 
     // Formik
@@ -245,12 +220,12 @@ const EditarTicket = () => {
             fotoVideoFalla: '',
             fotoBoletaFactura: '',
             fotoNumeroSerie: '',
-            ubicacionGoogleMaps: ''
+            ubicacionGoogleMaps: '',
         },
         validationSchema,
         onSubmit: async (values, { setSubmitting }) => {
             setSubmitting(true);
-            
+
             try {
                 toastr.info('Actualizando ticket...', 'Procesando');
 
@@ -258,12 +233,11 @@ const EditarTicket = () => {
 
                 const formData = new FormData();
                 formData.append('_method', 'PUT');
-                
+
                 // Procesar cada valor
-                Object.keys(values).forEach(key => {
+                Object.keys(values).forEach((key) => {
                     if (values[key] !== null && values[key] !== undefined && values[key] !== '') {
                         if (key === 'fechaCompra') {
-                            // Convertir fecha de DD/MM/YYYY a YYYY-MM-DD
                             const fechaBackend = formatDateForBackend(values[key]);
                             formData.append(key, fechaBackend);
                         } else {
@@ -285,27 +259,26 @@ const EditarTicket = () => {
 
                 const response = await axios.post(`${API_URL}/tickets/${id}`, formData, {
                     headers: {
-                        'Authorization': token ? `Bearer ${token}` : '',
-                        'Content-Type': 'multipart/form-data'
-                    }
+                        Authorization: token ? `Bearer ${token}` : '',
+                        'Content-Type': 'multipart/form-data',
+                    },
                 });
 
                 if (response.data.success) {
                     toastr.clear();
                     toastr.success('✅ ¡Ticket actualizado exitosamente!', 'Éxito');
-                    
+
                     setTimeout(() => {
                         navigate('/tickets');
                     }, 2000);
                 }
-
             } catch (error) {
                 console.error('Error al actualizar ticket:', error);
-                
+
                 if (error.response) {
                     if (error.response.status === 422) {
                         const errors = error.response.data.errors;
-                        Object.keys(errors).forEach(key => {
+                        Object.keys(errors).forEach((key) => {
                             toastr.error(errors[key][0], 'Error de validación');
                         });
                     } else if (error.response.status === 401) {
@@ -321,8 +294,84 @@ const EditarTicket = () => {
             } finally {
                 setSubmitting(false);
             }
-        }
+        },
     });
+
+    // ============================================
+    // CONFIGURACIÓN DE REACT-SELECT
+    // ============================================
+    const selectStyles = {
+        control: (base, state) => ({
+            ...base,
+            borderColor: state.isFocused ? '#4361ee' : '#e5e7eb',
+            boxShadow: state.isFocused ? '0 0 0 1px #4361ee' : 'none',
+            '&:hover': {
+                borderColor: '#4361ee',
+            },
+            minHeight: '38px',
+            borderRadius: '6px',
+        }),
+        option: (base, { isFocused, isSelected }) => ({
+            ...base,
+            backgroundColor: isSelected ? '#4361ee' : isFocused ? '#e0e7ff' : 'white',
+            color: isSelected ? 'white' : '#111827',
+            cursor: 'pointer',
+            '&:active': {
+                backgroundColor: '#4361ee',
+            },
+        }),
+        menu: (base) => ({
+            ...base,
+            zIndex: 50,
+        }),
+        placeholder: (base) => ({
+            ...base,
+            color: '#9ca3af',
+        }),
+        singleValue: (base) => ({
+            ...base,
+            color: '#111827',
+        }),
+    };
+
+    // Convertir categorías al formato que react-select entiende
+    const categoriaOptions = categorias.map((cat) => ({
+        value: cat.idCategoria,
+        label: cat.nombre,
+    }));
+
+    // Convertir modelos filtrados al formato que react-select entiende
+    const modeloOptions = modelosFiltrados.map((mod) => ({
+        value: mod.idModelo,
+        label: mod.nombre,
+    }));
+
+    // Manejar cambio de categoría
+    const handleCategoriaChange = (selectedOption) => {
+        formik.setFieldValue('idCategoria', selectedOption ? selectedOption.value : '');
+    };
+
+    // Manejar cambio de modelo
+    const handleModeloChange = (selectedOption) => {
+        formik.setFieldValue('idModelo', selectedOption ? selectedOption.value : '');
+    };
+
+    // Handlers para modales
+    const handleCategoriaCreada = (nuevaCategoria) => {
+        setCategorias((prev) => [...prev, nuevaCategoria]);
+        formik.setFieldValue('idCategoria', nuevaCategoria.idCategoria);
+        cargarModelosPorCategoria(nuevaCategoria.idCategoria);
+        toastr.success('Categoría creada exitosamente');
+    };
+
+    const handleModeloCreado = (nuevoModelo) => {
+        setModelos((prev) => [...prev, nuevoModelo]);
+        if (nuevoModelo.idCategoria === formik.values.idCategoria) {
+            setModelosFiltrados((prev) => [...prev, nuevoModelo]);
+        }
+        formik.setFieldValue('idModelo', nuevoModelo.idModelo);
+        toastr.success('Modelo creado exitosamente');
+    };
 
     // Cargar datos iniciales
     useEffect(() => {
@@ -402,12 +451,10 @@ const EditarTicket = () => {
         }
     }, [formik.values.provincia, distritos]);
 
-    // Inicializar flatpickr - VERSIÓN CORREGIDA
+    // Inicializar flatpickr
     useEffect(() => {
-        // Función para inicializar flatpickr
         const initFlatpickr = () => {
             if (fechaCompraRef.current && !loading) {
-                // Destruir instancia anterior si existe
                 if (flatpickrInstance.current) {
                     flatpickrInstance.current.destroy();
                 }
@@ -423,7 +470,7 @@ const EditarTicket = () => {
                             if (selectedDates[0]) {
                                 formik.setFieldValue('fechaCompra', dateStr);
                             }
-                        }
+                        },
                     });
                 } catch (error) {
                     console.error('Error inicializando flatpickr:', error);
@@ -431,7 +478,6 @@ const EditarTicket = () => {
             }
         };
 
-        // Ejecutar después de un pequeño delay para asegurar que el DOM está listo
         const timeoutId = setTimeout(initFlatpickr, 100);
 
         return () => {
@@ -442,28 +488,6 @@ const EditarTicket = () => {
         };
     }, [loading, formik.values.fechaCompra]);
 
-    // Efecto adicional para asegurar que flatpickr se inicialice cuando el ref esté disponible
-    useEffect(() => {
-        if (!loading && fechaCompraRef.current && !flatpickrInstance.current) {
-            try {
-                flatpickrInstance.current = flatpickr(fechaCompraRef.current, {
-                    locale: Spanish,
-                    dateFormat: 'd/m/Y',
-                    allowInput: true,
-                    maxDate: 'today',
-                    defaultDate: formik.values.fechaCompra,
-                    onChange: (selectedDates, dateStr) => {
-                        if (selectedDates[0]) {
-                            formik.setFieldValue('fechaCompra', dateStr);
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error('Error en reintento:', error);
-            }
-        }
-    }, [loading, fechaCompraRef.current]);
-
     // Funciones auxiliares
     const cargarMarcas = async () => {
         try {
@@ -471,8 +495,8 @@ const EditarTicket = () => {
             const response = await axios.get(`${API_URL}/marcas`, {
                 headers: {
                     Authorization: token ? `Bearer ${token}` : '',
-                    Accept: 'application/json'
-                }
+                    Accept: 'application/json',
+                },
             });
             if (response.data.success) {
                 setMarcas(response.data.data);
@@ -486,13 +510,12 @@ const EditarTicket = () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            
-            // Cargar datos del formulario
+
             const formDataResponse = await axios.get(`${API_URL}/tickets-form-data`, {
                 headers: {
-                    'Authorization': token ? `Bearer ${token}` : '',
-                    'Accept': 'application/json'
-                }
+                    Authorization: token ? `Bearer ${token}` : '',
+                    Accept: 'application/json',
+                },
             });
 
             if (formDataResponse.data.success) {
@@ -501,20 +524,17 @@ const EditarTicket = () => {
                 setModelos(formDataResponse.data.data.modelos || []);
             }
 
-            // Cargar datos del ticket
             const ticketResponse = await axios.get(`${API_URL}/tickets/${id}`, {
                 headers: {
-                    'Authorization': token ? `Bearer ${token}` : '',
-                    'Accept': 'application/json'
-                }
+                    Authorization: token ? `Bearer ${token}` : '',
+                    Accept: 'application/json',
+                },
             });
 
             if (ticketResponse.data.success) {
                 const ticket = ticketResponse.data.data;
-                
-                // Formatear fecha para mostrar en DD/MM/YYYY
-                const fechaCompraDisplay = ticket.fechaCompra ? 
-                    formatDateToDisplay(ticket.fechaCompra) : '';
+
+                const fechaCompraDisplay = ticket.fechaCompra ? formatDateToDisplay(ticket.fechaCompra) : '';
 
                 formik.setValues({
                     nombreCompleto: ticket.nombreCompleto || '',
@@ -537,15 +557,13 @@ const EditarTicket = () => {
                     fotoVideoFalla: ticket.fotoVideoFalla || '',
                     fotoBoletaFactura: ticket.fotoBoletaFactura || '',
                     fotoNumeroSerie: ticket.fotoNumeroSerie || '',
-                    ubicacionGoogleMaps: ticket.ubicacionGoogleMaps || ''
+                    ubicacionGoogleMaps: ticket.ubicacionGoogleMaps || '',
                 });
 
-                // Después de establecer valores, cargar modelos de la categoría
                 if (ticket.idCategoria) {
                     await cargarModelosPorCategoria(ticket.idCategoria);
                 }
             }
-
         } catch (error) {
             console.error('Error cargando datos:', error);
             toastr.error('Error al cargar los datos del ticket', 'Error');
@@ -561,9 +579,9 @@ const EditarTicket = () => {
             const token = localStorage.getItem('token');
             const response = await axios.get(`${API_URL}/modelos-por-categoria/${categoriaId}`, {
                 headers: {
-                    'Authorization': token ? `Bearer ${token}` : '',
-                    'Accept': 'application/json'
-                }
+                    Authorization: token ? `Bearer ${token}` : '',
+                    Accept: 'application/json',
+                },
             });
 
             if (response.data.success) {
@@ -571,7 +589,7 @@ const EditarTicket = () => {
             }
         } catch (error) {
             console.error('Error cargando modelos:', error);
-            const filtrados = modelos.filter(m => m.idCategoria === parseInt(categoriaId));
+            const filtrados = modelos.filter((m) => m.idCategoria === parseInt(categoriaId));
             setModelosFiltrados(filtrados);
         } finally {
             setLoadingModelos(false);
@@ -594,14 +612,13 @@ const EditarTicket = () => {
             }
 
             setFile(file);
-            
+
             const reader = new FileReader();
             reader.onloadend = () => {
                 setPreview(reader.result);
             };
             reader.readAsDataURL(file);
 
-            // Limpiar la URL existente cuando se selecciona un nuevo archivo
             if (fieldName) {
                 formik.setFieldValue(fieldName, '');
             }
@@ -612,10 +629,7 @@ const EditarTicket = () => {
         if (!image) return null;
 
         return (
-            <div
-                className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
-                onClick={onClose}
-            >
+            <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onClick={onClose}>
                 <div className="relative max-w-4xl w-full max-h-[90vh] flex items-center justify-center">
                     <button
                         onClick={onClose}
@@ -673,9 +687,7 @@ const EditarTicket = () => {
                             <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-full">
                                 <FontAwesomeIcon icon={faTicket} className="w-8 h-8 text-gray-500 dark:text-gray-400" />
                             </div>
-                            <h1 className="text-3xl font-bold text-gray-800 dark:text-white-light">
-                                Editar Ticket #{id}
-                            </h1>
+                            <h1 className="text-3xl font-bold text-gray-800 dark:text-white-light">Editar Ticket #{id}</h1>
                         </div>
                         <p className="text-gray-600 dark:text-gray-400 text-base flex items-center gap-2">
                             <FontAwesomeIcon icon={faComment} className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -694,7 +706,7 @@ const EditarTicket = () => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Nombre Completo */}
+                                {/* ... (resto de campos de datos personales igual) ... */}
                                 <div className="md:col-span-1">
                                     <label htmlFor="nombreCompleto" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-500" />
@@ -711,12 +723,9 @@ const EditarTicket = () => {
                                         onBlur={formik.handleBlur}
                                         disabled={submitting}
                                     />
-                                    {formik.touched.nombreCompleto && formik.errors.nombreCompleto && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.nombreCompleto}</div>
-                                    )}
+                                    {formik.touched.nombreCompleto && formik.errors.nombreCompleto && <div className="text-danger text-sm mt-1">{formik.errors.nombreCompleto}</div>}
                                 </div>
 
-                                {/* Correo Electrónico */}
                                 <div className="md:col-span-1">
                                     <label htmlFor="correoElectronico" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 text-gray-500" />
@@ -733,12 +742,9 @@ const EditarTicket = () => {
                                         onBlur={formik.handleBlur}
                                         disabled={submitting}
                                     />
-                                    {formik.touched.correoElectronico && formik.errors.correoElectronico && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.correoElectronico}</div>
-                                    )}
+                                    {formik.touched.correoElectronico && formik.errors.correoElectronico && <div className="text-danger text-sm mt-1">{formik.errors.correoElectronico}</div>}
                                 </div>
 
-                                {/* Tipo de Documento */}
                                 <div>
                                     <label htmlFor="idTipoDocumento" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faIdCard} className="w-4 h-4 text-gray-500" />
@@ -754,18 +760,15 @@ const EditarTicket = () => {
                                         disabled={submitting}
                                     >
                                         <option value="">Seleccione tipo</option>
-                                        {tiposDocumento.map(tipo => (
+                                        {tiposDocumento.map((tipo) => (
                                             <option key={tipo.idTipoDocumento} value={tipo.idTipoDocumento}>
                                                 {tipo.nombre}
                                             </option>
                                         ))}
                                     </select>
-                                    {formik.touched.idTipoDocumento && formik.errors.idTipoDocumento && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.idTipoDocumento}</div>
-                                    )}
+                                    {formik.touched.idTipoDocumento && formik.errors.idTipoDocumento && <div className="text-danger text-sm mt-1">{formik.errors.idTipoDocumento}</div>}
                                 </div>
 
-                                {/* Número de Documento */}
                                 <div>
                                     <label htmlFor="dni_ruc_ce" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faHashtag} className="w-4 h-4 text-gray-500" />
@@ -782,12 +785,9 @@ const EditarTicket = () => {
                                         onBlur={formik.handleBlur}
                                         disabled={submitting}
                                     />
-                                    {formik.touched.dni_ruc_ce && formik.errors.dni_ruc_ce && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.dni_ruc_ce}</div>
-                                    )}
+                                    {formik.touched.dni_ruc_ce && formik.errors.dni_ruc_ce && <div className="text-danger text-sm mt-1">{formik.errors.dni_ruc_ce}</div>}
                                 </div>
 
-                                {/* Teléfono Fijo */}
                                 <div>
                                     <label htmlFor="telefonoFijo" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faPhone} className="w-4 h-4 text-gray-500" />
@@ -806,7 +806,6 @@ const EditarTicket = () => {
                                     />
                                 </div>
 
-                                {/* Teléfono Celular */}
                                 <div>
                                     <label htmlFor="telefonoCelular" className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faMobile} className="w-4 h-4 text-gray-500" />
@@ -823,13 +822,12 @@ const EditarTicket = () => {
                                         onBlur={formik.handleBlur}
                                         disabled={submitting}
                                     />
-                                    {formik.touched.telefonoCelular && formik.errors.telefonoCelular && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.telefonoCelular}</div>
-                                    )}
+                                    {formik.touched.telefonoCelular && formik.errors.telefonoCelular && <div className="text-danger text-sm mt-1">{formik.errors.telefonoCelular}</div>}
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 2: DIRECCIÓN */}
+                            {/* SECCIÓN 2: DIRECCIÓN (sin cambios) */}
+                            {/* ... (código de dirección igual) ... */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faMapMarkerAlt} className="w-5 h-5 text-primary" />
@@ -855,9 +853,7 @@ const EditarTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={submitting}
                                         />
-                                        {formik.touched.direccionCompleta && formik.errors.direccionCompleta && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.direccionCompleta}</div>
-                                        )}
+                                        {formik.touched.direccionCompleta && formik.errors.direccionCompleta && <div className="text-danger text-sm mt-1">{formik.errors.direccionCompleta}</div>}
                                     </div>
 
                                     <div>
@@ -880,7 +876,6 @@ const EditarTicket = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {/* DEPARTAMENTO */}
                                     <div>
                                         <label htmlFor="departamento" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faGlobe} className="w-4 h-4 text-gray-500" />
@@ -896,18 +891,15 @@ const EditarTicket = () => {
                                             disabled={submitting}
                                         >
                                             <option value="">Seleccione departamento</option>
-                                            {departamentos.map(depto => (
+                                            {departamentos.map((depto) => (
                                                 <option key={depto.id_ubigeo} value={depto.id_ubigeo}>
                                                     {depto.nombre_ubigeo}
                                                 </option>
                                             ))}
                                         </select>
-                                        {formik.touched.departamento && formik.errors.departamento && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.departamento}</div>
-                                        )}
+                                        {formik.touched.departamento && formik.errors.departamento && <div className="text-danger text-sm mt-1">{formik.errors.departamento}</div>}
                                     </div>
 
-                                    {/* PROVINCIA */}
                                     <div>
                                         <label htmlFor="provincia" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faBuilding} className="w-4 h-4 text-gray-500" />
@@ -922,23 +914,16 @@ const EditarTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={!formik.values.departamento || submitting}
                                         >
-                                            <option value="">
-                                                {!formik.values.departamento 
-                                                    ? 'Primero seleccione departamento' 
-                                                    : 'Seleccione provincia'}
-                                            </option>
-                                            {provinciasFiltradas.map(prov => (
+                                            <option value="">{!formik.values.departamento ? 'Primero seleccione departamento' : 'Seleccione provincia'}</option>
+                                            {provinciasFiltradas.map((prov) => (
                                                 <option key={prov.id_ubigeo} value={prov.id_ubigeo}>
                                                     {prov.nombre_ubigeo}
                                                 </option>
                                             ))}
                                         </select>
-                                        {formik.touched.provincia && formik.errors.provincia && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.provincia}</div>
-                                        )}
+                                        {formik.touched.provincia && formik.errors.provincia && <div className="text-danger text-sm mt-1">{formik.errors.provincia}</div>}
                                     </div>
 
-                                    {/* DISTRITO */}
                                     <div>
                                         <label htmlFor="distrito" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faCity} className="w-4 h-4 text-gray-500" />
@@ -953,25 +938,19 @@ const EditarTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={!formik.values.provincia || submitting}
                                         >
-                                            <option value="">
-                                                {!formik.values.provincia 
-                                                    ? 'Primero seleccione provincia' 
-                                                    : 'Seleccione distrito'}
-                                            </option>
-                                            {distritosFiltrados.map(dist => (
+                                            <option value="">{!formik.values.provincia ? 'Primero seleccione provincia' : 'Seleccione distrito'}</option>
+                                            {distritosFiltrados.map((dist) => (
                                                 <option key={dist.id_ubigeo} value={dist.id_ubigeo}>
                                                     {dist.nombre_ubigeo}
                                                 </option>
                                             ))}
                                         </select>
-                                        {formik.touched.distrito && formik.errors.distrito && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.distrito}</div>
-                                        )}
+                                        {formik.touched.distrito && formik.errors.distrito && <div className="text-danger text-sm mt-1">{formik.errors.distrito}</div>}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 3: DATOS DEL PRODUCTO */}
+                            {/* SECCIÓN 3: DATOS DEL PRODUCTO - CON SELECT2 Y BOTONES */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faLaptop} className="w-5 h-5 text-primary" />
@@ -980,60 +959,71 @@ const EditarTicket = () => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Categoría con SELECT2 */}
                                 <div>
-                                    <label htmlFor="idCategoria" className="flex items-center gap-1 font-medium">
-                                        <FontAwesomeIcon icon={faLaptop} className="w-4 h-4 text-gray-500" />
-                                        Categoría <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label htmlFor="idCategoria" className="flex items-center gap-1 font-medium">
+                                            <FontAwesomeIcon icon={faLaptop} className="w-4 h-4 text-gray-500" />
+                                            Categoría <span className="text-red-500">*</span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setModalCategoria(true)}
+                                            className="text-xs bg-primary text-white px-2 py-1 rounded-full hover:bg-primary/80 transition-colors flex items-center gap-1"
+                                        >
+                                            <FontAwesomeIcon icon={faPlus} className="w-3 h-3" />
+                                            Nueva
+                                        </button>
+                                    </div>
+                                    <Select
                                         id="idCategoria"
                                         name="idCategoria"
-                                        className={`form-select ${formik.touched.idCategoria && formik.errors.idCategoria ? 'has-error' : ''}`}
-                                        value={formik.values.idCategoria}
-                                        onChange={formik.handleChange}
-                                        onBlur={formik.handleBlur}
-                                        disabled={submitting}
-                                    >
-                                        <option value="">Seleccione categoría</option>
-                                        {categorias.map(cat => (
-                                            <option key={cat.idCategoria} value={cat.idCategoria}>
-                                                {cat.nombre}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {formik.touched.idCategoria && formik.errors.idCategoria && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.idCategoria}</div>
-                                    )}
+                                        options={categoriaOptions}
+                                        value={categoriaOptions.find((option) => option.value === formik.values.idCategoria)}
+                                        onChange={handleCategoriaChange}
+                                        onBlur={() => formik.setFieldTouched('idCategoria', true)}
+                                        placeholder="Seleccione categoría"
+                                        isClearable
+                                        isSearchable
+                                        styles={selectStyles}
+                                        className={formik.touched.idCategoria && formik.errors.idCategoria ? 'has-error' : ''}
+                                        isDisabled={submitting}
+                                    />
+                                    {formik.touched.idCategoria && formik.errors.idCategoria && <div className="text-danger text-sm mt-1">{formik.errors.idCategoria}</div>}
                                 </div>
 
+                                {/* Modelo con SELECT2 */}
                                 <div>
-                                    <label htmlFor="idModelo" className="flex items-center gap-1 font-medium">
-                                        <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500" />
-                                        Modelo <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label htmlFor="idModelo" className="flex items-center gap-1 font-medium">
+                                            <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500" />
+                                            Modelo <span className="text-red-500">*</span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setModalModelo(true)}
+                                            className="text-xs bg-primary text-white px-2 py-1 rounded-full hover:bg-primary/80 transition-colors flex items-center gap-1"
+                                        >
+                                            <FontAwesomeIcon icon={faPlus} className="w-3 h-3" />
+                                            Nuevo
+                                        </button>
+                                    </div>
+                                    <Select
                                         id="idModelo"
                                         name="idModelo"
-                                        className={`form-select ${formik.touched.idModelo && formik.errors.idModelo ? 'has-error' : ''}`}
-                                        value={formik.values.idModelo}
-                                        onChange={formik.handleChange}
-                                        onBlur={formik.handleBlur}
-                                        disabled={!formik.values.idCategoria || submitting || loadingModelos}
-                                    >
-                                        <option value="">
-                                            {loadingModelos ? 'Cargando...' : 
-                                             !formik.values.idCategoria ? 'Primero seleccione categoría' : 
-                                             'Seleccione modelo'}
-                                        </option>
-                                        {modelosFiltrados.map(modelo => (
-                                            <option key={modelo.idModelo} value={modelo.idModelo}>
-                                                {modelo.nombre}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {formik.touched.idModelo && formik.errors.idModelo && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.idModelo}</div>
-                                    )}
+                                        options={modeloOptions}
+                                        value={modeloOptions.find((option) => option.value === formik.values.idModelo)}
+                                        onChange={handleModeloChange}
+                                        onBlur={() => formik.setFieldTouched('idModelo', true)}
+                                        placeholder={loadingModelos ? 'Cargando...' : !formik.values.idCategoria ? 'Primero seleccione categoría' : 'Seleccione modelo'}
+                                        isClearable
+                                        isSearchable
+                                        styles={selectStyles}
+                                        className={formik.touched.idModelo && formik.errors.idModelo ? 'has-error' : ''}
+                                        isDisabled={!formik.values.idCategoria || submitting || loadingModelos}
+                                        isLoading={loadingModelos}
+                                    />
+                                    {formik.touched.idModelo && formik.errors.idModelo && <div className="text-danger text-sm mt-1">{formik.errors.idModelo}</div>}
                                 </div>
 
                                 <div className="md:col-span-2">
@@ -1052,9 +1042,7 @@ const EditarTicket = () => {
                                         onBlur={formik.handleBlur}
                                         disabled={submitting}
                                     />
-                                    {formik.touched.serieProducto && formik.errors.serieProducto && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.serieProducto}</div>
-                                    )}
+                                    {formik.touched.serieProducto && formik.errors.serieProducto && <div className="text-danger text-sm mt-1">{formik.errors.serieProducto}</div>}
                                 </div>
                             </div>
 
@@ -1083,12 +1071,8 @@ const EditarTicket = () => {
                                         onBlur={formik.handleBlur}
                                         disabled={submitting}
                                     />
-                                    {formik.touched.detallesFalla && formik.errors.detallesFalla && (
-                                        <div className="text-danger text-sm mt-1">{formik.errors.detallesFalla}</div>
-                                    )}
-                                    <div className="text-xs text-gray-500 mt-1">
-                                        {formik.values.detallesFalla.length}/5000 caracteres
-                                    </div>
+                                    {formik.touched.detallesFalla && formik.errors.detallesFalla && <div className="text-danger text-sm mt-1">{formik.errors.detallesFalla}</div>}
+                                    <div className="text-xs text-gray-500 mt-1">{formik.values.detallesFalla.length}/5000 caracteres</div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1105,11 +1089,15 @@ const EditarTicket = () => {
                                             className={`form-input ${formik.touched.fechaCompra && formik.errors.fechaCompra ? 'has-error' : ''}`}
                                             placeholder="DD/MM/AAAA"
                                             autoComplete="off"
-                                            readOnly={submitting}
+                                            disabled={submitting}
+                                            style={{
+                                                cursor: 'pointer',
+                                                backgroundColor: 'white',
+                                                position: 'relative',
+                                                zIndex: 1,
+                                            }}
                                         />
-                                        {formik.touched.fechaCompra && formik.errors.fechaCompra && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.fechaCompra}</div>
-                                        )}
+                                        {formik.touched.fechaCompra && formik.errors.fechaCompra && <div className="text-danger text-sm mt-1">{formik.errors.fechaCompra}</div>}
                                     </div>
 
                                     <div>
@@ -1128,22 +1116,19 @@ const EditarTicket = () => {
                                             onBlur={formik.handleBlur}
                                             disabled={submitting}
                                         />
-                                        {formik.touched.tiendaSedeCompra && formik.errors.tiendaSedeCompra && (
-                                            <div className="text-danger text-sm mt-1">{formik.errors.tiendaSedeCompra}</div>
-                                        )}
+                                        {formik.touched.tiendaSedeCompra && formik.errors.tiendaSedeCompra && <div className="text-danger text-sm mt-1">{formik.errors.tiendaSedeCompra}</div>}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS */}
+                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS (sin cambios) */}
+                            {/* ... (código de archivos igual) ... */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faCamera} className="w-5 h-5 text-primary" />
                                     Archivos Adjuntos
                                 </h2>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    Sube nuevas imágenes para reemplazar las existentes (máx. 5MB por imagen)
-                                </p>
+                                <p className="text-sm text-gray-500 mt-1">Sube nuevas imágenes para reemplazar las existentes (máx. 5MB por imagen)</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1176,9 +1161,7 @@ const EditarTicket = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                                                    Nueva imagen
-                                                </div>
+                                                <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">Nueva imagen</div>
                                             </div>
                                         ) : formik.values.fotoVideoFalla ? (
                                             <div className="relative w-full">
@@ -1202,9 +1185,7 @@ const EditarTicket = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">
-                                                    Imagen actual
-                                                </div>
+                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Imagen actual</div>
                                             </div>
                                         ) : (
                                             <div className="w-full">
@@ -1259,9 +1240,7 @@ const EditarTicket = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded-full">
-                                                    Nueva imagen
-                                                </div>
+                                                <div className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded-full">Nueva imagen</div>
                                             </div>
                                         ) : formik.values.fotoBoletaFactura ? (
                                             <div className="relative w-full">
@@ -1285,9 +1264,7 @@ const EditarTicket = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">
-                                                    Imagen actual
-                                                </div>
+                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Imagen actual</div>
                                             </div>
                                         ) : (
                                             <div className="w-full">
@@ -1342,9 +1319,7 @@ const EditarTicket = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-full">
-                                                    Nueva imagen
-                                                </div>
+                                                <div className="absolute bottom-2 left-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-full">Nueva imagen</div>
                                             </div>
                                         ) : formik.values.fotoNumeroSerie ? (
                                             <div className="relative w-full">
@@ -1368,9 +1343,7 @@ const EditarTicket = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">
-                                                    Imagen actual
-                                                </div>
+                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Imagen actual</div>
                                             </div>
                                         ) : (
                                             <div className="w-full">
@@ -1415,13 +1388,11 @@ const EditarTicket = () => {
                                         onBlur={formik.handleBlur}
                                         disabled={submitting}
                                     />
-                                    {formik.touched.ubicacionGoogleMaps && formik.errors.ubicacionGoogleMaps && (
-                                        <div className="text-danger text-sm mt-2">{formik.errors.ubicacionGoogleMaps}</div>
-                                    )}
+                                    {formik.touched.ubicacionGoogleMaps && formik.errors.ubicacionGoogleMaps && <div className="text-danger text-sm mt-2">{formik.errors.ubicacionGoogleMaps}</div>}
                                     {formik.values.ubicacionGoogleMaps && (
-                                        <a 
-                                            href={formik.values.ubicacionGoogleMaps} 
-                                            target="_blank" 
+                                        <a
+                                            href={formik.values.ubicacionGoogleMaps}
+                                            target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-2"
                                         >
@@ -1434,20 +1405,11 @@ const EditarTicket = () => {
 
                             {/* BOTONES */}
                             <div className="flex items-center justify-end space-x-3 pt-5 border-t">
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-danger flex items-center gap-2"
-                                    onClick={() => navigate('/tickets')}
-                                    disabled={submitting}
-                                >
+                                <button type="button" className="btn btn-outline-danger flex items-center gap-2" onClick={() => navigate('/tickets')} disabled={submitting}>
                                     <FontAwesomeIcon icon={faTimes} />
                                     Cancelar
                                 </button>
-                                <button
-                                    type="submit"
-                                    className="btn btn-primary flex items-center gap-2 min-w-[160px] justify-center"
-                                    disabled={submitting || !formik.isValid}
-                                >
+                                <button type="submit" className="btn btn-primary flex items-center gap-2 min-w-[160px] justify-center" disabled={submitting || !formik.isValid}>
                                     {submitting ? (
                                         <>
                                             <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
@@ -1465,6 +1427,11 @@ const EditarTicket = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Modales */}
+            <ModalCategoria modal={modalCategoria} setModal={setModalCategoria} onCategoriaCreada={handleCategoriaCreada} API_URL={API_URL} />
+
+            <ModalModelo modal={modalModelo} setModal={setModalModelo} onModeloCreado={handleModeloCreado} categorias={categorias} marcas={marcas} API_URL={API_URL} />
         </div>
     );
 };
