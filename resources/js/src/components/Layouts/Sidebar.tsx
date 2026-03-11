@@ -4,7 +4,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { NavLink, useLocation } from 'react-router-dom';
 import { toggleSidebar } from '../../store/themeConfigSlice';
 import { IRootState } from '../../store';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../../context/AuthContext'; // Importar useAuth
+import axios from 'axios';
 
 const Sidebar = () => {
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
@@ -12,6 +14,52 @@ const Sidebar = () => {
     const location = useLocation();
     const dispatch = useDispatch();
     const { t } = useTranslation();
+    const { user } = useAuth(); // Obtener el usuario del contexto
+    const [clienteGeneral, setClienteGeneral] = useState(null);
+    const [loadingCliente, setLoadingCliente] = useState(false);
+    
+    const API_URL = 'http://127.0.0.1:8000/api';
+
+    // Cargar datos del cliente general
+    useEffect(() => {
+        console.log('🔍 Sidebar - Usuario:', user);
+        
+        const cargarClienteGeneral = async () => {
+            if (!user) return;
+            
+            // Si el cliente general ya viene en el user, lo usamos
+            if (user.clienteGeneral) {
+                console.log('✅ Sidebar - Usando clienteGeneral del user:', user.clienteGeneral);
+                setClienteGeneral(user.clienteGeneral);
+                return;
+            }
+            
+            // Si tiene idClienteGeneral pero no los datos, los cargamos
+            if (user.idClienteGeneral && !user.clienteGeneral) {
+                setLoadingCliente(true);
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await axios.get(`${API_URL}/mi-cliente-general`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.data.success) {
+                        console.log('✅ Sidebar - ClienteGeneral cargado:', response.data.data);
+                        setClienteGeneral(response.data.data);
+                    }
+                } catch (error) {
+                    console.error('❌ Sidebar - Error cargando cliente general:', error);
+                } finally {
+                    setLoadingCliente(false);
+                }
+            }
+        };
+
+        cargarClienteGeneral();
+    }, [user]);
 
     useEffect(() => {
         if (window.innerWidth < 1024 && themeConfig.sidebar) {
@@ -19,6 +67,48 @@ const Sidebar = () => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location]);
+
+    // Función para obtener la URL del logo
+    const getLogoUrl = () => {
+        // Prioridad 1: Foto del cliente general
+        if (clienteGeneral?.foto) {
+            if (typeof clienteGeneral.foto === 'string') {
+                if (clienteGeneral.foto.startsWith('data:image')) {
+                    return clienteGeneral.foto;
+                }
+                return `data:image/jpeg;base64,${clienteGeneral.foto}`;
+            }
+        }
+        
+        // Prioridad 2: Foto del cliente general desde el user
+        if (user?.clienteGeneral?.foto) {
+            if (typeof user.clienteGeneral.foto === 'string') {
+                if (user.clienteGeneral.foto.startsWith('data:image')) {
+                    return user.clienteGeneral.foto;
+                }
+                return `data:image/jpeg;base64,${user.clienteGeneral.foto}`;
+            }
+        }
+        
+        // Prioridad 3: Logo por defecto
+        return '/assets/images/LOGO-GKM-1.webp';
+    };
+
+    // Función para obtener la descripción de la empresa
+    const getEmpresaDescripcion = () => {
+        // Prioridad 1: Descripción del cliente general
+        if (clienteGeneral?.descripcion) {
+            return clienteGeneral.descripcion;
+        }
+        
+        // Prioridad 2: Descripción del cliente general desde el user
+        if (user?.clienteGeneral?.descripcion) {
+            return user.clienteGeneral.descripcion;
+        }
+        
+        // Prioridad 3: Texto por defecto
+        return 'GKM TECHNOLOGY';
+    };
 
     return (
         <div className={semidark ? 'dark' : ''}>
@@ -28,9 +118,18 @@ const Sidebar = () => {
                 <div className="bg-white dark:bg-black h-full">
                     <div className="flex justify-between items-center px-4 py-3">
                         <NavLink to="/" className="main-logo flex items-center shrink-0">
-                            <img className="w-8 ml-[5px] flex-none" src="/assets/images/LOGO-GKM-1.webp" alt="GKM Technology logo" />
-                            <span className="text-1x2 ltr:ml-1.5 rtl:mr-1.5 font-extrabold align-middle lg:inline dark:text-white-light">{t('GKM TECHNOLOGY')}</span>
-
+                            <img 
+                                className="w-8 ml-[5px] flex-none rounded" 
+                                src={getLogoUrl()} 
+                                alt={getEmpresaDescripcion()}
+                                onError={(e) => {
+                                    console.log('Error cargando logo en sidebar, usando default');
+                                    e.target.src = '/assets/images/LOGO-GKM-1.webp';
+                                }}
+                            />
+                            <span className="text-1x2 ltr:ml-1.5 rtl:mr-1.5 font-extrabold align-middle lg:inline dark:text-white-light">
+                                {loadingCliente ? 'Cargando...' : getEmpresaDescripcion()}
+                            </span>
                         </NavLink>
 
                         <button
@@ -44,6 +143,7 @@ const Sidebar = () => {
                             </svg>
                         </button>
                     </div>
+                    
                     <PerfectScrollbar className="h-[calc(100vh-80px)] relative">
                         <ul className="relative font-semibold space-y-0.5 p-4 py-0">
                             {/* SECCIÓN DASHBOARD */}
