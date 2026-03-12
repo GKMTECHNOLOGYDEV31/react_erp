@@ -26,6 +26,15 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::middleware('auth:sanctum')->group(function () {
+    // Obtener datos del cliente general del usuario autenticado
+    Route::get('/mi-cliente-general', [AuthController::class, 'getMiClienteGeneral']);
+    
+    // Tus otras rutas protegidas...
+    // Route::get('tickets', [TicketController::class, 'index']);
+    // etc...
+});
+
+Route::middleware('auth:sanctum')->group(function () {
     // CRUD de tickets
     Route::get('tickets', [TicketClienteGeneralController::class, 'index']);
     Route::post('tickets', [TicketClienteGeneralController::class, 'store']);

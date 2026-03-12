@@ -297,7 +297,7 @@ const CrearTicket = () => {
     useEffect(() => {
         console.log("Inicializando flatpickr...");
         console.log("Elemento ref:", fechaCompraRef.current);
-        
+
         if (!fechaCompraRef.current) {
             console.log("El elemento ref es null - esperando a que se renderice");
             return;
@@ -514,41 +514,138 @@ const CrearTicket = () => {
     };
 
     // ============================================
-    // CONFIGURACIÓN DE REACT-SELECT
+    // CONFIGURACIÓN DE REACT-SELECT CON MODO DARK
     // ============================================
-    const selectStyles = {
+
+    // Función para obtener estilos según el tema actual
+    const getSelectStyles = (isDark) => ({
         control: (base, state) => ({
             ...base,
-            borderColor: state.isFocused ? '#4361ee' : '#e5e7eb',
+            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            borderColor: state.isFocused
+                ? '#4361ee'
+                : isDark
+                    ? '#4b5563'
+                    : '#e5e7eb',
             boxShadow: state.isFocused ? '0 0 0 1px #4361ee' : 'none',
             '&:hover': {
                 borderColor: '#4361ee'
             },
             minHeight: '38px',
-            borderRadius: '6px'
+            borderRadius: '6px',
+            color: isDark ? '#e5e7eb' : '#1f2937',
         }),
         option: (base, { isFocused, isSelected }) => ({
             ...base,
-            backgroundColor: isSelected ? '#4361ee' : isFocused ? '#e0e7ff' : 'white',
-            color: isSelected ? 'white' : '#111827',
+            backgroundColor: isSelected
+                ? '#4361ee'
+                : isFocused
+                    ? isDark
+                        ? '#374151'
+                        : '#f3f4f6'
+                    : isDark
+                        ? '#1f2937'
+                        : '#ffffff',
+            color: isSelected
+                ? '#ffffff'
+                : isDark
+                    ? '#e5e7eb'
+                    : '#1f2937',
             cursor: 'pointer',
             '&:active': {
-                backgroundColor: '#4361ee'
-            }
+                backgroundColor: '#4361ee',
+                color: '#ffffff',
+            },
         }),
         menu: (base) => ({
             ...base,
-            zIndex: 50
+            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            border: isDark ? '1px solid #4b5563' : '1px solid #e5e7eb',
+            boxShadow: isDark ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        }),
+        menuList: (base) => ({
+            ...base,
+            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            '&::-webkit-scrollbar': {
+                width: '8px',
+                height: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+                background: isDark ? '#374151' : '#f1f1f1',
+            },
+            '&::-webkit-scrollbar-thumb': {
+                background: isDark ? '#4b5563' : '#888',
+                borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb:hover': {
+                background: isDark ? '#6b7280' : '#555',
+            },
         }),
         placeholder: (base) => ({
             ...base,
-            color: '#9ca3af'
+            color: isDark ? '#9ca3af' : '#6b7280',
         }),
         singleValue: (base) => ({
             ...base,
-            color: '#111827'
-        })
-    };
+            color: isDark ? '#e5e7eb' : '#1f2937',
+        }),
+        input: (base) => ({
+            ...base,
+            color: isDark ? '#e5e7eb' : '#1f2937',
+        }),
+        indicatorSeparator: (base) => ({
+            ...base,
+            backgroundColor: isDark ? '#4b5563' : '#e5e7eb',
+        }),
+        dropdownIndicator: (base, state) => ({
+            ...base,
+            color: isDark ? '#9ca3af' : '#6b7280',
+            '&:hover': {
+                color: isDark ? '#d1d5db' : '#374151',
+            },
+        }),
+        clearIndicator: (base) => ({
+            ...base,
+            color: isDark ? '#9ca3af' : '#6b7280',
+            '&:hover': {
+                color: isDark ? '#d1d5db' : '#374151',
+            },
+        }),
+        loadingMessage: (base) => ({
+            ...base,
+            color: isDark ? '#e5e7eb' : '#1f2937',
+            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+        }),
+        noOptionsMessage: (base) => ({
+            ...base,
+            color: isDark ? '#e5e7eb' : '#1f2937',
+            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+        }),
+    });
+
+    // Estado para detectar el tema actual
+    const [isDarkMode, setIsDarkMode] = useState(false);
+
+    // Detectar cambios en el tema
+    useEffect(() => {
+        // Función para verificar el tema actual
+        const checkDarkMode = () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            setIsDarkMode(isDark);
+        };
+
+        // Verificar inicial
+        checkDarkMode();
+
+        // Observer para cambios en las clases del elemento html
+        const observer = new MutationObserver(checkDarkMode);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+
+        return () => observer.disconnect();
+    }, []);
 
     // Convertir categorías al formato que react-select entiende
     const categoriaOptions = categorias.map(cat => ({
@@ -880,7 +977,7 @@ const CrearTicket = () => {
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
                                             <label htmlFor="idCategoria" className="flex items-center gap-1 font-medium">
-                                                <FontAwesomeIcon icon={faLaptop} className="w-4 h-4 text-gray-500" />
+                                                <FontAwesomeIcon icon={faLaptop} className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                 Categoría <span className="text-red-500">*</span>
                                             </label>
                                             <button
@@ -902,7 +999,7 @@ const CrearTicket = () => {
                                             placeholder="Seleccione categoría"
                                             isClearable
                                             isSearchable
-                                            styles={selectStyles}
+                                            styles={getSelectStyles(isDarkMode)}
                                             className={formik.touched.idCategoria && formik.errors.idCategoria ? 'has-error' : ''}
                                             isDisabled={submitting}
                                         />
@@ -915,7 +1012,7 @@ const CrearTicket = () => {
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
                                             <label htmlFor="idModelo" className="flex items-center gap-1 font-medium">
-                                                <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500" />
+                                                <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                 Modelo <span className="text-red-500">*</span>
                                             </label>
                                             <button
@@ -937,7 +1034,7 @@ const CrearTicket = () => {
                                             placeholder={loadingModelos ? 'Cargando...' : !formik.values.idCategoria ? 'Primero seleccione categoría' : 'Seleccione modelo'}
                                             isClearable
                                             isSearchable
-                                            styles={selectStyles}
+                                            styles={getSelectStyles(isDarkMode)}
                                             className={formik.touched.idModelo && formik.errors.idModelo ? 'has-error' : ''}
                                             isDisabled={!formik.values.idCategoria || submitting || loadingModelos}
                                             isLoading={loadingModelos}
@@ -999,7 +1096,7 @@ const CrearTicket = () => {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label htmlFor="fechaCompra" className="flex items-center gap-1 font-medium">
-                                                <FontAwesomeIcon icon={faCalendar} className="w-4 h-4 text-gray-500" />
+                                                <FontAwesomeIcon icon={faCalendar} className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                 Fecha de Compra <span className="text-red-500">*</span>
                                             </label>
                                             <input
@@ -1008,16 +1105,18 @@ const CrearTicket = () => {
                                                 name="fechaCompra"
                                                 type="text"
                                                 placeholder="DD/MM/AAAA"
-                                                className={`form-input ${formik.touched.fechaCompra && formik.errors.fechaCompra ? 'has-error' : ''}`}
+                                                className={`form-input dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:placeholder-gray-400 ${formik.touched.fechaCompra && formik.errors.fechaCompra ? 'has-error' : ''
+                                                    }`}
                                                 style={{
                                                     cursor: 'pointer',
-                                                    backgroundColor: 'white',
                                                     position: 'relative',
                                                     zIndex: 1,
                                                 }}
                                                 autoComplete="off"
                                             />
-                                            {formik.touched.fechaCompra && formik.errors.fechaCompra && <div className="text-danger text-sm mt-1">{formik.errors.fechaCompra}</div>}
+                                            {formik.touched.fechaCompra && formik.errors.fechaCompra && (
+                                                <div className="text-danger text-sm mt-1">{formik.errors.fechaCompra}</div>
+                                            )}
                                         </div>
 
                                         <div>
