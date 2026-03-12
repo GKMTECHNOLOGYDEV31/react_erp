@@ -7,11 +7,11 @@ import Dropdown from '../components/Dropdown';
 import { useEffect, useState, useRef } from 'react'; // 👈 SOLO agregué useRef
 import { setPageTitle } from '../store/themeConfigSlice';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-    faTicket, 
-    faMapLocation, 
-    faGear, 
-    faClock, 
+import {
+    faTicket,
+    faMapLocation,
+    faGear,
+    faClock,
     faUserGear,
     faRotateRight,
     faChartSimple,
@@ -70,13 +70,13 @@ const ResponsiveEChart = ({ option, style, ...props }: any) => {
                 forceResize();
             });
             resizeObserver.observe(containerRef.current);
-            
+
             // Observar cambios en el sidebar
             const sidebar = document.querySelector('.sidebar') || document.querySelector('.navbar');
             if (sidebar) {
                 resizeObserver.observe(sidebar);
             }
-            
+
             return () => resizeObserver.disconnect();
         }
     }, []);
@@ -91,10 +91,10 @@ const ResponsiveEChart = ({ option, style, ...props }: any) => {
     }, []);
 
     return (
-        <div 
-            ref={containerRef} 
-            style={{ 
-                width: '100%', 
+        <div
+            ref={containerRef}
+            style={{
+                width: '100%',
                 height: style?.height || '350px',
                 position: 'relative'
             }}
@@ -102,13 +102,13 @@ const ResponsiveEChart = ({ option, style, ...props }: any) => {
             <ReactECharts
                 ref={chartRef}
                 option={option}
-                style={{ 
-                    width: '100%', 
+                style={{
+                    width: '100%',
                     height: '100%'
                 }}
-                opts={{ 
-                    renderer: 'canvas', 
-                    width: 'auto', 
+                opts={{
+                    renderer: 'canvas',
+                    width: 'auto',
                     height: 'auto'
                 }}
                 {...props}
@@ -225,9 +225,9 @@ const Analytics = () => {
                 window.dispatchEvent(new Event('resize'));
             }, 100);
         };
-        
+
         forceResize();
-        
+
         // Observar cambios en el sidebar
         const observer = new MutationObserver(() => {
             forceResize();
@@ -235,9 +235,9 @@ const Analytics = () => {
 
         const sidebar = document.querySelector('.sidebar') || document.querySelector('.navbar');
         if (sidebar) {
-            observer.observe(sidebar, { 
-                attributes: true, 
-                attributeFilter: ['class', 'style'] 
+            observer.observe(sidebar, {
+                attributes: true,
+                attributeFilter: ['class', 'style']
             });
         }
 
@@ -250,7 +250,7 @@ const Analytics = () => {
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: periodoTickets === 'dia' 
+            data: periodoTickets === 'dia'
                 ? Array.from({ length: 30 }, (_, i) => `Día ${i + 1}`)
                 : ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
             axisLabel: { color: isDark ? '#bfc9d4' : '#506690' }
@@ -335,7 +335,7 @@ const Analytics = () => {
 
     // Configuración para gráfico de tickets por falla
     const ticketsFallaOption = {
-        tooltip: { 
+        tooltip: {
             trigger: 'item',
             formatter: (params: any) => {
                 return `${params.name}: ${params.value} tickets (${params.percent}%)`;
@@ -380,8 +380,8 @@ const Analytics = () => {
 
     // Configuración para gráfico de tickets por estado
     const ticketsEstadoOption = {
-        tooltip: { 
-            trigger: 'axis', 
+        tooltip: {
+            trigger: 'axis',
             axisPointer: { type: 'shadow' },
             formatter: (params: any) => {
                 const data = params[0];
@@ -403,7 +403,7 @@ const Analytics = () => {
         xAxis: {
             type: 'category',
             data: mockData.ticketsPorEstado.map(item => item.estado),
-            axisLabel: { 
+            axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15,
                 fontSize: 11
@@ -436,8 +436,8 @@ const Analytics = () => {
 
     // Configuración para gráfico de tickets por técnico
     const ticketsTecnicoOption = {
-        tooltip: { 
-            trigger: 'axis', 
+        tooltip: {
+            trigger: 'axis',
             axisPointer: { type: 'shadow' },
             formatter: (params: any) => {
                 const data = params[0];
@@ -463,7 +463,7 @@ const Analytics = () => {
         xAxis: {
             type: 'category',
             data: mockData.ticketsPorTecnico[periodoTecnicos].map(item => item.tecnico.split(' ')[0]),
-            axisLabel: { 
+            axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15
             },
@@ -507,18 +507,6 @@ const Analytics = () => {
                         <span>Analytics Tickets</span>
                     </li>
                 </ul>
-                
-                <div className="flex gap-2">
-                    <button className="btn btn-outline-primary btn-sm">
-                        <FontAwesomeIcon icon={faDownload} className="mr-2" /> Exportar
-                    </button>
-                    <button className="btn btn-outline-primary btn-sm">
-                        <FontAwesomeIcon icon={faPrint} className="mr-2" /> Imprimir
-                    </button>
-                    <button className="btn btn-outline-primary btn-sm" onClick={() => setExpandido(!expandido)}>
-                        <FontAwesomeIcon icon={expandido ? faCompress : faExpand} />
-                    </button>
-                </div>
             </div>
 
             <div className={`pt-5 transition-all duration-300 ${expandido ? 'scale-100' : ''}`}>
@@ -527,7 +515,7 @@ const Analytics = () => {
                     <div className="panel bg-gradient-to-r from-[#4361ee] to-[#805dca] text-white relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-8 -mt-8"></div>
                         <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full -ml-6 -mb-6"></div>
-                        
+
                         <div className="flex justify-between items-center relative z-10">
                             <div>
                                 <p className="text-white/70 text-sm flex items-center gap-1">
@@ -542,23 +530,8 @@ const Analytics = () => {
                                     </span>
                                 </div>
                             </div>
-                            <div className="dropdown">
-                                <Dropdown
-                                    offset={[0, 5]}
-                                    placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
-                                    btnClassName="hover:bg-white/10 rounded p-2"
-                                    button={<FontAwesomeIcon icon={faCalendarAlt} className="text-white" />}
-                                >
-                                    <ul>
-                                        <li><button type="button" onClick={() => setPeriodoTickets('dia')}>Hoy</button></li>
-                                        <li><button type="button" onClick={() => setPeriodoTickets('semana')}>Esta Semana</button></li>
-                                        <li><button type="button" onClick={() => setPeriodoTickets('mes')}>Este Mes</button></li>
-                                        <li><button type="button" onClick={() => setPeriodoTickets('año')}>Este Año</button></li>
-                                    </ul>
-                                </Dropdown>
-                            </div>
                         </div>
-                        
+
                         <div className="mt-4 grid grid-cols-3 gap-2 text-white/80 text-xs relative z-10">
                             <div className="bg-white/10 rounded p-2 text-center">
                                 <div>Día</div>
@@ -610,7 +583,7 @@ const Analytics = () => {
                             <div>
                                 <h4 className="text-2xl font-bold">{mockData.tiemposPromedio.resolucionTotal.horas}h</h4>
                                 <div className="flex items-center gap-2 text-xs">
-                                    <FontAwesomeIcon icon={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown} 
+                                    <FontAwesomeIcon icon={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown}
                                         className={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'} />
                                     <span className={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'}>
                                         {Math.abs(mockData.tiemposPromedio.resolucionTotal.tendencia)}h vs ayer
@@ -671,13 +644,13 @@ const Analytics = () => {
                                 <h5 className="font-semibold text-lg">Tickets por Distrito</h5>
                             </div>
                             <div className="flex gap-1 bg-white-dark/10 rounded-lg p-1">
-                                <button 
+                                <button
                                     onClick={() => setVistaDistritos('grafico')}
                                     className={`px-3 py-1 rounded-md text-sm ${vistaDistritos === 'grafico' ? 'bg-primary text-white' : ''}`}
                                 >
                                     <FontAwesomeIcon icon={faChartBar} />
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setVistaDistritos('tabla')}
                                     className={`px-3 py-1 rounded-md text-sm ${vistaDistritos === 'tabla' ? 'bg-primary text-white' : ''}`}
                                 >
@@ -728,7 +701,7 @@ const Analytics = () => {
                                 </table>
                             </PerfectScrollbar>
                         )}
-                        
+
                         <div className="mt-4 text-sm text-white-dark flex items-center justify-between">
                             <span>
                                 <FontAwesomeIcon icon={faBuilding} className="mr-1" />
@@ -743,7 +716,7 @@ const Analytics = () => {
                             <FontAwesomeIcon icon={faGear} className="text-primary text-xl" />
                             <h5 className="font-semibold text-lg">Tickets por Tipo de Falla</h5>
                         </div>
-                        
+
                         {/* Leyenda interactiva */}
                         <div className="grid grid-cols-2 gap-2 mb-4">
                             {mockData.ticketsPorFalla.map((falla, index) => (
@@ -757,7 +730,7 @@ const Analytics = () => {
 
                         {/* 👇 CAMBIADO a ResponsiveEChart */}
                         <ResponsiveEChart option={ticketsFallaOption} style={{ height: '300px' }} />
-                        
+
                         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                             <div className="bg-primary/5 p-2 rounded">
                                 <div className="text-xs text-white-dark">Principal</div>
@@ -824,11 +797,11 @@ const Analytics = () => {
                             resolucionTotal: { label: 'Resolución Total', icon: faCheckDouble, color: 'danger' }
                         };
                         const title = titles[key as keyof typeof titles];
-                        
+
                         return (
                             <div key={index} className="panel bg-gradient-to-br from-[#1b2e4b] to-[#253b5b] text-white relative overflow-hidden group hover:shadow-xl transition-all duration-300">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
-                                
+
                                 <div className="flex items-center gap-3 relative z-10">
                                     <div className={`bg-${title.color} rounded-full w-12 h-12 flex items-center justify-center text-2xl`}>
                                         <FontAwesomeIcon icon={title.icon} />
@@ -852,7 +825,7 @@ const Analytics = () => {
                                         <span className="text-white/70">{Math.round((48 - value.horas) / 48 * 100)}% restante</span>
                                     </div>
                                     <div className="w-full bg-white/20 rounded-full h-1.5">
-                                        <div 
+                                        <div
                                             className={`bg-${title.color} h-1.5 rounded-full transition-all duration-500`}
                                             style={{ width: `${Math.min(100, (value.horas / 48) * 100)}%` }}
                                         ></div>
@@ -872,19 +845,19 @@ const Analytics = () => {
                                 <h5 className="font-semibold text-lg">Rendimiento por Técnico</h5>
                             </div>
                             <div className="flex gap-1 bg-white-dark/10 rounded-lg p-1">
-                                <button 
+                                <button
                                     onClick={() => setPeriodoTecnicos('diario')}
                                     className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'diario' ? 'bg-primary text-white' : ''}`}
                                 >
                                     <FontAwesomeIcon icon={faCalendarDay} /> Día
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setPeriodoTecnicos('semanal')}
                                     className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'semanal' ? 'bg-primary text-white' : ''}`}
                                 >
                                     <FontAwesomeIcon icon={faCalendarWeek} /> Semana
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setPeriodoTecnicos('mensual')}
                                     className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'mensual' ? 'bg-primary text-white' : ''}`}
                                 >
@@ -900,8 +873,8 @@ const Analytics = () => {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold
-                                                ${index === 0 ? 'bg-yellow-500' : 
-                                                  index === 1 ? 'bg-gray-400' : 
+                                                ${index === 0 ? 'bg-yellow-500' :
+                                                  index === 1 ? 'bg-gray-400' :
                                                   index === 2 ? 'bg-orange-400' : 'bg-primary/50'}`}>
                                                 {tecnico.tecnico.split(' ').map(n => n[0]).join('')}
                                             </div>
@@ -929,11 +902,11 @@ const Analytics = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         {/* Barra de progreso de eficiencia */}
                                         <div className="w-24">
                                             <div className="w-full bg-white-dark/20 rounded-full h-2">
-                                                <div 
+                                                <div
                                                     className={`h-2 rounded-full ${tecnico.eficiencia >= 90 ? 'bg-success' : tecnico.eficiencia >= 80 ? 'bg-warning' : 'bg-danger'}`}
                                                     style={{ width: `${tecnico.eficiencia}%` }}
                                                 ></div>
@@ -954,24 +927,24 @@ const Analytics = () => {
                             <FontAwesomeIcon icon={faUsers} className="text-primary text-xl" />
                             <h5 className="font-semibold text-lg">Rendimiento del Personal</h5>
                         </div>
-                        
+
                         <div className="grid grid-cols-3 gap-4 mb-6">
                             {['Diario', 'Semanal', 'Mensual'].map((periodo, index) => {
                                 const valores = [mockData.ticketsPorPersonal.diario, mockData.ticketsPorPersonal.semanal, mockData.ticketsPorPersonal.mensual];
                                 const objetivos = [mockData.ticketsPorPersonal.objetivos.diario, mockData.ticketsPorPersonal.objetivos.semanal, mockData.ticketsPorPersonal.objetivos.mensual];
                                 const alcanzado = (valores[index] / objetivos[index]) * 100;
-                                
+
                                 return (
                                     <div key={index} className="text-center p-4 bg-white-dark/5 rounded-lg hover:shadow-lg transition-all">
-                                        <FontAwesomeIcon 
-                                            icon={index === 0 ? faCalendarDay : index === 1 ? faCalendarWeek : faCalendarAlt} 
-                                            className={`text-2xl mb-2 text-${index === 0 ? 'primary' : index === 1 ? 'success' : 'warning'}`} 
+                                        <FontAwesomeIcon
+                                            icon={index === 0 ? faCalendarDay : index === 1 ? faCalendarWeek : faCalendarAlt}
+                                            className={`text-2xl mb-2 text-${index === 0 ? 'primary' : index === 1 ? 'success' : 'warning'}`}
                                         />
                                         <p className="text-white-dark text-sm">{periodo}</p>
                                         <p className="text-2xl font-bold">{valores[index]}</p>
                                         <div className="mt-2">
                                             <div className="w-full bg-white-dark/20 rounded-full h-1.5">
-                                                <div 
+                                                <div
                                                     className={`h-1.5 rounded-full bg-${index === 0 ? 'primary' : index === 1 ? 'success' : 'warning'}`}
                                                     style={{ width: `${Math.min(100, alcanzado)}%` }}
                                                 ></div>
@@ -1036,7 +1009,7 @@ const Analytics = () => {
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="col-span-2">
                                 <div className="bg-white-dark/5 p-4 rounded-lg">
@@ -1062,7 +1035,7 @@ const Analytics = () => {
                                                         </div>
                                                     </div>
                                                     <div className="w-full bg-white-dark/20 rounded-full h-2">
-                                                        <div 
+                                                        <div
                                                             className="bg-danger h-2 rounded-full transition-all duration-500"
                                                             style={{ width: `${(reincidencias / 30) * 100}%` }}
                                                         ></div>
@@ -1073,7 +1046,7 @@ const Analytics = () => {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div className="space-y-4">
                                 <div className="bg-gradient-to-br from-danger/10 to-danger/5 rounded-lg p-4">
                                     <FontAwesomeIcon icon={faExclamationTriangle} className="text-danger text-3xl mb-2" />
@@ -1125,7 +1098,7 @@ const Analytics = () => {
                                 <FontAwesomeIcon icon={faRefresh} />
                             </button>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                             <div>
                                 <p className="text-white/70 text-xs">SLAs cumplidos</p>
