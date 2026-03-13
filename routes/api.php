@@ -49,19 +49,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('modelos-por-categoria/{idCategoria}', [TicketClienteGeneralController::class, 'getModelosByCategoria']);
     Route::get('/tickets/consultar-completo/{numeroTicket}', [TicketClienteGeneralController::class, 'consultarTicketCompleto']);
 });
-// routes/api.php
-Route::prefix('analytics')->group(function () {
-    Route::get('/dashboard', [AnalyticsController::class, 'dashboard']);
-    Route::get('/tickets-por-dia', [AnalyticsController::class, 'ticketsPorDia']);
-    Route::get('/tickets-por-categoria', [AnalyticsController::class, 'ticketsPorCategoria']);
-    Route::get('/tickets-por-modelo', [AnalyticsController::class, 'ticketsPorModelo']);
-    Route::get('/tickets-por-tipo-documento', [AnalyticsController::class, 'ticketsPorTipoDocumento']);
-    Route::get('/tickets-por-departamento', [AnalyticsController::class, 'ticketsPorDepartamento']);
-    Route::get('/tickets-por-tienda', [AnalyticsController::class, 'ticketsPorTienda']);
-    Route::get('/tickets-por-hora', [AnalyticsController::class, 'ticketsPorHora']);
-    Route::get('/ultimos-tickets', [AnalyticsController::class, 'ultimosTickets']);
-    Route::get('/metricas-detalladas', [AnalyticsController::class, 'metricasDetalladas']);
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::prefix('analytics')->group(function () {
+        Route::get('/dashboard', [AnalyticsController::class, 'dashboard']);
+        Route::get('/tickets-por-dia', [AnalyticsController::class, 'ticketsPorDia']);
+        Route::get('/tickets-por-categoria', [AnalyticsController::class, 'ticketsPorCategoria']);
+        Route::get('/tickets-por-modelo', [AnalyticsController::class, 'ticketsPorModelo']);
+        Route::get('/tickets-por-tipo-documento', [AnalyticsController::class, 'ticketsPorTipoDocumento']);
+        Route::get('/tickets-por-departamento', [AnalyticsController::class, 'ticketsPorDepartamento']);
+        Route::get('/tickets-por-tienda', [AnalyticsController::class, 'ticketsPorTienda']);
+        Route::get('/tickets-por-hora', [AnalyticsController::class, 'ticketsPorHora']);
+        Route::get('/ultimos-tickets', [AnalyticsController::class, 'ultimosTickets']);
+        Route::get('/metricas-detalladas', [AnalyticsController::class, 'metricasDetalladas']);
+    });
+
 });
+
 
 // Rutas protegidas con autenticación
 Route::middleware('auth:sanctum')->group(function () {
