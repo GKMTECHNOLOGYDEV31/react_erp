@@ -6,6 +6,7 @@ namespace App\Http\Controllers\login;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use App\Models\Usuario;
 use App\Models\Clientegeneral; // Asegúrate de importar el modelo
 
@@ -29,7 +30,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         // Verificar si el usuario tiene idClienteGeneral
-        \Log::info('Usuario encontrado:', [
+        Log::info('Usuario encontrado:', [
             'idUsuario' => $user->idUsuario,
             'nombre' => $user->Nombre,
             'idClienteGeneral' => $user->idClienteGeneral // Este es el campo que debe existir
@@ -41,7 +42,7 @@ class AuthController extends Controller
             $clienteGeneral = Clientegeneral::find($user->idClienteGeneral);
 
             if ($clienteGeneral) {
-                \Log::info('ClienteGeneral encontrado:', [
+                Log::info('ClienteGeneral encontrado:', [
                     'id' => $clienteGeneral->idClienteGeneral,
                     'descripcion' => $clienteGeneral->descripcion,
                     'tiene_foto' => $clienteGeneral->foto ? 'Sí' : 'No'
@@ -84,7 +85,7 @@ class AuthController extends Controller
         }
 
         // Log para verificar los datos que se envían
-        \Log::info('Datos de usuario enviados:', [
+        Log::info('Datos de usuario enviados:', [
             'idUsuario' => $userData['idUsuario'],
             'idClienteGeneral' => $userData['idClienteGeneral'],
             'tiene_clienteGeneral' => isset($userData['clienteGeneral'])
@@ -105,7 +106,7 @@ class AuthController extends Controller
         try {
             $user = $request->user(); // Usuario autenticado via token
 
-            \Log::info('Obteniendo cliente general para usuario:', [
+            Log::info('Obteniendo cliente general para usuario:', [
                 'idUsuario' => $user->idUsuario,
                 'idClienteGeneral' => $user->idClienteGeneral
             ]);
@@ -138,7 +139,7 @@ class AuthController extends Controller
                 'data'    => $data
             ], 200);
         } catch (\Exception $e) {
-            \Log::error('Error al obtener cliente general:', [
+            Log::error('Error al obtener cliente general:', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
