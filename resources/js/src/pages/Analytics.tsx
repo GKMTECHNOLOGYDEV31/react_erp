@@ -426,7 +426,7 @@ const Analytics = () => {
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: data?.ticketsPorEstado.map(item => item.estado),
+            data: (data?.ticketsPorEstado || []).map(item => item.estado || 'N/A'),
             axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15,
@@ -464,7 +464,8 @@ const Analytics = () => {
             axisPointer: { type: 'shadow' },
             formatter: (params: any) => {
                 if (!params || !params[0]) return '';
-                const item = data?.ticketsPorTecnico?.[periodoTecnicos]?.[params[0].dataIndex];
+                const tecnicosData = data?.ticketsPorTecnico?.[periodoTecnicos] || [];
+                const item = tecnicosData[params[0].dataIndex];
                 if (!item) return '';
                 return `
                     <div class="font-semibold">${item.tecnico || 'N/A'}</div>
@@ -486,7 +487,7 @@ const Analytics = () => {
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: data?.ticketsPorTecnico[periodoTecnicos].map(item => item.tecnico.split(' ')[0]),
+            data: (data?.ticketsPorTecnico?.[periodoTecnicos] || []).map(item => (item.tecnico || '').split(' ')[0] || 'N/A'),
             axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15
@@ -607,10 +608,10 @@ const Analytics = () => {
                             <div>
                                 <h4 className="text-2xl font-bold">{data?.tiemposPromedio?.resolucionTotal?.horas || 0}h</h4>
                                 <div className="flex items-center gap-2 text-xs">
-                                    <FontAwesomeIcon icon={data?.tiemposPromedio.resolucionTotal.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown}
-                                        className={data?.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'} />
-                                    <span className={data?.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'}>
-                                        {Math.abs(data?.tiemposPromedio.resolucionTotal.tendencia)}h vs ayer
+                                    <FontAwesomeIcon icon={data?.tiemposPromedio?.resolucionTotal?.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown}
+                                        className={data?.tiemposPromedio?.resolucionTotal?.tendencia > 0 ? 'text-danger' : 'text-success'} />
+                                    <span className={data?.tiemposPromedio?.resolucionTotal?.tendencia > 0 ? 'text-danger' : 'text-success'}>
+                                        {Math.abs(data?.tiemposPromedio?.resolucionTotal?.tendencia || 0)}h vs ayer
                                     </span>
                                 </div>
                             </div>
@@ -905,7 +906,7 @@ const Analytics = () => {
                                                 ${index === 0 ? 'bg-yellow-500' :
                                                     index === 1 ? 'bg-gray-400' :
                                                         index === 2 ? 'bg-orange-400' : 'bg-primary/50'}`}>
-                                                {tecnico.tecnico.split(' ').map(n => n[0]).join('')}
+                                                {(tecnico.tecnico || 'N/A').split(' ').map((n: string) => n[0]).join('')}
                                             </div>
                                             <div>
                                                 <div className="font-semibold flex items-center gap-2">
@@ -936,8 +937,8 @@ const Analytics = () => {
                                         <div className="w-24">
                                             <div className="w-full bg-white-dark/20 rounded-full h-2">
                                                 <div
-                                                    className={`h-2 rounded-full ${tecnico.eficiencia >= 90 ? 'bg-success' : tecnico.eficiencia >= 80 ? 'bg-warning' : 'bg-danger'}`}
-                                                    style={{ width: `${tecnico.eficiencia}%` }}
+                                                    className={`h-2 rounded-full ${(tecnico.eficiencia || 0) >= 90 ? 'bg-success' : (tecnico.eficiencia || 0) >= 80 ? 'bg-warning' : 'bg-danger'}`}
+                                                    style={{ width: `${tecnico.eficiencia || 0}%` }}
                                                 ></div>
                                             </div>
                                         </div>
@@ -958,8 +959,8 @@ const Analytics = () => {
 
                         <div className="grid grid-cols-3 gap-4 mb-6">
                             {['Diario', 'Semanal', 'Mensual'].map((periodo, index) => {
-                                const valores = [data?.ticketsPorPersonal.diario, data?.ticketsPorPersonal.semanal, data?.ticketsPorPersonal.mensual];
-                                const objetivos = [data?.ticketsPorPersonal.objetivos.diario, data?.ticketsPorPersonal.objetivos.semanal, data?.ticketsPorPersonal.objetivos.mensual];
+                                const valores = [data?.ticketsPorPersonal?.diario || 0, data?.ticketsPorPersonal?.semanal || 0, data?.ticketsPorPersonal?.mensual || 0];
+                                const objetivos = [data?.ticketsPorPersonal?.objetivos?.diario || 40, data?.ticketsPorPersonal?.objetivos?.semanal || 200, data?.ticketsPorPersonal?.objetivos?.mensual || 800];
                                 const alcanzado = (valores[index] / objetivos[index]) * 100;
 
                                 return (
