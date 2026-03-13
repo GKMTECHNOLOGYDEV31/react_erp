@@ -72,6 +72,7 @@ const ResponsiveEChart = ({ option, style, ...props }: any) => {
             });
             resizeObserver.observe(containerRef.current);
 
+            // Observar cambios en el sidebar
             const sidebar = document.querySelector('.sidebar') || document.querySelector('.navbar');
             if (sidebar) {
                 resizeObserver.observe(sidebar);
@@ -240,6 +241,7 @@ const Analytics = () => {
 
         forceResize();
 
+        // Observar cambios en el sidebar
         const observer = new MutationObserver(() => {
             forceResize();
         });
@@ -272,7 +274,7 @@ const Analytics = () => {
         xAxis: {
             type: 'category',
             data: periodoTickets === 'dia'
-                ? Array.from({ length: data?.tendencias?.diario?.length || 30 }, (_, i) => `Día ${i + 1}`)
+                ? Array.from({ length: 30 }, (_, i) => `Día ${i + 1}`)
                 : ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
             axisLabel: { color: isDark ? '#bfc9d4' : '#506690' }
         },
@@ -424,7 +426,7 @@ const Analytics = () => {
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: data?.ticketsPorEstado?.map(item => item.estado || 'Sin estado') || [],
+            data: mockData.ticketsPorEstado.map(item => item.estado),
             axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15,
@@ -484,7 +486,7 @@ const Analytics = () => {
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: (data?.ticketsPorTecnico?.[periodoTecnicos] || []).map(item => item.tecnico?.split(' ')[0] || 'N/A'),
+            data: mockData.ticketsPorTecnico[periodoTecnicos].map(item => item.tecnico.split(' ')[0]),
             axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15
@@ -529,21 +531,6 @@ const Analytics = () => {
                         <span>Analytics Tickets</span>
                     </li>
                 </ul>
-
-                <div className="flex gap-2">
-                    <button className="btn btn-outline-primary btn-sm" onClick={loadData}>
-                        <FontAwesomeIcon icon={faRefresh} className="mr-2" /> Actualizar
-                    </button>
-                    <button className="btn btn-outline-primary btn-sm">
-                        <FontAwesomeIcon icon={faDownload} className="mr-2" /> Exportar
-                    </button>
-                    <button className="btn btn-outline-primary btn-sm">
-                        <FontAwesomeIcon icon={faPrint} className="mr-2" /> Imprimir
-                    </button>
-                    <button className="btn btn-outline-primary btn-sm" onClick={() => setExpandido(!expandido)}>
-                        <FontAwesomeIcon icon={expandido ? faCompress : faExpand} />
-                    </button>
-                </div>
             </div>
 
             <div className={`pt-5 transition-all duration-300 ${expandido ? 'scale-100' : ''}`}>
@@ -566,21 +553,6 @@ const Analytics = () => {
                                         +{data?.ticketsPorPeriodo?.tendencia?.[periodoTickets] || 0}%
                                     </span>
                                 </div>
-                            </div>
-                            <div className="dropdown">
-                                <Dropdown
-                                    offset={[0, 5]}
-                                    placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
-                                    btnClassName="hover:bg-white/10 rounded p-2"
-                                    button={<FontAwesomeIcon icon={faCalendarAlt} className="text-white" />}
-                                >
-                                    <ul>
-                                        <li><button type="button" onClick={() => setPeriodoTickets('dia')}>Hoy</button></li>
-                                        <li><button type="button" onClick={() => setPeriodoTickets('semana')}>Esta Semana</button></li>
-                                        <li><button type="button" onClick={() => setPeriodoTickets('mes')}>Este Mes</button></li>
-                                        <li><button type="button" onClick={() => setPeriodoTickets('año')}>Este Año</button></li>
-                                    </ul>
-                                </Dropdown>
                             </div>
                         </div>
 
@@ -635,12 +607,10 @@ const Analytics = () => {
                             <div>
                                 <h4 className="text-2xl font-bold">{data?.tiemposPromedio?.resolucionTotal?.horas || 0}h</h4>
                                 <div className="flex items-center gap-2 text-xs">
-                                    <FontAwesomeIcon
-                                        icon={(data?.tiemposPromedio?.resolucionTotal?.tendencia || 0) > 0 ? faArrowTrendUp : faArrowTrendDown}
-                                        className={(data?.tiemposPromedio?.resolucionTotal?.tendencia || 0) > 0 ? 'text-danger' : 'text-success'}
-                                    />
-                                    <span className={(data?.tiemposPromedio?.resolucionTotal?.tendencia || 0) > 0 ? 'text-danger' : 'text-success'}>
-                                        {Math.abs(data?.tiemposPromedio?.resolucionTotal?.tendencia || 0)}h vs ayer
+                                    <FontAwesomeIcon icon={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown}
+                                        className={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'} />
+                                    <span className={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'}>
+                                        {Math.abs(mockData.tiemposPromedio.resolucionTotal.tendencia)}h vs ayer
                                     </span>
                                 </div>
                             </div>
@@ -855,7 +825,7 @@ const Analytics = () => {
                             solucionLaboratorio: { label: 'Solución Lab.', icon: faFlask, color: 'warning' },
                             resolucionTotal: { label: 'Resolución Total', icon: faCheckDouble, color: 'danger' }
                         };
-                        const title = titles[key as keyof typeof titles] || { label: key, icon: faClock, color: 'info' };
+                        const title = titles[key as keyof typeof titles];
 
                         return (
                             <div key={index} className="panel bg-gradient-to-br from-[#1b2e4b] to-[#253b5b] text-white relative overflow-hidden group hover:shadow-xl transition-all duration-300">
@@ -935,7 +905,7 @@ const Analytics = () => {
                                                 ${index === 0 ? 'bg-yellow-500' :
                                                     index === 1 ? 'bg-gray-400' :
                                                         index === 2 ? 'bg-orange-400' : 'bg-primary/50'}`}>
-                                                {tecnico.tecnico?.split(' ').map(n => n[0]).join('') || 'N/A'}
+                                                {tecnico.tecnico.split(' ').map(n => n[0]).join('')}
                                             </div>
                                             <div>
                                                 <div className="font-semibold flex items-center gap-2">
@@ -966,8 +936,8 @@ const Analytics = () => {
                                         <div className="w-24">
                                             <div className="w-full bg-white-dark/20 rounded-full h-2">
                                                 <div
-                                                    className={`h-2 rounded-full ${(tecnico.eficiencia || 0) >= 90 ? 'bg-success' : (tecnico.eficiencia || 0) >= 80 ? 'bg-warning' : 'bg-danger'}`}
-                                                    style={{ width: `${tecnico.eficiencia || 0}%` }}
+                                                    className={`h-2 rounded-full ${tecnico.eficiencia >= 90 ? 'bg-success' : tecnico.eficiencia >= 80 ? 'bg-warning' : 'bg-danger'}`}
+                                                    style={{ width: `${tecnico.eficiencia}%` }}
                                                 ></div>
                                             </div>
                                         </div>
@@ -988,9 +958,9 @@ const Analytics = () => {
 
                         <div className="grid grid-cols-3 gap-4 mb-6">
                             {['Diario', 'Semanal', 'Mensual'].map((periodo, index) => {
-                                const valores = [data?.ticketsPorPersonal?.diario || 0, data?.ticketsPorPersonal?.semanal || 0, data?.ticketsPorPersonal?.mensual || 0];
-                                const objetivos = [data?.ticketsPorPersonal?.objetivos?.diario || 40, data?.ticketsPorPersonal?.objetivos?.semanal || 200, data?.ticketsPorPersonal?.objetivos?.mensual || 800];
-                                const alcanzado = objetivos[index] > 0 ? (valores[index] / objetivos[index]) * 100 : 0;
+                                const valores = [mockData.ticketsPorPersonal.diario, mockData.ticketsPorPersonal.semanal, mockData.ticketsPorPersonal.mensual];
+                                const objetivos = [mockData.ticketsPorPersonal.objetivos.diario, mockData.ticketsPorPersonal.objetivos.semanal, mockData.ticketsPorPersonal.objetivos.mensual];
+                                const alcanzado = (valores[index] / objetivos[index]) * 100;
 
                                 return (
                                     <div key={index} className="text-center p-4 bg-white-dark/5 rounded-lg hover:shadow-lg transition-all">
