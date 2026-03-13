@@ -426,7 +426,7 @@ const Analytics = () => {
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: mockData.ticketsPorEstado.map(item => item.estado),
+            data: data?.ticketsPorEstado.map(item => item.estado),
             axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15,
@@ -486,7 +486,7 @@ const Analytics = () => {
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: mockData.ticketsPorTecnico[periodoTecnicos].map(item => item.tecnico.split(' ')[0]),
+            data: data?.ticketsPorTecnico[periodoTecnicos].map(item => item.tecnico.split(' ')[0]),
             axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15
@@ -607,10 +607,10 @@ const Analytics = () => {
                             <div>
                                 <h4 className="text-2xl font-bold">{data?.tiemposPromedio?.resolucionTotal?.horas || 0}h</h4>
                                 <div className="flex items-center gap-2 text-xs">
-                                    <FontAwesomeIcon icon={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown}
-                                        className={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'} />
-                                    <span className={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'}>
-                                        {Math.abs(mockData.tiemposPromedio.resolucionTotal.tendencia)}h vs ayer
+                                    <FontAwesomeIcon icon={data?.tiemposPromedio.resolucionTotal.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown}
+                                        className={data?.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'} />
+                                    <span className={data?.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'}>
+                                        {Math.abs(data?.tiemposPromedio.resolucionTotal.tendencia)}h vs ayer
                                     </span>
                                 </div>
                             </div>
@@ -958,8 +958,8 @@ const Analytics = () => {
 
                         <div className="grid grid-cols-3 gap-4 mb-6">
                             {['Diario', 'Semanal', 'Mensual'].map((periodo, index) => {
-                                const valores = [mockData.ticketsPorPersonal.diario, mockData.ticketsPorPersonal.semanal, mockData.ticketsPorPersonal.mensual];
-                                const objetivos = [mockData.ticketsPorPersonal.objetivos.diario, mockData.ticketsPorPersonal.objetivos.semanal, mockData.ticketsPorPersonal.objetivos.mensual];
+                                const valores = [data?.ticketsPorPersonal.diario, data?.ticketsPorPersonal.semanal, data?.ticketsPorPersonal.mensual];
+                                const objetivos = [data?.ticketsPorPersonal.objetivos.diario, data?.ticketsPorPersonal.objetivos.semanal, data?.ticketsPorPersonal.objetivos.mensual];
                                 const alcanzado = (valores[index] / objetivos[index]) * 100;
 
                                 return (
