@@ -58,7 +58,7 @@ const ConsultarTicket = () => {
     const [activeTab, setActiveTab] = useState('general');
     const [expandedVisita, setExpandedVisita] = useState(null);
 
-    const API_URL = 'http://127.0.0.1:8000/api';
+    const API_URL = 'http://192.168.0.91:5000/api';
 
     // Configurar toastr
     toastr.options = {

@@ -16,7 +16,7 @@ const Header = () => {
     const location = useLocation();
     
     // Configuración de axios
-    const API_URL = 'http://127.0.0.1:8000/api';
+    const API_URL = 'http://192.168.0.91:5000/api';
 
     // 👇 LOG PARA VER QUÉ RECIBE EL USER
     useEffect(() => {

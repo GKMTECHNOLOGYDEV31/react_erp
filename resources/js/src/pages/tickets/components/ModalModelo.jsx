@@ -12,7 +12,7 @@ const ModalModelo = ({ modal, setModal, onModeloCreado, categorias, marcas }) =>
         estado: 1
     });
     const [loading, setLoading] = useState(false);
-    const API_URL = 'http://127.0.0.1:8000/api';
+    const API_URL = 'http://192.168.0.91:5000/api';
 
     const handleChange = (e) => {
         const { name, value } = e.target;
