@@ -1,11 +1,10 @@
-// pages/Analytics.tsx
 import { Link } from 'react-router-dom';
 import ReactECharts from 'echarts-for-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { IRootState } from '../store';
 import PerfectScrollbar from 'react-perfect-scrollbar';
 import Dropdown from '../components/Dropdown';
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react'; // 👈 SOLO agregué useRef
 import { setPageTitle } from '../store/themeConfigSlice';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -47,16 +46,15 @@ import {
     faStar,
     faRefresh,
     faExclamationTriangle,
-    faBuilding,
-    faSpinner
+    faBuilding
 } from '@fortawesome/free-solid-svg-icons';
-import analyticsService, { DashboardData } from '../services/analytics.service';
 
-// ==================== COMPONENTE PARA GRÁFICOS RESPONSIVOS ====================
+// ==================== COMPONENTE PARA GRÁFICOS RESPONSIVOS (SOLO ANCHO) ====================
 const ResponsiveEChart = ({ option, style, ...props }: any) => {
     const chartRef = useRef<any>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // Forzar resize cuando cambia el tamaño del contenedor o el sidebar
     useEffect(() => {
         const forceResize = () => {
             if (chartRef.current) {
@@ -66,6 +64,7 @@ const ResponsiveEChart = ({ option, style, ...props }: any) => {
             }
         };
 
+        // Observar cambios en el contenedor
         if (containerRef.current) {
             const resizeObserver = new ResizeObserver(() => {
                 forceResize();
@@ -82,13 +81,14 @@ const ResponsiveEChart = ({ option, style, ...props }: any) => {
         }
     }, []);
 
+    // Resize inicial
     useEffect(() => {
         setTimeout(() => {
             if (chartRef.current) {
                 chartRef.current.getEchartsInstance().resize();
             }
         }, 200);
-    }, [option]);
+    }, []);
 
     return (
         <div
@@ -117,87 +117,95 @@ const ResponsiveEChart = ({ option, style, ...props }: any) => {
     );
 };
 
-// Componente de carga
-const LoadingSpinner = () => (
-    <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-            <FontAwesomeIcon icon={faSpinner} spin className="text-4xl text-primary mb-4" />
-            <p className="text-gray-600">Cargando dashboard...</p>
-        </div>
-    </div>
-);
-
-// Componente de error
-const ErrorDisplay = ({ message, onRetry }: { message: string; onRetry: () => void }) => (
-    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-        <strong className="font-bold">Error!</strong>
-        <span className="block sm:inline"> {message}</span>
-        <button
-            onClick={onRetry}
-            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-        >
-            Reintentar
-        </button>
-    </div>
-);
-
-// Valores por defecto para cuando no hay datos
-const defaultDashboardData: DashboardData = {
+// Datos estáticos para demostración
+const mockData = {
     ticketsPorPeriodo: {
-        dia: 0,
-        semana: 0,
-        mes: 0,
-        año: 0,
-        tendencia: {
-            dia: 0,
-            semana: 0,
-            mes: 0,
-            año: 0
-        }
+        dia: 145,
+        semana: 892,
+        mes: 3241,
+        año: 28456,
+        tendencia: { dia: 12, semana: 8, mes: 15, año: 23 }
     },
-    ticketsPorDistrito: [],
-    ticketsPorFalla: [],
-    ticketsPorEstado: [],
+    ticketsPorDistrito: [
+        { distrito: 'Santiago de Surco', provincia: 'Lima', cantidad: 456, variacion: 12 },
+        { distrito: 'Miraflores', provincia: 'Lima', cantidad: 389, variacion: -5 },
+        { distrito: 'San Isidro', provincia: 'Lima', cantidad: 367, variacion: 8 },
+        { distrito: 'La Molina', provincia: 'Lima', cantidad: 298, variacion: 3 },
+        { distrito: 'San Borja', provincia: 'Lima', cantidad: 276, variacion: -2 },
+        { distrito: 'Arequipa', provincia: 'Arequipa', cantidad: 234, variacion: 15 },
+        { distrito: 'Trujillo', provincia: 'La Libertad', cantidad: 198, variacion: 10 },
+        { distrito: 'Chiclayo', provincia: 'Lambayeque', cantidad: 167, variacion: -8 }
+    ],
+    ticketsPorFalla: [
+        { falla: 'Panel', cantidad: 324, icon: faHardDrive, porcentaje: 23, color: '#4361ee' },
+        { falla: 'Mainboard', cantidad: 287, icon: faMicrochip, porcentaje: 20, color: '#805dca' },
+        { falla: 'Power', cantidad: 198, icon: faBolt, porcentaje: 14, color: '#e2a03f' },
+        { falla: 'Limpieza Interna', cantidad: 156, icon: faBrush, porcentaje: 11, color: '#2196f3' },
+        { falla: 'Software', cantidad: 234, icon: faLaptopCode, porcentaje: 17, color: '#00ab55' },
+        { falla: 'NTF', cantidad: 67, icon: faTriangleExclamation, porcentaje: 5, color: '#e7515a' },
+        { falla: 'Falla Externa', cantidad: 89, icon: faIndustry, porcentaje: 6, color: '#607d8b' }
+    ],
+    ticketsPorEstado: [
+        { estado: 'Diagnóstico', cantidad: 156, color: '#f59e0b', icon: faClock },
+        { estado: 'Visita Finalizada', cantidad: 234, color: '#10b981', icon: faCircleCheck },
+        { estado: 'Pendiente Recojo', cantidad: 89, color: '#3b82f6', icon: faTicket },
+        { estado: 'Ingreso a Laboratorio', cantidad: 123, color: '#8b5cf6', icon: faFlask },
+        { estado: 'Cerrado', cantidad: 567, color: '#6b7280', icon: faCheckDouble }
+    ],
     tiemposPromedio: {
-        coordinacionInicial: { horas: 0, tendencia: 0 },
-        solucionOnSite: { horas: 0, tendencia: 0 },
-        solucionLaboratorio: { horas: 0, tendencia: 0 },
-        resolucionTotal: { horas: 0, tendencia: 0 }
+        coordinacionInicial: { horas: 4.5, tendencia: -0.5 },
+        solucionOnSite: { horas: 2.8, tendencia: 0.2 },
+        solucionLaboratorio: { horas: 24.5, tendencia: -2.3 },
+        resolucionTotal: { horas: 72.3, tendencia: 1.5 }
     },
     reincidencias: {
-        porcentaje: 0,
-        total: 0,
-        reincidentes: 0,
-        porTecnico: [],
-        tendencia: 0
+        porcentaje: 8.5,
+        total: 234,
+        reincidentes: 1987,
+        porTecnico: [
+            { tecnico: 'Carlos Ruiz', reincidencias: 12 },
+            { tecnico: 'Miguel Torres', reincidencias: 8 },
+            { tecnico: 'Ana González', reincidencias: 5 }
+        ],
+        tendencia: -2.3
     },
     ticketsPorTecnico: {
-        diario: [],
-        semanal: [],
-        mensual: []
+        diario: [
+            { tecnico: 'Carlos Ruiz', tickets: 8, eficiencia: 95, reincidencias: 1 },
+            { tecnico: 'Miguel Torres', tickets: 7, eficiencia: 88, reincidencias: 2 },
+            { tecnico: 'José Pérez', tickets: 6, eficiencia: 92, reincidencias: 0 },
+            { tecnico: 'Ana González', tickets: 9, eficiencia: 98, reincidencias: 1 },
+            { tecnico: 'Luis Fernández', tickets: 5, eficiencia: 85, reincidencias: 1 }
+        ],
+        semanal: [
+            { tecnico: 'Carlos Ruiz', tickets: 42, eficiencia: 94, reincidencias: 5 },
+            { tecnico: 'Miguel Torres', tickets: 38, eficiencia: 87, reincidencias: 7 },
+            { tecnico: 'José Pérez', tickets: 35, eficiencia: 91, reincidencias: 3 },
+            { tecnico: 'Ana González', tickets: 45, eficiencia: 97, reincidencias: 4 },
+            { tecnico: 'Luis Fernández', tickets: 32, eficiencia: 84, reincidencias: 6 }
+        ],
+        mensual: [
+            { tecnico: 'Carlos Ruiz', tickets: 168, eficiencia: 93, reincidencias: 18 },
+            { tecnico: 'Miguel Torres', tickets: 152, eficiencia: 86, reincidencias: 24 },
+            { tecnico: 'José Pérez', tickets: 145, eficiencia: 90, reincidencias: 15 },
+            { tecnico: 'Ana González', tickets: 178, eficiencia: 96, reincidencias: 14 },
+            { tecnico: 'Luis Fernández', tickets: 138, eficiencia: 83, reincidencias: 22 }
+        ]
     },
     ticketsPorPersonal: {
-        diario: 0,
-        semanal: 0,
-        mensual: 0,
-        objetivos: {
-            diario: 40,
-            semanal: 200,
-            mensual: 800
-        }
+        diario: 35,
+        semanal: 187,
+        mensual: 781,
+        objetivos: { diario: 40, semanal: 200, mensual: 800 }
     },
     tendencias: {
-        diario: [],
-        mensual: []
+        diario: [32, 35, 38, 42, 45, 48, 52, 55, 58, 62, 65, 68, 72, 75, 78, 82, 85, 88, 92, 95, 98, 102, 105, 108, 112, 115, 118, 122, 125, 128],
+        mensual: [2800, 2850, 2900, 2950, 3000, 3100, 3150, 3200, 3241, 3300, 3350, 3400]
     }
 };
 
 const Analytics = () => {
     const dispatch = useDispatch();
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [data, setData] = useState<DashboardData>(defaultDashboardData);
-
     const [periodoTickets, setPeriodoTickets] = useState<'dia' | 'semana' | 'mes' | 'año'>('mes');
     const [periodoTecnicos, setPeriodoTecnicos] = useState<'diario' | 'semanal' | 'mensual'>('diario');
     const [vistaDistritos, setVistaDistritos] = useState<'grafico' | 'tabla'>('grafico');
@@ -210,28 +218,7 @@ const Analytics = () => {
     const isDark = useSelector((state: IRootState) => state.themeConfig.theme === 'dark' || state.themeConfig.isDarkMode);
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
 
-    // Función para cargar datos
-    const loadData = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const dashboardData = await analyticsService.getDashboardData();
-            setData(dashboardData || defaultDashboardData);
-        } catch (err: any) {
-            console.error('Error loading dashboard data:', err);
-            setError(err.message || 'No se pudieron cargar los datos del dashboard');
-            setData(defaultDashboardData);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    // Cargar datos al montar el componente
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
-
-    // Forzar resize inicial
+    // ==================== FORZAR RESIZE INICIAL ====================
     useEffect(() => {
         const forceResize = () => {
             setTimeout(() => {
@@ -257,17 +244,7 @@ const Analytics = () => {
         return () => observer.disconnect();
     }, []);
 
-    // Si está cargando, mostrar spinner
-    if (loading) {
-        return <LoadingSpinner />;
-    }
-
-    // Si hay error, mostrar mensaje
-    if (error) {
-        return <ErrorDisplay message={error} onRetry={loadData} />;
-    }
-
-    // Configuración de gráficos con validaciones
+    // Gráfico de tendencia de tickets
     const tendenciaTicketsOption = {
         tooltip: { trigger: 'axis' },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
@@ -286,9 +263,7 @@ const Analytics = () => {
         series: [{
             name: 'Tickets',
             type: 'line',
-            data: periodoTickets === 'dia'
-                ? (data?.tendencias?.diario?.length ? data.tendencias.diario : Array(30).fill(0))
-                : (data?.tendencias?.mensual?.length ? data.tendencias.mensual : Array(12).fill(0)),
+            data: periodoTickets === 'dia' ? mockData.tendencias.diario : mockData.tendencias.mensual,
             smooth: true,
             lineStyle: { width: 3, color: '#4361ee' },
             areaStyle: { color: isDark ? '#4361ee20' : '#4361ee10' },
@@ -297,25 +272,25 @@ const Analytics = () => {
         }]
     };
 
+    // Configuración para gráfico de tickets por distrito
     const ticketsDistritoOption = {
         tooltip: {
             trigger: 'axis',
             axisPointer: { type: 'shadow' },
             formatter: (params: any) => {
-                if (!params || !params[0]) return '';
-                const item = data?.ticketsPorDistrito?.[params[0].dataIndex];
-                if (!item) return '';
+                const data = params[0];
+                const item = mockData.ticketsPorDistrito[data.dataIndex];
                 return `
-                    <div class="font-semibold">${item.distrito || 'N/A'}</div>
-                    <div class="text-xs">Provincia: ${item.provincia || 'N/A'}</div>
+                    <div class="font-semibold">${item.distrito}</div>
+                    <div class="text-xs">Provincia: ${item.provincia}</div>
                     <div class="flex justify-between mt-1">
                         <span>Tickets:</span>
-                        <span class="font-bold">${item.cantidad || 0}</span>
+                        <span class="font-bold">${item.cantidad}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Variación:</span>
                         <span class="${item.variacion >= 0 ? 'text-success' : 'text-danger'}">
-                            ${item.variacion >= 0 ? '+' : ''}${item.variacion || 0}%
+                            ${item.variacion >= 0 ? '+' : ''}${item.variacion}%
                         </span>
                     </div>
                 `;
@@ -329,18 +304,18 @@ const Analytics = () => {
         },
         yAxis: {
             type: 'category',
-            data: data?.ticketsPorDistrito?.map(item => item.distrito || 'Sin distrito') || [],
+            data: mockData.ticketsPorDistrito.map(item => item.distrito),
             axisLabel: { color: isDark ? '#bfc9d4' : '#506690' },
             axisLine: { lineStyle: { color: isDark ? '#3b3f5c' : '#e0e6ed' } }
         },
         series: [{
             name: 'Tickets',
             type: 'bar',
-            data: data?.ticketsPorDistrito?.map(item => item.cantidad || 0) || [],
+            data: mockData.ticketsPorDistrito.map(item => item.cantidad),
             itemStyle: {
                 color: (params: any) => {
-                    const item = data?.ticketsPorDistrito?.[params.dataIndex];
-                    return item?.variacion >= 0 ? '#10b981' : '#e7515a';
+                    const item = mockData.ticketsPorDistrito[params.dataIndex];
+                    return item.variacion >= 0 ? '#10b981' : '#e7515a';
                 },
                 borderRadius: [0, 8, 8, 0]
             },
@@ -349,8 +324,8 @@ const Analytics = () => {
                 show: true,
                 position: 'right',
                 formatter: (params: any) => {
-                    const item = data?.ticketsPorDistrito?.[params.dataIndex];
-                    return item ? `${item.cantidad || 0} (${item.variacion >= 0 ? '+' : ''}${item.variacion || 0}%)` : '';
+                    const item = mockData.ticketsPorDistrito[params.dataIndex];
+                    return `${item.cantidad} (${item.variacion >= 0 ? '+' : ''}${item.variacion}%)`;
                 },
                 color: isDark ? '#bfc9d4' : '#506690',
                 fontSize: 11
@@ -358,6 +333,7 @@ const Analytics = () => {
         }]
     };
 
+    // Configuración para gráfico de tickets por falla
     const ticketsFallaOption = {
         tooltip: {
             trigger: 'item',
@@ -394,31 +370,31 @@ const Analytics = () => {
                     fontWeight: 'bold'
                 }
             },
-            data: (data?.ticketsPorFalla || []).map(item => ({
-                name: item.falla || 'Sin falla',
-                value: item.cantidad || 0,
-                itemStyle: { color: item.color || '#4361ee' }
+            data: mockData.ticketsPorFalla.map(item => ({
+                name: item.falla,
+                value: item.cantidad,
+                itemStyle: { color: item.color }
             }))
         }]
     };
 
+    // Configuración para gráfico de tickets por estado
     const ticketsEstadoOption = {
         tooltip: {
             trigger: 'axis',
             axisPointer: { type: 'shadow' },
             formatter: (params: any) => {
-                if (!params || !params[0]) return '';
-                const item = data?.ticketsPorEstado?.[params[0].dataIndex];
-                if (!item) return '';
+                const data = params[0];
+                const item = mockData.ticketsPorEstado[data.dataIndex];
                 return `
-                    <div class="font-semibold">${item.estado || 'N/A'}</div>
+                    <div class="font-semibold">${item.estado}</div>
                     <div class="flex justify-between mt-1">
                         <span>Tickets:</span>
-                        <span class="font-bold">${item.cantidad || 0}</span>
+                        <span class="font-bold">${item.cantidad}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Porcentaje:</span>
-                        <span>${data?.ticketsPorPeriodo?.mes ? Math.round((item.cantidad || 0) / data.ticketsPorPeriodo.mes * 100) : 0}%</span>
+                        <span>${Math.round(item.cantidad / mockData.ticketsPorPeriodo.mes * 100)}%</span>
                     </div>
                 `;
             }
@@ -426,7 +402,7 @@ const Analytics = () => {
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: (data?.ticketsPorEstado || []).map(item => item.estado || 'N/A'),
+            data: mockData.ticketsPorEstado.map(item => item.estado),
             axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15,
@@ -442,9 +418,9 @@ const Analytics = () => {
         series: [{
             name: 'Tickets',
             type: 'bar',
-            data: data?.ticketsPorEstado?.map(item => item.cantidad || 0) || [],
+            data: mockData.ticketsPorEstado.map(item => item.cantidad),
             itemStyle: {
-                color: (params: any) => data?.ticketsPorEstado?.[params.dataIndex]?.color || '#4361ee',
+                color: (params: any) => mockData.ticketsPorEstado[params.dataIndex].color,
                 borderRadius: [8, 8, 0, 0]
             },
             barWidth: 40,
@@ -453,33 +429,32 @@ const Analytics = () => {
                 position: 'top',
                 color: isDark ? '#bfc9d4' : '#506690',
                 fontSize: 11,
-                formatter: (params: any) => params.value || 0
+                formatter: (params: any) => params.value
             }
         }]
     };
 
+    // Configuración para gráfico de tickets por técnico
     const ticketsTecnicoOption = {
         tooltip: {
             trigger: 'axis',
             axisPointer: { type: 'shadow' },
             formatter: (params: any) => {
-                if (!params || !params[0]) return '';
-                const tecnicosData = data?.ticketsPorTecnico?.[periodoTecnicos] || [];
-                const item = tecnicosData[params[0].dataIndex];
-                if (!item) return '';
+                const data = params[0];
+                const item = mockData.ticketsPorTecnico[periodoTecnicos][data.dataIndex];
                 return `
-                    <div class="font-semibold">${item.tecnico || 'N/A'}</div>
+                    <div class="font-semibold">${item.tecnico}</div>
                     <div class="flex justify-between mt-1">
                         <span>Tickets:</span>
-                        <span class="font-bold">${item.tickets || 0}</span>
+                        <span class="font-bold">${item.tickets}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Eficiencia:</span>
-                        <span class="${(item.eficiencia || 0) >= 90 ? 'text-success' : 'text-warning'}">${item.eficiencia || 0}%</span>
+                        <span class="${item.eficiencia >= 90 ? 'text-success' : 'text-warning'}">${item.eficiencia}%</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Reincidencias:</span>
-                        <span class="text-danger">${item.reincidencias || 0}</span>
+                        <span class="text-danger">${item.reincidencias}</span>
                     </div>
                 `;
             }
@@ -487,7 +462,7 @@ const Analytics = () => {
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: (data?.ticketsPorTecnico?.[periodoTecnicos] || []).map(item => (item.tecnico || '').split(' ')[0] || 'N/A'),
+            data: mockData.ticketsPorTecnico[periodoTecnicos].map(item => item.tecnico.split(' ')[0]),
             axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15
@@ -502,7 +477,7 @@ const Analytics = () => {
         series: [{
             name: 'Tickets',
             type: 'bar',
-            data: (data?.ticketsPorTecnico?.[periodoTecnicos] || []).map(item => item.tickets || 0),
+            data: mockData.ticketsPorTecnico[periodoTecnicos].map(item => item.tickets),
             itemStyle: {
                 color: '#e2a03f',
                 borderRadius: [8, 8, 0, 0]
@@ -513,7 +488,7 @@ const Analytics = () => {
                 position: 'top',
                 color: isDark ? '#bfc9d4' : '#506690',
                 fontSize: 11,
-                formatter: (params: any) => params.value || 0
+                formatter: (params: any) => params.value
             }
         }]
     };
@@ -535,7 +510,7 @@ const Analytics = () => {
             </div>
 
             <div className={`pt-5 transition-all duration-300 ${expandido ? 'scale-100' : ''}`}>
-                {/* Fila 1: KPIs Principales - con validaciones */}
+                {/* Fila 1: KPIs Principales */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                     <div className="panel bg-gradient-to-r from-[#4361ee] to-[#805dca] text-white relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-8 -mt-8"></div>
@@ -548,36 +523,23 @@ const Analytics = () => {
                                     Total Tickets
                                 </p>
                                 <div className="flex items-baseline gap-2 mt-1">
-                                    <h3 className="text-3xl font-bold">{data?.ticketsPorPeriodo?.[periodoTickets]?.toLocaleString() || 0}</h3>
+                                    <h3 className="text-3xl font-bold">{mockData.ticketsPorPeriodo[periodoTickets].toLocaleString()}</h3>
                                     <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
                                         <FontAwesomeIcon icon={faArrowTrendUp} className="mr-1" />
-                                        +{data?.ticketsPorPeriodo?.tendencia?.[periodoTickets] || 0}%
+                                        +{mockData.ticketsPorPeriodo.tendencia[periodoTickets]}%
                                     </span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="mt-4 grid grid-cols-3 gap-2 text-white/80 text-xs relative z-10">
-                            <div className="bg-white/10 rounded p-2 text-center">
-                                <div>Día</div>
-                                <div className="font-bold text-sm">{data?.ticketsPorPeriodo?.dia || 0}</div>
-                            </div>
-                            <div className="bg-white/10 rounded p-2 text-center">
-                                <div>Semana</div>
-                                <div className="font-bold text-sm">{data?.ticketsPorPeriodo?.semana || 0}</div>
-                            </div>
-                            <div className="bg-white/10 rounded p-2 text-center">
-                                <div>Mes</div>
-                                <div className="font-bold text-sm">{data?.ticketsPorPeriodo?.mes || 0}</div>
-                            </div>
-                        </div>
+
                     </div>
 
                     <div className="panel">
                         <div className="flex items-center justify-between mb-3">
                             <p className="text-white-dark text-sm">Tickets Cerrados</p>
                             <span className="text-xs bg-success/10 text-success px-2 py-1 rounded-full">
-                                {data?.ticketsPorPeriodo?.mes ? Math.round(((data?.ticketsPorEstado?.find(e => e.estado === 'Cerrado')?.cantidad || 0) / data.ticketsPorPeriodo.mes) * 100) : 0}% del total
+                                {Math.round((mockData.ticketsPorEstado.find(e => e.estado === 'Cerrado')?.cantidad || 0) / mockData.ticketsPorPeriodo.mes * 100)}% del total
                             </span>
                         </div>
                         <div className="flex items-center gap-3">
@@ -585,7 +547,7 @@ const Analytics = () => {
                                 <FontAwesomeIcon icon={faCircleCheck} className="text-2xl" />
                             </div>
                             <div>
-                                <h4 className="text-2xl font-bold">{data?.ticketsPorEstado?.find(e => e.estado === 'Cerrado')?.cantidad || 0}</h4>
+                                <h4 className="text-2xl font-bold">{mockData.ticketsPorEstado.find(e => e.estado === 'Cerrado')?.cantidad}</h4>
                                 <div className="flex items-center gap-2 text-xs">
                                     <FontAwesomeIcon icon={faArrowTrendUp} className="text-success" />
                                     <span className="text-success">+12% vs mes anterior</span>
@@ -606,12 +568,12 @@ const Analytics = () => {
                                 <FontAwesomeIcon icon={faClock} className="text-2xl" />
                             </div>
                             <div>
-                                <h4 className="text-2xl font-bold">{data?.tiemposPromedio?.resolucionTotal?.horas || 0}h</h4>
+                                <h4 className="text-2xl font-bold">{mockData.tiemposPromedio.resolucionTotal.horas}h</h4>
                                 <div className="flex items-center gap-2 text-xs">
-                                    <FontAwesomeIcon icon={data?.tiemposPromedio?.resolucionTotal?.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown}
-                                        className={data?.tiemposPromedio?.resolucionTotal?.tendencia > 0 ? 'text-danger' : 'text-success'} />
-                                    <span className={data?.tiemposPromedio?.resolucionTotal?.tendencia > 0 ? 'text-danger' : 'text-success'}>
-                                        {Math.abs(data?.tiemposPromedio?.resolucionTotal?.tendencia || 0)}h vs ayer
+                                    <FontAwesomeIcon icon={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown}
+                                        className={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'} />
+                                    <span className={mockData.tiemposPromedio.resolucionTotal.tendencia > 0 ? 'text-danger' : 'text-success'}>
+                                        {Math.abs(mockData.tiemposPromedio.resolucionTotal.tendencia)}h vs ayer
                                     </span>
                                 </div>
                             </div>
@@ -623,7 +585,7 @@ const Analytics = () => {
                             <p className="text-white-dark text-sm">Reincidencias</p>
                             <span className="text-xs bg-danger/10 text-danger px-2 py-1 rounded-full">
                                 <FontAwesomeIcon icon={faArrowTrendDown} className="mr-1" />
-                                {Math.abs(data?.reincidencias?.tendencia || 0)}%
+                                {Math.abs(mockData.reincidencias.tendencia)}%
                             </span>
                         </div>
                         <div className="flex items-center gap-3">
@@ -631,10 +593,10 @@ const Analytics = () => {
                                 <FontAwesomeIcon icon={faRotateRight} className="text-2xl" />
                             </div>
                             <div>
-                                <h4 className="text-2xl font-bold">{data?.reincidencias?.porcentaje || 0}%</h4>
+                                <h4 className="text-2xl font-bold">{mockData.reincidencias.porcentaje}%</h4>
                                 <div className="flex items-center gap-1 text-xs">
-                                    <span className="text-white-dark">{data?.reincidencias?.reincidentes || 0} tickets</span>
-                                    <span className="text-danger">• {data?.reincidencias?.total || 0} únicos</span>
+                                    <span className="text-white-dark">{mockData.reincidencias.reincidentes} tickets</span>
+                                    <span className="text-danger">• {mockData.reincidencias.total} únicos</span>
                                 </div>
                             </div>
                         </div>
@@ -655,6 +617,7 @@ const Analytics = () => {
                                 </button>
                             </div>
                         </div>
+                        {/* 👇 CAMBIADO a ResponsiveEChart */}
                         <ResponsiveEChart option={tendenciaTicketsOption} style={{ height: '200px' }} />
                     </div>
                 </div>
@@ -685,6 +648,7 @@ const Analytics = () => {
 
                         {vistaDistritos === 'grafico' ? (
                             <>
+                                {/* 👇 CAMBIADO a ResponsiveEChart */}
                                 <ResponsiveEChart option={ticketsDistritoOption} style={{ height: '350px' }} />
                                 <div className="mt-4 flex flex-wrap gap-2 text-sm">
                                     <span className="bg-success/10 text-success px-2 py-1 rounded-full text-xs">
@@ -707,15 +671,15 @@ const Analytics = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {(data?.ticketsPorDistrito || []).map((item, index) => (
+                                        {mockData.ticketsPorDistrito.map((item, index) => (
                                             <tr key={index}>
-                                                <td className="font-semibold">{item.distrito || 'N/A'}</td>
-                                                <td>{item.provincia || 'N/A'}</td>
-                                                <td className="text-right">{item.cantidad || 0}</td>
+                                                <td className="font-semibold">{item.distrito}</td>
+                                                <td>{item.provincia}</td>
+                                                <td className="text-right">{item.cantidad}</td>
                                                 <td className="text-right">
-                                                    <span className={`${(item.variacion || 0) >= 0 ? 'text-success' : 'text-danger'} flex items-center gap-1 justify-end`}>
-                                                        <FontAwesomeIcon icon={(item.variacion || 0) >= 0 ? faArrowTrendUp : faArrowTrendDown} />
-                                                        {(item.variacion || 0) >= 0 ? '+' : ''}{item.variacion || 0}%
+                                                    <span className={`${item.variacion >= 0 ? 'text-success' : 'text-danger'} flex items-center gap-1 justify-end`}>
+                                                        <FontAwesomeIcon icon={item.variacion >= 0 ? faArrowTrendUp : faArrowTrendDown} />
+                                                        {item.variacion >= 0 ? '+' : ''}{item.variacion}%
                                                     </span>
                                                 </td>
                                             </tr>
@@ -728,9 +692,9 @@ const Analytics = () => {
                         <div className="mt-4 text-sm text-white-dark flex items-center justify-between">
                             <span>
                                 <FontAwesomeIcon icon={faBuilding} className="mr-1" />
-                                {[...new Set((data?.ticketsPorDistrito || []).map(item => item.provincia || 'N/A'))].length} provincias
+                                {[...new Set(mockData.ticketsPorDistrito.map(item => item.provincia))].length} provincias
                             </span>
-                            <span className="font-semibold">Total: {(data?.ticketsPorDistrito || []).reduce((acc, item) => acc + (item.cantidad || 0), 0)} tickets</span>
+                            <span className="font-semibold">Total: {mockData.ticketsPorDistrito.reduce((acc, item) => acc + item.cantidad, 0)} tickets</span>
                         </div>
                     </div>
 
@@ -742,22 +706,23 @@ const Analytics = () => {
 
                         {/* Leyenda interactiva */}
                         <div className="grid grid-cols-2 gap-2 mb-4">
-                            {(data?.ticketsPorFalla || []).map((falla, index) => (
+                            {mockData.ticketsPorFalla.map((falla, index) => (
                                 <div key={index} className="flex items-center gap-2 text-sm">
-                                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: falla.color || '#4361ee' }}></span>
-                                    <span className="flex-1">{falla.falla || 'Sin falla'}</span>
-                                    <span className="font-semibold">{falla.porcentaje || 0}%</span>
+                                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: falla.color }}></span>
+                                    <span className="flex-1">{falla.falla}</span>
+                                    <span className="font-semibold">{falla.porcentaje}%</span>
                                 </div>
                             ))}
                         </div>
 
+                        {/* 👇 CAMBIADO a ResponsiveEChart */}
                         <ResponsiveEChart option={ticketsFallaOption} style={{ height: '300px' }} />
 
                         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                             <div className="bg-primary/5 p-2 rounded">
                                 <div className="text-xs text-white-dark">Principal</div>
-                                <div className="font-semibold">{data?.ticketsPorFalla?.[0]?.falla || 'N/A'}</div>
-                                <div className="text-primary text-sm">{data?.ticketsPorFalla?.[0]?.cantidad || 0}</div>
+                                <div className="font-semibold">{mockData.ticketsPorFalla[0].falla}</div>
+                                <div className="text-primary text-sm">{mockData.ticketsPorFalla[0].cantidad}</div>
                             </div>
                             <div className="bg-success/5 p-2 rounded">
                                 <div className="text-xs text-white-dark">Mejoría</div>
@@ -782,44 +747,36 @@ const Analytics = () => {
                                 <h5 className="font-semibold text-lg">Flujo de Tickets por Estado</h5>
                             </div>
                             <div className="flex gap-2">
-                                {(data?.ticketsPorEstado || []).map((estado, index) => (
+                                {mockData.ticketsPorEstado.map((estado, index) => (
                                     <div key={index} className="flex items-center gap-1 text-xs">
-                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: estado.color || '#4361ee' }}></span>
-                                        <span>{estado.estado || 'N/A'}</span>
+                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: estado.color }}></span>
+                                        <span>{estado.estado}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         <div className="grid lg:grid-cols-5 gap-4 mb-4">
-                            {(data?.ticketsPorEstado || []).map((estado, index) => {
-                                const iconMap: { [key: string]: any } = {
-                                    'Diagnóstico': faClock,
-                                    'Visita Finalizada': faCircleCheck,
-                                    'Pendiente Recojo': faTicket,
-                                    'Ingreso a Laboratorio': faFlask,
-                                    'Cerrado': faCheckDouble
-                                };
-                                return (
-                                    <div key={index} className="bg-white-dark/5 rounded-lg p-3 text-center">
-                                        <FontAwesomeIcon icon={iconMap[estado.estado || ''] || faTicket} className="text-2xl mb-2" style={{ color: estado.color || '#4361ee' }} />
-                                        <div className="text-sm font-semibold">{estado.estado || 'N/A'}</div>
-                                        <div className="text-xl font-bold" style={{ color: estado.color || '#4361ee' }}>{estado.cantidad || 0}</div>
-                                        <div className="text-xs text-white-dark">
-                                            {data?.ticketsPorPeriodo?.mes ? Math.round(((estado.cantidad || 0) / data.ticketsPorPeriodo.mes) * 100) : 0}% del total
-                                        </div>
+                            {mockData.ticketsPorEstado.map((estado, index) => (
+                                <div key={index} className="bg-white-dark/5 rounded-lg p-3 text-center">
+                                    <FontAwesomeIcon icon={estado.icon} className="text-2xl mb-2" style={{ color: estado.color }} />
+                                    <div className="text-sm font-semibold">{estado.estado}</div>
+                                    <div className="text-xl font-bold" style={{ color: estado.color }}>{estado.cantidad}</div>
+                                    <div className="text-xs text-white-dark">
+                                        {Math.round(estado.cantidad / mockData.ticketsPorPeriodo.mes * 100)}% del total
                                     </div>
-                                );
-                            })}
+                                </div>
+                            ))}
                         </div>
 
+                        {/* 👇 CAMBIADO a ResponsiveEChart */}
                         <ResponsiveEChart option={ticketsEstadoOption} style={{ height: '250px' }} />
                     </div>
                 </div>
 
                 {/* Fila 4: Tiempos Promedio */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                    {data?.tiemposPromedio && Object.entries(data.tiemposPromedio).map(([key, value], index) => {
+                    {Object.entries(mockData.tiemposPromedio).map(([key, value], index) => {
                         const titles = {
                             coordinacionInicial: { label: 'Coord. Inicial', icon: faClockRotateLeft, color: 'info' },
                             solucionOnSite: { label: 'Solución On Site', icon: faUserCheck, color: 'success' },
@@ -839,10 +796,10 @@ const Analytics = () => {
                                     <div className="flex-1">
                                         <p className={`text-${title.color}/70 text-sm`}>{title.label}</p>
                                         <div className="flex items-baseline justify-between">
-                                            <h4 className="text-2xl font-bold">{value?.horas || 0} <span className="text-sm">horas</span></h4>
-                                            <span className={`text-${(value?.tendencia || 0) > 0 ? 'danger' : 'success'} text-xs flex items-center gap-1`}>
-                                                <FontAwesomeIcon icon={(value?.tendencia || 0) > 0 ? faArrowTrendUp : faArrowTrendDown} />
-                                                {Math.abs(value?.tendencia || 0)}h
+                                            <h4 className="text-2xl font-bold">{value.horas} <span className="text-sm">horas</span></h4>
+                                            <span className={`text-${value.tendencia > 0 ? 'danger' : 'success'} text-xs flex items-center gap-1`}>
+                                                <FontAwesomeIcon icon={value.tendencia > 0 ? faArrowTrendUp : faArrowTrendDown} />
+                                                {Math.abs(value.tendencia)}h
                                             </span>
                                         </div>
                                     </div>
@@ -852,12 +809,12 @@ const Analytics = () => {
                                 <div className="mt-4">
                                     <div className="flex justify-between text-xs mb-1">
                                         <span className="text-white/70">Meta: 48h</span>
-                                        <span className="text-white/70">{value?.horas ? Math.round((48 - value.horas) / 48 * 100) : 0}% restante</span>
+                                        <span className="text-white/70">{Math.round((48 - value.horas) / 48 * 100)}% restante</span>
                                     </div>
                                     <div className="w-full bg-white/20 rounded-full h-1.5">
                                         <div
                                             className={`bg-${title.color} h-1.5 rounded-full transition-all duration-500`}
-                                            style={{ width: `${value?.horas ? Math.min(100, (value.horas / 48) * 100) : 0}%` }}
+                                            style={{ width: `${Math.min(100, (value.horas / 48) * 100)}%` }}
                                         ></div>
                                     </div>
                                 </div>
@@ -898,7 +855,7 @@ const Analytics = () => {
 
                         {/* Tarjetas de técnicos */}
                         <div className="grid grid-cols-1 gap-3 mb-4">
-                            {(data?.ticketsPorTecnico?.[periodoTecnicos] || []).map((tecnico, index) => (
+                            {mockData.ticketsPorTecnico[periodoTecnicos].map((tecnico, index) => (
                                 <div key={index} className="bg-white-dark/5 rounded-lg p-3 hover:bg-primary/5 transition-colors">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -906,24 +863,24 @@ const Analytics = () => {
                                                 ${index === 0 ? 'bg-yellow-500' :
                                                     index === 1 ? 'bg-gray-400' :
                                                         index === 2 ? 'bg-orange-400' : 'bg-primary/50'}`}>
-                                                {(tecnico.tecnico || 'N/A').split(' ').map((n: string) => n[0]).join('')}
+                                                {tecnico.tecnico.split(' ').map(n => n[0]).join('')}
                                             </div>
                                             <div>
                                                 <div className="font-semibold flex items-center gap-2">
-                                                    {tecnico.tecnico || 'N/A'}
+                                                    {tecnico.tecnico}
                                                     {index === 0 && <FontAwesomeIcon icon={faMedal} className="text-yellow-500" />}
-                                                    {(tecnico.eficiencia || 0) >= 95 && <FontAwesomeIcon icon={faStar} className="text-yellow-500 text-xs" />}
+                                                    {tecnico.eficiencia >= 95 && <FontAwesomeIcon icon={faStar} className="text-yellow-500 text-xs" />}
                                                 </div>
                                                 <div className="flex items-center gap-3 text-xs">
                                                     <span className="text-white-dark">
                                                         <FontAwesomeIcon icon={faTicket} className="mr-1" />
-                                                        {tecnico.tickets || 0} tickets
+                                                        {tecnico.tickets} tickets
                                                     </span>
-                                                    <span className={`${(tecnico.eficiencia || 0) >= 90 ? 'text-success' : 'text-warning'}`}>
+                                                    <span className={`${tecnico.eficiencia >= 90 ? 'text-success' : 'text-warning'}`}>
                                                         <FontAwesomeIcon icon={faChartLine} className="mr-1" />
-                                                        {tecnico.eficiencia || 0}% eficiencia
+                                                        {tecnico.eficiencia}% eficiencia
                                                     </span>
-                                                    {(tecnico.reincidencias || 0) > 0 && (
+                                                    {tecnico.reincidencias > 0 && (
                                                         <span className="text-danger">
                                                             <FontAwesomeIcon icon={faRotateRight} className="mr-1" />
                                                             {tecnico.reincidencias} re.
@@ -937,8 +894,8 @@ const Analytics = () => {
                                         <div className="w-24">
                                             <div className="w-full bg-white-dark/20 rounded-full h-2">
                                                 <div
-                                                    className={`h-2 rounded-full ${(tecnico.eficiencia || 0) >= 90 ? 'bg-success' : (tecnico.eficiencia || 0) >= 80 ? 'bg-warning' : 'bg-danger'}`}
-                                                    style={{ width: `${tecnico.eficiencia || 0}%` }}
+                                                    className={`h-2 rounded-full ${tecnico.eficiencia >= 90 ? 'bg-success' : tecnico.eficiencia >= 80 ? 'bg-warning' : 'bg-danger'}`}
+                                                    style={{ width: `${tecnico.eficiencia}%` }}
                                                 ></div>
                                             </div>
                                         </div>
@@ -948,6 +905,7 @@ const Analytics = () => {
                         </div>
 
                         {/* Mini gráfico de comparativa */}
+                        {/* 👇 CAMBIADO a ResponsiveEChart */}
                         <ResponsiveEChart option={ticketsTecnicoOption} style={{ height: '150px' }} />
                     </div>
 
@@ -959,8 +917,8 @@ const Analytics = () => {
 
                         <div className="grid grid-cols-3 gap-4 mb-6">
                             {['Diario', 'Semanal', 'Mensual'].map((periodo, index) => {
-                                const valores = [data?.ticketsPorPersonal?.diario || 0, data?.ticketsPorPersonal?.semanal || 0, data?.ticketsPorPersonal?.mensual || 0];
-                                const objetivos = [data?.ticketsPorPersonal?.objetivos?.diario || 40, data?.ticketsPorPersonal?.objetivos?.semanal || 200, data?.ticketsPorPersonal?.objetivos?.mensual || 800];
+                                const valores = [mockData.ticketsPorPersonal.diario, mockData.ticketsPorPersonal.semanal, mockData.ticketsPorPersonal.mensual];
+                                const objetivos = [mockData.ticketsPorPersonal.objetivos.diario, mockData.ticketsPorPersonal.objetivos.semanal, mockData.ticketsPorPersonal.objetivos.mensual];
                                 const alcanzado = (valores[index] / objetivos[index]) * 100;
 
                                 return (
@@ -994,7 +952,7 @@ const Analytics = () => {
                                 Podio de Honor - {periodoTecnicos}
                             </h6>
                             <div className="space-y-3">
-                                {(data?.ticketsPorTecnico?.[periodoTecnicos] || []).slice(0, 3).map((tecnico, index) => (
+                                {mockData.ticketsPorTecnico[periodoTecnicos].slice(0, 3).map((tecnico, index) => (
                                     <div key={index} className="flex items-center justify-between p-2 bg-white/5 rounded-lg">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold
@@ -1002,15 +960,15 @@ const Analytics = () => {
                                                 {index + 1}
                                             </div>
                                             <div>
-                                                <span className="font-semibold">{tecnico.tecnico || 'N/A'}</span>
+                                                <span className="font-semibold">{tecnico.tecnico}</span>
                                                 <div className="text-xs text-white-dark">
-                                                    {tecnico.tickets || 0} tickets • {tecnico.eficiencia || 0}% efectividad
+                                                    {tecnico.tickets} tickets • {tecnico.eficiencia}% efectividad
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="font-bold text-lg">{tecnico.tickets || 0}</div>
-                                            <div className="text-xs text-success">+{Math.round((tecnico.tickets || 0) * 0.15)} vs promedio</div>
+                                            <div className="font-bold text-lg">{tecnico.tickets}</div>
+                                            <div className="text-xs text-success">+{Math.round(tecnico.tickets * 0.15)} vs promedio</div>
                                         </div>
                                     </div>
                                 ))}
@@ -1029,12 +987,12 @@ const Analytics = () => {
                             </div>
                             <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2 bg-danger/5 px-3 py-1 rounded-full">
-                                    <FontAwesomeIcon icon={(data?.reincidencias?.tendencia || 0) > 0 ? faArrowTrendUp : faArrowTrendDown} className={(data?.reincidencias?.tendencia || 0) > 0 ? 'text-danger' : 'text-success'} />
-                                    <span className="text-sm">{(data?.reincidencias?.tendencia || 0) > 0 ? 'Empeorando' : 'Mejorando'} {Math.abs(data?.reincidencias?.tendencia || 0)}%</span>
+                                    <FontAwesomeIcon icon={faArrowTrendDown} className="text-success" />
+                                    <span className="text-sm">Mejorando {Math.abs(mockData.reincidencias.tendencia)}%</span>
                                 </div>
                                 <div className="flex items-center gap-2 bg-primary/5 px-3 py-1 rounded-full">
                                     <FontAwesomeIcon icon={faTicket} className="text-primary" />
-                                    <span className="text-sm">{data?.reincidencias?.reincidentes || 0} tickets</span>
+                                    <span className="text-sm">{mockData.reincidencias.reincidentes} tickets</span>
                                 </div>
                             </div>
                         </div>
@@ -1047,26 +1005,26 @@ const Analytics = () => {
                                         Distribución de reincidencias por tipo de falla
                                     </p>
                                     <div className="space-y-4">
-                                        {(data?.ticketsPorFalla || []).map((falla, index) => {
-                                            const reincidencias = Math.round((falla.cantidad || 0) * ((data?.reincidencias?.porcentaje || 0) / 100));
+                                        {mockData.ticketsPorFalla.map((falla, index) => {
+                                            const reincidencias = Math.round(falla.cantidad * (mockData.reincidencias.porcentaje / 100));
                                             return (
                                                 <div key={index}>
                                                     <div className="flex justify-between text-sm mb-1">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: falla.color || '#4361ee' }}></span>
-                                                            <span>{falla.falla || 'Sin falla'}</span>
+                                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: falla.color }}></span>
+                                                            <span>{falla.falla}</span>
                                                         </div>
                                                         <div className="flex items-center gap-3">
                                                             <span className="font-semibold">{reincidencias} tickets</span>
                                                             <span className="text-xs text-white-dark">
-                                                                {data?.reincidencias?.reincidentes ? Math.round(reincidencias / data.reincidencias.reincidentes * 100) : 0}% del total
+                                                                {Math.round(reincidencias / mockData.reincidencias.reincidentes * 100)}% del total
                                                             </span>
                                                         </div>
                                                     </div>
                                                     <div className="w-full bg-white-dark/20 rounded-full h-2">
                                                         <div
                                                             className="bg-danger h-2 rounded-full transition-all duration-500"
-                                                            style={{ width: `${Math.min(100, (reincidencias / 30) * 100)}%` }}
+                                                            style={{ width: `${(reincidencias / 30) * 100}%` }}
                                                         ></div>
                                                     </div>
                                                 </div>
@@ -1086,10 +1044,10 @@ const Analytics = () => {
 
                                 <div className="bg-white-dark/5 rounded-lg p-4">
                                     <h6 className="font-semibold mb-2 text-sm">Técnicos con más reincidencias</h6>
-                                    {(data?.reincidencias?.porTecnico || []).map((item, index) => (
+                                    {mockData.reincidencias.porTecnico.map((item, index) => (
                                         <div key={index} className="flex justify-between items-center text-sm py-1">
-                                            <span>{item.tecnico || 'N/A'}</span>
-                                            <span className="font-semibold text-danger">{item.reincidencias || 0}</span>
+                                            <span>{item.tecnico}</span>
+                                            <span className="font-semibold text-danger">{item.reincidencias}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -1099,13 +1057,13 @@ const Analytics = () => {
                                         <div>
                                             <p className="text-xs text-white-dark">Tasa de éxito</p>
                                             <p className="text-xl font-bold text-success">
-                                                {100 - (data?.reincidencias?.porcentaje || 0)}%
+                                                {100 - mockData.reincidencias.porcentaje}%
                                             </p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xs text-white-dark">1ra visita</p>
                                             <p className="text-lg font-semibold">
-                                                {(data?.ticketsPorPeriodo?.mes || 0) - (data?.reincidencias?.total || 0)}
+                                                {mockData.ticketsPorPeriodo.mes - mockData.reincidencias.total}
                                             </p>
                                         </div>
                                     </div>
@@ -1121,9 +1079,9 @@ const Analytics = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <h5 className="font-semibold text-lg mb-2">Resumen Ejecutivo</h5>
-                                <p className="text-white/80 text-sm">Última actualización: Hoy {new Date().toLocaleTimeString()}</p>
+                                <p className="text-white/80 text-sm">Última actualización: Hoy 10:30 AM</p>
                             </div>
-                            <button className="bg-white/20 hover:bg-white/30 rounded-lg p-2 transition-colors" onClick={loadData}>
+                            <button className="bg-white/20 hover:bg-white/30 rounded-lg p-2 transition-colors">
                                 <FontAwesomeIcon icon={faRefresh} />
                             </button>
                         </div>
