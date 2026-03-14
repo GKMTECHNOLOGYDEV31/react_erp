@@ -92,7 +92,7 @@ const CrearTicket = () => {
     const [modalModelo, setModalModelo] = useState(false);
 
     // URL base de la API
-    const API_URL = 'http://192.168.0.91:5000/api';
+    const API_URL = 'http://127.0.0.1:8000/api';
 
     // PRIMERO: Todos los useState están arriba
     // SEGUNDO: Aquí va useFormik
@@ -238,7 +238,7 @@ const CrearTicket = () => {
                         toastr.error(error.response.data.message || 'Error en el servidor', 'Error');
                     }
                 } else if (error.request) {
-                    toastr.error('No se pudo conectar con el servidor. Verifica que Laravel esté corriendo en http://192.168.0.91:5000', 'Error');
+                    toastr.error('No se pudo conectar con el servidor. Verifica que Laravel esté corriendo en http://127.0.0.1:8000', 'Error');
                 } else {
                     toastr.error('Error al crear el ticket', 'Error');
                 }

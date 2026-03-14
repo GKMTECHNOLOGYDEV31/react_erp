@@ -7,7 +7,7 @@ import toastr from 'toastr';
 const ModalCategoria = ({ modal, setModal, onCategoriaCreada }) => {
     const [nombre, setNombre] = useState('');
     const [loading, setLoading] = useState(false);
-    const API_URL = 'http://192.168.0.91:5000/api';
+    const API_URL = 'http://127.0.0.1:8000/api';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
