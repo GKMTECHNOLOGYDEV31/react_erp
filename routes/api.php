@@ -49,23 +49,34 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('modelos-por-categoria/{idCategoria}', [TicketClienteGeneralController::class, 'getModelosByCategoria']);
     Route::get('/tickets/consultar-completo/{numeroTicket}', [TicketClienteGeneralController::class, 'consultarTicketCompleto']);
 });
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum')->prefix('analytics')->group(function () {
 
-    Route::prefix('analytics')->group(function () {
-        Route::get('/dashboard', [AnalyticsController::class, 'dashboard']);
-        Route::get('/tickets-por-dia', [AnalyticsController::class, 'ticketsPorDia']);
-        Route::get('/tickets-por-categoria', [AnalyticsController::class, 'ticketsPorCategoria']);
-        Route::get('/tickets-por-modelo', [AnalyticsController::class, 'ticketsPorModelo']);
-        Route::get('/tickets-por-tipo-documento', [AnalyticsController::class, 'ticketsPorTipoDocumento']);
-        Route::get('/tickets-por-departamento', [AnalyticsController::class, 'ticketsPorDepartamento']);
-        Route::get('/tickets-por-tienda', [AnalyticsController::class, 'ticketsPorTienda']);
-        Route::get('/tickets-por-hora', [AnalyticsController::class, 'ticketsPorHora']);
-        Route::get('/ultimos-tickets', [AnalyticsController::class, 'ultimosTickets']);
-        Route::get('/metricas-detalladas', [AnalyticsController::class, 'metricasDetalladas']);
-    });
+    // Dashboard completo
+    Route::get('/dashboard', [AnalyticsController::class, 'dashboard']);
 
+    // Widgets principales
+    Route::get('/total-tickets', [AnalyticsController::class, 'totalTickets']);
+    Route::get('/tickets-cerrados', [AnalyticsController::class, 'ticketsCerrados']);
+    Route::get('/tiempo-resolucion', [AnalyticsController::class, 'tiempoResolucion']);
+    Route::get('/reincidencias', [AnalyticsController::class, 'reincidencias']);
+
+    // Gráficos
+    Route::get('/tendencia-tickets', [AnalyticsController::class, 'tendenciaTickets']);
+    Route::get('/tickets-distrito', [AnalyticsController::class, 'ticketsPorDistrito']);
+    Route::get('/flujo-estados', [AnalyticsController::class, 'flujoTicketsEstado']);
+
+    // Rendimiento
+    Route::get('/rendimiento-tecnicos', [AnalyticsController::class, 'rendimientoTecnico']);
+    Route::get('/rendimiento-personal', [AnalyticsController::class, 'rendimientoPersonal']);
+
+    // Análisis
+    Route::get('/analisis-reincidencias', [AnalyticsController::class, 'analisisReincidencias']);
+    Route::get('/tickets-mas-1-visita', [AnalyticsController::class, 'ticketsMas1Visita']);
+    Route::get('/tecnicos-mas-reincidencias', [AnalyticsController::class, 'tecnicosMasReincidencias']);
+
+    // KPI
+    Route::get('/tasa-exito', [AnalyticsController::class, 'tasaExito']);
 });
-
 
 // Rutas protegidas con autenticación
 Route::middleware('auth:sanctum')->group(function () {
