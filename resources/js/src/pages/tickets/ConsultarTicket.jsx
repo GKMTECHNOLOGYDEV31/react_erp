@@ -43,7 +43,7 @@ import {
     faSignature,
     faPen,
     faUserTie,
-    faFileSignature
+    faFileSignature,
 } from '@fortawesome/free-solid-svg-icons';
 import toastr from 'toastr';
 import 'toastr/build/toastr.min.css';
@@ -74,19 +74,19 @@ const ConsultarTicket = () => {
         const statusConfig = {
             evaluando: 'bg-purple-100 text-purple-800 border-purple-200',
             gestionando: 'bg-blue-100 text-blue-800 border-blue-200',
-            finalizado: 'bg-green-100 text-green-800 border-green-200'
+            finalizado: 'bg-green-100 text-green-800 border-green-200',
         };
         return statusConfig[estado] || 'bg-gray-100 text-gray-800 border-gray-200';
     };
 
     const getEstadoOTBadge = (color) => {
         const colores = {
-            'rojo': 'bg-red-100 text-red-800 border-red-200',
-            'verde': 'bg-green-100 text-green-800 border-green-200',
-            'amarillo': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-            'azul': 'bg-blue-100 text-blue-800 border-blue-200',
-            'morado': 'bg-purple-100 text-purple-800 border-purple-200',
-            'naranja': 'bg-orange-100 text-orange-800 border-orange-200'
+            rojo: 'bg-red-100 text-red-800 border-red-200',
+            verde: 'bg-green-100 text-green-800 border-green-200',
+            amarillo: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+            azul: 'bg-blue-100 text-blue-800 border-blue-200',
+            morado: 'bg-purple-100 text-purple-800 border-purple-200',
+            naranja: 'bg-orange-100 text-orange-800 border-orange-200',
         };
         return colores[color?.toLowerCase()] || 'bg-gray-100 text-gray-800 border-gray-200';
     };
@@ -104,9 +104,9 @@ const ConsultarTicket = () => {
             const token = localStorage.getItem('token');
             const response = await axios.get(`${API_URL}/tickets/consultar-completo/${ticketId.toUpperCase()}`, {
                 headers: {
-                    'Authorization': token ? `Bearer ${token}` : '',
-                    'Accept': 'application/json'
-                }
+                    Authorization: token ? `Bearer ${token}` : '',
+                    Accept: 'application/json',
+                },
             });
 
             if (response.data.success) {
@@ -141,7 +141,7 @@ const ConsultarTicket = () => {
             month: '2-digit',
             year: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
         });
     };
 
@@ -151,7 +151,7 @@ const ConsultarTicket = () => {
         return date.toLocaleDateString('es-PE', {
             day: '2-digit',
             month: '2-digit',
-            year: 'numeric'
+            year: 'numeric',
         });
     };
 
@@ -159,10 +159,7 @@ const ConsultarTicket = () => {
         if (!image) return null;
 
         return (
-            <div
-                className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
-                onClick={onClose}
-            >
+            <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onClick={onClose}>
                 <div className="relative max-w-4xl w-full max-h-[90vh] flex items-center justify-center">
                     <button
                         onClick={onClose}
@@ -170,12 +167,7 @@ const ConsultarTicket = () => {
                     >
                         <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
                     </button>
-                    <img
-                        src={image}
-                        alt="Vista ampliada"
-                        className="max-w-full max-h-[90vh] object-contain rounded-lg"
-                        onClick={(e) => e.stopPropagation()}
-                    />
+                    <img src={image} alt="Vista ampliada" className="max-w-full max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
                 </div>
             </div>
         );
@@ -355,9 +347,7 @@ const ConsultarTicket = () => {
                                     {ticket.tieneOrdenTrabajo && (
                                         <>
                                             <span className="text-gray-400">|</span>
-                                            <span className="px-3 py-1 bg-green-600 bg-opacity-30 rounded-full text-xs font-semibold text-green-300">
-                                                Orden de Trabajo Creada
-                                            </span>
+                                            <span className="px-3 py-1 bg-green-600 bg-opacity-30 rounded-full text-xs font-semibold text-green-300">Orden de Trabajo Creada</span>
                                         </>
                                     )}
                                 </div>
@@ -365,9 +355,7 @@ const ConsultarTicket = () => {
                                 <p className="text-gray-300 text-lg">{ticket.detallesFalla}</p>
                             </div>
                             <div>
-                                <span className={`px-4 py-2 rounded-xl text-sm font-bold text-center block ${getStatusBadge(ticket.estado)}`}>
-                                    {ticket.estado?.toUpperCase()}
-                                </span>
+                                <span className={`px-4 py-2 rounded-xl text-sm font-bold text-center block ${getStatusBadge(ticket.estado)}`}>{ticket.estado?.toUpperCase()}</span>
                             </div>
                         </div>
 
@@ -538,11 +526,7 @@ const ConsultarTicket = () => {
                                         </div>
                                         {ticket.fotoVideoFalla ? (
                                             <div className="relative group cursor-pointer" onClick={() => setModalImage(ticket.fotoVideoFalla)}>
-                                                <img
-                                                    src={ticket.fotoVideoFalla}
-                                                    alt="Falla"
-                                                    className="w-full h-32 object-cover rounded-lg border border-gray-300"
-                                                />
+                                                <img src={ticket.fotoVideoFalla} alt="Falla" className="w-full h-32 object-cover rounded-lg border border-gray-300" />
                                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
                                                     <FontAwesomeIcon icon={faSearch} className="text-white opacity-0 group-hover:opacity-100 text-2xl" />
                                                 </div>
@@ -562,11 +546,7 @@ const ConsultarTicket = () => {
                                         </div>
                                         {ticket.fotoBoletaFactura ? (
                                             <div className="relative group cursor-pointer" onClick={() => setModalImage(ticket.fotoBoletaFactura)}>
-                                                <img
-                                                    src={ticket.fotoBoletaFactura}
-                                                    alt="Boleta"
-                                                    className="w-full h-32 object-cover rounded-lg border border-gray-300"
-                                                />
+                                                <img src={ticket.fotoBoletaFactura} alt="Boleta" className="w-full h-32 object-cover rounded-lg border border-gray-300" />
                                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
                                                     <FontAwesomeIcon icon={faSearch} className="text-white opacity-0 group-hover:opacity-100 text-2xl" />
                                                 </div>
@@ -586,11 +566,7 @@ const ConsultarTicket = () => {
                                         </div>
                                         {ticket.fotoNumeroSerie ? (
                                             <div className="relative group cursor-pointer" onClick={() => setModalImage(ticket.fotoNumeroSerie)}>
-                                                <img
-                                                    src={ticket.fotoNumeroSerie}
-                                                    alt="Serie"
-                                                    className="w-full h-32 object-cover rounded-lg border border-gray-300"
-                                                />
+                                                <img src={ticket.fotoNumeroSerie} alt="Serie" className="w-full h-32 object-cover rounded-lg border border-gray-300" />
                                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
                                                     <FontAwesomeIcon icon={faSearch} className="text-white opacity-0 group-hover:opacity-100 text-2xl" />
                                                 </div>
@@ -606,7 +582,6 @@ const ConsultarTicket = () => {
                         </>
                     )}
 
-
                     {/* Tab de Flujos */}
                     {activeTab === 'flujos' && ticket.flujos && ticket.flujos.length > 0 && (
                         <div className="bg-white rounded-2xl shadow-xl p-6">
@@ -619,9 +594,7 @@ const ConsultarTicket = () => {
                                     <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoOTBadge(flujo.color)}`}>
-                                                    {flujo.estado || 'Sin estado'}
-                                                </span>
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEstadoOTBadge(flujo.color)}`}>{flujo.estado || 'Sin estado'}</span>
                                                 <p className="text-sm text-gray-600 mt-2">{flujo.comentario || 'Sin comentario'}</p>
                                             </div>
                                             <span className="text-xs text-gray-500">{formatDate(flujo.fecha_creacion)}</span>
@@ -637,18 +610,12 @@ const ConsultarTicket = () => {
                         <div className="space-y-6">
                             {ticket.visitas.map((visita, index) => (
                                 <div key={index} className="bg-white rounded-2xl shadow-xl p-6">
-                                    <div
-                                        className="flex justify-between items-center cursor-pointer"
-                                        onClick={() => setExpandedVisita(expandedVisita === index ? null : index)}
-                                    >
+                                    <div className="flex justify-between items-center cursor-pointer" onClick={() => setExpandedVisita(expandedVisita === index ? null : index)}>
                                         <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                                             <FontAwesomeIcon icon={faEye} className="text-green-600" />
                                             Visita: {visita.nombre || `Visita #${index + 1}`}
                                         </h3>
-                                        <FontAwesomeIcon
-                                            icon={expandedVisita === index ? faTimes : faEye}
-                                            className="text-gray-500"
-                                        />
+                                        <FontAwesomeIcon icon={expandedVisita === index ? faTimes : faEye} className="text-gray-500" />
                                     </div>
 
                                     {expandedVisita === index && (
@@ -659,12 +626,9 @@ const ConsultarTicket = () => {
                                                     <InfoRow label="Fecha Llegada" value={formatDate(visita.fecha_llegada)} icon="📅" />
                                                 </div>
                                                 <div>
-
                                                     <InfoRow label="Necesita Apoyo" value={visita.necesita_apoyo ? 'Sí' : 'No'} icon="🤝" />
                                                     <InfoRow label="Recojo" value={visita.recojo ? 'Sí' : 'No'} icon="📦" />
-                                                    {visita.celularcliente && (
-                                                        <InfoRow label="Celular Cliente" value={visita.celularcliente} icon="📱" />
-                                                    )}
+                                                    {visita.celularcliente && <InfoRow label="Celular Cliente" value={visita.celularcliente} icon="📱" />}
                                                 </div>
                                             </div>
 
@@ -687,9 +651,7 @@ const ConsultarTicket = () => {
                                                                         <span className="text-gray-500 text-xs">Sin foto</span>
                                                                     </div>
                                                                 )}
-                                                                {anexo.descripcion && (
-                                                                    <p className="text-xs text-gray-600 mt-1 truncate">{anexo.descripcion}</p>
-                                                                )}
+                                                                {anexo.descripcion && <p className="text-xs text-gray-600 mt-1 truncate">{anexo.descripcion}</p>}
                                                             </div>
                                                         ))}
                                                     </div>
@@ -697,9 +659,7 @@ const ConsultarTicket = () => {
                                             )}
 
                                             {/* Firmas de la visita */}
-                                            {visita.firmas && visita.firmas.length > 0 && (
-                                                <FirmasSection firmas={visita.firmas} title={`Firmas de la Visita (${visita.firmas.length})`} />
-                                            )}
+                                            {visita.firmas && visita.firmas.length > 0 && <FirmasSection firmas={visita.firmas} title={`Firmas de la Visita (${visita.firmas.length})`} />}
                                         </>
                                     )}
                                 </div>
@@ -722,16 +682,8 @@ const ConsultarTicket = () => {
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>
                                                     <InfoRow label="Nombre del Encargado" value={firma.nombreencargado} icon="👤" />
-                                                    {firma.tipodocumento && firma.documento && (
-                                                        <InfoRow
-                                                            label="Documento"
-                                                            value={`${firma.tipodocumento}: ${firma.documento}`}
-                                                            icon="🆔"
-                                                        />
-                                                    )}
-                                                    {firma.idVisitas > 0 && (
-                                                        <InfoRow label="ID Visita" value={firma.idVisitas} icon="👁️" />
-                                                    )}
+                                                    {firma.tipodocumento && firma.documento && <InfoRow label="Documento" value={`${firma.tipodocumento}: ${firma.documento}`} icon="🆔" />}
+                                                    {firma.idVisitas > 0 && <InfoRow label="ID Visita" value={firma.idVisitas} icon="👁️" />}
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     {firma.firma_tecnico && (
@@ -790,14 +742,8 @@ const ConsultarTicket = () => {
                                                         className="w-full h-32 object-cover rounded-lg cursor-pointer border border-gray-300"
                                                         onClick={() => setModalImage(foto.foto)}
                                                     />
-                                                    {foto.idVisitas > 0 && (
-                                                        <span className="absolute top-1 right-1 bg-blue-500 text-white text-xs px-1 rounded">
-                                                            V{foto.idVisitas}
-                                                        </span>
-                                                    )}
-                                                    {foto.descripcion && (
-                                                        <p className="text-xs text-gray-600 mt-1 truncate">{foto.descripcion}</p>
-                                                    )}
+                                                    {foto.idVisitas > 0 && <span className="absolute top-1 right-1 bg-blue-500 text-white text-xs px-1 rounded">V{foto.idVisitas}</span>}
+                                                    {foto.descripcion && <p className="text-xs text-gray-600 mt-1 truncate">{foto.descripcion}</p>}
                                                 </>
                                             ) : (
                                                 <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
@@ -818,20 +764,15 @@ const ConsultarTicket = () => {
 
                     {/* Botones de Acción */}
                     <div className="flex justify-end gap-4 mt-8">
-                        <button
+                        <a
+                            href={`http://127.0.0.1:5000/ordenes/smart/informe/${ticket.ordenTrabajo?.idTickets}/pdf`} // 👈 CAMBIA A ticket.id
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
-                            onClick={() => toastr.info('Generando PDF...', 'PDF')}
                         >
                             <FontAwesomeIcon icon={faFilePdf} className="w-5 h-5" />
                             GENERAR PDF
-                        </button>
-                        <button
-                            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
-                            onClick={() => toastr.success('Ticket exportado correctamente', 'Exportar')}
-                        >
-                            <FontAwesomeIcon icon={faDownload} className="w-5 h-5" />
-                            EXPORTAR
-                        </button>
+                        </a>
                     </div>
                 </div>
             )}
