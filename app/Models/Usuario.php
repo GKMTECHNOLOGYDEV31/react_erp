@@ -321,7 +321,7 @@ class Usuario extends Model
 
     public function tickets_cliente_generals()
     {
-        return $this->hasMany(TicketsClienteGeneral::class, 'idUsuarioCreador');
+        return $this->hasMany(TicketClienteGeneral::class, 'idUsuarioCreador');
     }
 
     public function tutorial_usuarios()
