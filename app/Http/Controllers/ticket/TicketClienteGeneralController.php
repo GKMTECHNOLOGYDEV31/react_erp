@@ -5,7 +5,7 @@ namespace App\Http\Controllers\ticket;
 
 use App\Http\Controllers\Controller;
 use App\Models\TicketClienteGeneral;
-use App\Models\TipoDocumento;
+use App\Models\Tipodocumento;
 use App\Models\Categoria;
 use App\Models\Categorium;
 use App\Models\Clientegeneral;
@@ -72,7 +72,7 @@ class TicketClienteGeneralController extends Controller
 
             // Ahora obtener los tickets con todas las relaciones
             $tickets = TicketClienteGeneral::with([
-                'tipoDocumento',
+                'tipodocumento',
                 'categoria',
                 'modelo' => function ($query) {
                     $query->select('idModelo', 'nombre', 'idMarca', 'idCategoria', 'estado');
@@ -512,7 +512,7 @@ class TicketClienteGeneralController extends Controller
             ]);
 
             // Obtener tipos de documento (seleccionando solo campos necesarios)
-            $tiposDocumento = TipoDocumento::select('idTipoDocumento', 'nombre')->get();
+            $tiposDocumento = Tipodocumento::select('idTipoDocumento', 'nombre')->get();
             \Log::info('Tipos de documento:', [
                 'cantidad' => $tiposDocumento->count()
             ]);

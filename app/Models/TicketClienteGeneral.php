@@ -52,7 +52,7 @@ class TicketClienteGeneral extends Model
     // Relaciones
     public function tipoDocumento()
     {
-        return $this->belongsTo(TipoDocumento::class, 'idTipoDocumento', 'idTipoDocumento');
+        return $this->belongsTo(Tipodocumento::class, 'idTipoDocumento', 'idTipoDocumento');
     }
 
     public function categoria()
@@ -79,8 +79,8 @@ class TicketClienteGeneral extends Model
     }
     // app/Models/TicketClienteGeneral.php
 
-public function clienteGeneral()
-{
-    return $this->belongsTo(Clientegeneral::class, 'idClienteGeneral', 'idClienteGeneral');
-}
+    public function clienteGeneral()
+    {
+        return $this->belongsTo(Clientegeneral::class, 'idClienteGeneral', 'idClienteGeneral');
+    }
 }
