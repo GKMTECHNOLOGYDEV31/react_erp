@@ -187,7 +187,29 @@ const Analytics = () => {
 
     const personalData = dashboardData?.ticketsPorPersonal ?? {};
     // 🔹 Derivados
+    const periodos: ('diario' | 'semanal' | 'mensual')[] = ['diario', 'semanal', 'mensual'];
 
+    {
+        periodos.map((p) => (
+            <button
+                key={p}
+                onClick={() => setPeriodoTecnicos(p)}
+                className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === p ? 'bg-primary text-white' : ''
+                    }`}
+            >
+                <FontAwesomeIcon
+                    icon={
+                        p === 'diario'
+                            ? faCalendarDay
+                            : p === 'semanal'
+                                ? faCalendarWeek
+                                : faCalendarAlt
+                    }
+                />
+                {p === 'diario' ? 'Día' : p === 'semanal' ? 'Semana' : 'Mes'}
+            </button>
+        ))
+    }
     const tendenciaSource =
         periodoTickets === 'dia'
             ? dashboardData?.tendenciaTickets?.porDia
@@ -440,48 +462,78 @@ const Analytics = () => {
 
     // Configuración para gráfico de tickets por técnico
     // 🔹 Tipos
-    type RendimientoTecnico = {
+
+    type Tecnico = {
+        idTecnico: number;
         tecnico: string;
-        total_tickets: number;
-        tasa_exito: number;
-        reincidencias: number;
+        total_tickets?: number;
+        reincidencias?: string | number;
+        tasa_exito?: string; // porcentaje como string, ej. "95"
+    };
+    // 🔹 Data segura desde dashboardData
+    // Definir el tipo de técnico
+    type RendimientoTecnico = {
+        idTecnico: number;
+        tecnico: string;
+        total_tickets?: number;
+        reincidencias?: number;
+        tasa_exito?: number; // porcentaje como número
     };
 
-    // 🔹 Data segura desde dashboardData
-    const rendimientoTecnicos: RendimientoTecnico[] = Array.isArray(dashboardData?.rendimientoTecnico)
-        ? dashboardData.rendimientoTecnico
-        : [];
+    // Tipo por periodo
+    type RendimientoPorPeriodo = {
+        dia: RendimientoTecnico[];
+        semana: RendimientoTecnico[];
+        mes: RendimientoTecnico[];
+    };
 
+    // Asegurarse de que dashboardData.rendimientoTecnico sea del tipo correcto
+    const rendimientoTecnicos: RendimientoPorPeriodo = {
+        dia: Array.isArray(dashboardData?.rendimientoTecnico?.dia) ? dashboardData.rendimientoTecnico.dia : [],
+        semana: Array.isArray(dashboardData?.rendimientoTecnico?.semana) ? dashboardData.rendimientoTecnico.semana : [],
+        mes: Array.isArray(dashboardData?.rendimientoTecnico?.mes) ? dashboardData.rendimientoTecnico.mes : []
+    };
+    // Mapear periodos del UI a los keys internos
+    const periodoMap: Record<string, keyof RendimientoPorPeriodo> = {
+        diario: 'dia',
+        semanal: 'semana',
+        mensual: 'mes',
+    };
+
+    // Obtener los datos del periodo seleccionado de forma segura
+    const periodoKey = periodoMap[periodoTecnicos]; // ahora es 'dia' | 'semana' | 'mes'
+    const datosTecnicos = rendimientoTecnicos[periodoKey] ?? [];
     // 🔹 Configuración para gráfico de tickets por técnico
     const ticketsTecnicoOption = {
-
         tooltip: {
             trigger: 'axis',
             axisPointer: { type: 'shadow' },
-
             formatter: (params: any) => {
-                const index = params?.[0]?.dataIndex ?? 0;
-                const item = rendimientoTecnicos[index];
+                const index: number = params?.[0]?.dataIndex ?? 0;
+                const periodoItems = rendimientoTecnicos[periodoTecnicos as keyof RendimientoPorPeriodo];
+                const item: RendimientoTecnico | undefined = periodoItems[index];
 
                 if (!item) return '';
 
+                const eficiencia = item.tasa_exito ?? 0;
+                const tickets = item.total_tickets ?? 0;
+                const reincidencias = item.reincidencias ?? 0;
+
                 return `
-                <div class="font-semibold">${item.tecnico}</div>
-                <div class="flex justify-between mt-1">
-                    <span>Tickets:</span>
-                    <span class="font-bold">${item.total_tickets}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Eficiencia:</span>
-                    <span class="${item.tasa_exito >= 90 ? 'text-success' : 'text-warning'}">
-                        ${item.tasa_exito}%
-                    </span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Reincidencias:</span>
-                    <span class="text-danger">${item.reincidencias}</span>
-                </div>
-            `;
+<div class="font-semibold">${item.tecnico}</div>
+<div class="flex justify-between mt-1">
+  <span>Tickets:</span>
+  <span class="font-bold">${tickets}</span>
+</div>
+<div class="flex justify-between">
+  <span>Eficiencia:</span>
+  <span class="${eficiencia >= 90 ? 'text-success' : 'text-warning'}">${eficiencia}%</span>
+</div>
+<div class="flex justify-between">
+  <span>Reincidencias:</span>
+  <span class="text-danger">${reincidencias}</span>
+</div>
+`;
             }
         },
 
@@ -489,16 +541,11 @@ const Analytics = () => {
 
         xAxis: {
             type: 'category',
-
-            data: rendimientoTecnicos.map((item: RendimientoTecnico) =>
-                item.tecnico?.split(' ')[0] ?? ''
-            ),
-
+            data: datosTecnicos.map((item) => item.total_tickets ?? 0),
             axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15
             },
-
             axisLine: {
                 lineStyle: { color: isDark ? '#3b3f5c' : '#e0e6ed' }
             }
@@ -507,7 +554,6 @@ const Analytics = () => {
         yAxis: {
             type: 'value',
             axisLabel: { color: isDark ? '#bfc9d4' : '#506690' },
-
             splitLine: {
                 lineStyle: { color: isDark ? '#191e3a' : '#e0e6ed' }
             }
@@ -517,16 +563,14 @@ const Analytics = () => {
             {
                 name: 'Tickets',
                 type: 'bar',
-
-                data: rendimientoTecnicos.map((item: RendimientoTecnico) => item.total_tickets),
-
+                data: rendimientoTecnicos[periodoTecnicos as keyof RendimientoPorPeriodo]?.map(
+                    (item) => item.total_tickets ?? 0
+                ),
                 itemStyle: {
                     color: '#e2a03f',
                     borderRadius: [8, 8, 0, 0]
                 },
-
                 barWidth: 30,
-
                 label: {
                     show: true,
                     position: 'top',
@@ -1165,149 +1209,129 @@ const Analytics = () => {
                                 <h5 className="font-semibold text-lg">Rendimiento por Técnico</h5>
                             </div>
 
+                            {/* Botones de periodo */}
                             <div className="flex gap-1 bg-white-dark/10 rounded-lg p-1">
-                                <button
-                                    onClick={() => setPeriodoTecnicos('diario')}
-                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'diario' ? 'bg-primary text-white' : ''
-                                        }`}
-                                >
-                                    <FontAwesomeIcon icon={faCalendarDay} /> Día
-                                </button>
-
-                                <button
-                                    onClick={() => setPeriodoTecnicos('semanal')}
-                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'semanal' ? 'bg-primary text-white' : ''
-                                        }`}
-                                >
-                                    <FontAwesomeIcon icon={faCalendarWeek} /> Semana
-                                </button>
-
-                                <button
-                                    onClick={() => setPeriodoTecnicos('mensual')}
-                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'mensual' ? 'bg-primary text-white' : ''
-                                        }`}
-                                >
-                                    <FontAwesomeIcon icon={faCalendarAlt} /> Mes
-                                </button>
+                                {periodos.map((p) => (
+                                    <button
+                                        key={p}
+                                        onClick={() => setPeriodoTecnicos(p)}
+                                        className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === p ? 'bg-primary text-white' : ''
+                                            }`}
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={
+                                                p === 'diario'
+                                                    ? faCalendarDay
+                                                    : p === 'semanal'
+                                                        ? faCalendarWeek
+                                                        : faCalendarAlt
+                                            }
+                                        />
+                                        {p === 'diario' ? 'Día' : p === 'semanal' ? 'Semana' : 'Mes'}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        {/* 🔹 DATA SEGURA */}
-                        {(() => {
-                            const tecnicos =
-                                dashboardData?.ticketsPorTecnico?.[periodoTecnicos] ?? [];
+                        {/* Tarjetas de técnicos */}
+                        <div className="grid grid-cols-1 gap-3 mb-4">
+                            {datosTecnicos.length > 0 ? (
+                                datosTecnicos.map((tecnico: RendimientoTecnico, index: number) => {
+                                    const eficiencia = parseFloat(tecnico.tasa_exito?.toString() || '0');
+                                    const tickets = tecnico.total_tickets ?? 0;
+                                    const reincidencias = parseInt(tecnico.reincidencias?.toString() || '0');
+                                    const iniciales = tecnico.tecnico?.split(' ').map(n => n[0]).join('') || '';
 
-                            return (
-                                <>
-                                    {/* 🔹 TARJETAS */}
-                                    <div className="grid grid-cols-1 gap-3 mb-4">
-                                        {tecnicos.length > 0 ? (
-                                            tecnicos.map((tecnico: any, index: number) => (
-                                                <div
-                                                    key={index}
-                                                    className="bg-white-dark/5 rounded-lg p-3 hover:bg-primary/5 transition-colors"
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            {/* Avatar */}
-                                                            <div
-                                                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold
-                                            ${index === 0
-                                                                        ? 'bg-yellow-500'
-                                                                        : index === 1
-                                                                            ? 'bg-gray-400'
-                                                                            : index === 2
-                                                                                ? 'bg-orange-400'
-                                                                                : 'bg-primary/50'
-                                                                    }`}
-                                                            >
-                                                                {tecnico?.tecnico
-                                                                    ?.split(' ')
-                                                                    ?.map((n: string) => n[0])
-                                                                    ?.join('') || '?'}
-                                                            </div>
 
-                                                            {/* Info */}
-                                                            <div>
-                                                                <div className="font-semibold flex items-center gap-2">
-                                                                    {tecnico?.tecnico || 'Sin nombre'}
+                                    return (
+                                        <div
+                                            key={tecnico.idTecnico}
+                                            className="bg-white-dark/5 rounded-lg p-3 hover:bg-primary/5 transition-colors"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    {/* Iniciales del técnico */}
+                                                    <div
+                                                        className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${index === 0
+                                                            ? 'bg-yellow-500'
+                                                            : index === 1
+                                                                ? 'bg-gray-400'
+                                                                : index === 2
+                                                                    ? 'bg-orange-400'
+                                                                    : 'bg-primary/50'
+                                                            }`}
+                                                    >
+                                                        {iniciales}
+                                                    </div>
 
-                                                                    {index === 0 && (
-                                                                        <FontAwesomeIcon
-                                                                            icon={faMedal}
-                                                                            className="text-yellow-500"
-                                                                        />
-                                                                    )}
-
-                                                                    {tecnico?.eficiencia >= 95 && (
-                                                                        <FontAwesomeIcon
-                                                                            icon={faStar}
-                                                                            className="text-yellow-500 text-xs"
-                                                                        />
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="flex items-center gap-3 text-xs">
-                                                                    <span className="text-white-dark">
-                                                                        <FontAwesomeIcon icon={faTicket} className="mr-1" />
-                                                                        {tecnico?.tickets ?? 0} tickets
-                                                                    </span>
-
-                                                                    <span
-                                                                        className={
-                                                                            tecnico?.eficiencia >= 90
-                                                                                ? 'text-success'
-                                                                                : 'text-warning'
-                                                                        }
-                                                                    >
-                                                                        <FontAwesomeIcon icon={faChartLine} className="mr-1" />
-                                                                        {tecnico?.eficiencia ?? 0}%
-                                                                    </span>
-
-                                                                    {tecnico?.reincidencias > 0 && (
-                                                                        <span className="text-danger">
-                                                                            <FontAwesomeIcon icon={faRotateRight} className="mr-1" />
-                                                                            {tecnico.reincidencias}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
+                                                    {/* Info técnico */}
+                                                    <div>
+                                                        <div className="font-semibold flex items-center gap-2">
+                                                            {tecnico.tecnico || 'Sin nombre'}
+                                                            {index === 0 && <FontAwesomeIcon icon={faMedal} className="text-yellow-500" />}
+                                                            {eficiencia >= 95 && (
+                                                                <FontAwesomeIcon icon={faStar} className="text-yellow-500 text-xs" />
+                                                            )}
                                                         </div>
 
-                                                        {/* Barra */}
-                                                        <div className="w-24">
-                                                            <div className="w-full bg-white-dark/20 rounded-full h-2">
-                                                                <div
-                                                                    className={`h-2 rounded-full ${tecnico?.eficiencia >= 90
-                                                                        ? 'bg-success'
-                                                                        : tecnico?.eficiencia >= 80
-                                                                            ? 'bg-warning'
-                                                                            : 'bg-danger'
-                                                                        }`}
-                                                                    style={{
-                                                                        width: `${tecnico?.eficiencia ?? 0}%`
-                                                                    }}
-                                                                />
-                                                            </div>
+                                                        <div className="flex items-center gap-3 text-xs">
+                                                            <span className="text-white-dark flex items-center gap-1">
+                                                                <FontAwesomeIcon icon={faTicket} /> {tickets} tickets
+                                                            </span>
+                                                            <span
+                                                                className={`flex items-center gap-1 ${eficiencia >= 90 ? 'text-success' : 'text-warning'}`}
+                                                            >
+                                                                <FontAwesomeIcon icon={faChartLine} /> {eficiencia}%
+                                                            </span>
+                                                            {reincidencias > 0 && (
+                                                                <span className="text-danger flex items-center gap-1">
+                                                                    <FontAwesomeIcon icon={faRotateRight} /> {reincidencias} re.
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <div className="text-center text-white-dark text-sm py-4">
-                                                Sin datos
-                                            </div>
-                                        )}
-                                    </div>
 
-                                    {/* 🔹 GRÁFICO */}
-                                    <ResponsiveEChart
-                                        option={ticketsTecnicoOption}
-                                        style={{ height: '150px' }}
-                                    />
-                                </>
-                            );
-                        })()}
+                                                {/* Barra de progreso */}
+                                                <div className="w-24">
+                                                    <div className="w-full bg-white-dark/20 rounded-full h-2">
+                                                        <div
+                                                            className={`h-2 rounded-full ${eficiencia >= 90
+                                                                ? 'bg-success'
+                                                                : eficiencia >= 80
+                                                                    ? 'bg-warning'
+                                                                    : 'bg-danger'
+                                                                }`}
+                                                            style={{ width: `${Math.min(100, eficiencia)}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="text-center text-white-dark text-sm py-3">Sin datos</div>
+                            )}
+                        </div>
+
+                        {/* Mini gráfico comparativo */}
+                        <ResponsiveEChart
+                            option={{
+                                ...ticketsTecnicoOption,
+                                xAxis: {
+                                    ...ticketsTecnicoOption.xAxis,
+                                    data: datosTecnicos.map((item: RendimientoTecnico) => item.tecnico?.split(' ')[0] ?? '')
+                                },
+                                series: [
+                                    {
+                                        ...ticketsTecnicoOption.series[0],
+                                        data: datosTecnicos.map((item: RendimientoTecnico) => item.total_tickets ?? 0)
+                                    }
+                                ]
+                            }}
+                            style={{ height: '150px' }}
+                        />
                     </div>
 
                     <div className="panel">
@@ -1317,26 +1341,29 @@ const Analytics = () => {
                         </div>
 
                         {(() => {
-                            const personal = dashboardData?.ticketsPorPersonal ?? {};
-
-                            const valores = [
-                                personal?.diario ?? 0,
-                                personal?.semanal ?? 0,
-                                personal?.mensual ?? 0
+                            // Datos seguros
+                            const personal = dashboardData?.rendimientoPersonal ?? {};
+                            const valores: number[] = [
+                                personal?.tickets?.dia ?? 0,
+                                personal?.tickets?.semana ?? 0,
+                                personal?.tickets?.mes ?? 0
                             ];
 
-                            const objetivos = [
-                                personal?.objetivos?.diario ?? 1,
-                                personal?.objetivos?.semanal ?? 1,
-                                personal?.objetivos?.mensual ?? 1
+                            const objetivos: number[] = [
+                                personal?.metas?.diaria ?? 1,
+                                personal?.metas?.semanal ?? 1,
+                                personal?.metas?.mensual ?? 1
                             ];
 
-                            const tecnicos =
-                                dashboardData?.ticketsPorTecnico?.[periodoTecnicos] ?? [];
+                            const tecnicos: Array<{
+                                tecnico: string;
+                                tickets: number;
+                                eficiencia?: number;
+                            }> = dashboardData?.rendimientoPorTecnico?.[periodoTecnicos] ?? [];
 
                             return (
                                 <>
-                                    {/* 🔹 CARDS */}
+                                    {/* 🔹 CARDS DE METAS */}
                                     <div className="grid grid-cols-3 gap-4 mb-6">
                                         {['Diario', 'Semanal', 'Mensual'].map((periodo, index) => {
                                             const alcanzado = (valores[index] / objetivos[index]) * 100;
@@ -1354,32 +1381,20 @@ const Analytics = () => {
                                                                     ? faCalendarWeek
                                                                     : faCalendarAlt
                                                         }
-                                                        className={`text-2xl mb-2 ${index === 0
-                                                            ? 'text-primary'
-                                                            : index === 1
-                                                                ? 'text-success'
-                                                                : 'text-warning'
+                                                        className={`text-2xl mb-2 ${index === 0 ? 'text-primary' : index === 1 ? 'text-success' : 'text-warning'
                                                             }`}
                                                     />
-
                                                     <p className="text-white-dark text-sm">{periodo}</p>
                                                     <p className="text-2xl font-bold">{valores[index]}</p>
 
                                                     <div className="mt-2">
                                                         <div className="w-full bg-white-dark/20 rounded-full h-1.5">
                                                             <div
-                                                                className={`h-1.5 rounded-full ${index === 0
-                                                                    ? 'bg-primary'
-                                                                    : index === 1
-                                                                        ? 'bg-success'
-                                                                        : 'bg-warning'
+                                                                className={`h-1.5 rounded-full ${index === 0 ? 'bg-primary' : index === 1 ? 'bg-success' : 'bg-warning'
                                                                     }`}
-                                                                style={{
-                                                                    width: `${Math.min(100, alcanzado)}%`
-                                                                }}
+                                                                style={{ width: `${Math.min(100, alcanzado)}%` }}
                                                             />
                                                         </div>
-
                                                         <p className="text-xs text-white-dark mt-1">
                                                             {Math.round(alcanzado)}% de meta ({objetivos[index]})
                                                         </p>
@@ -1397,52 +1412,56 @@ const Analytics = () => {
                                         </h6>
 
                                         <div className="space-y-3">
-                                            {tecnicos.length > 0 ? (
-                                                [...tecnicos]
-                                                    .sort((a: any, b: any) => b.tickets - a.tickets) // 🔥 ordenar real
-                                                    .slice(0, 3)
-                                                    .map((tecnico: any, index: number) => (
-                                                        <div
-                                                            key={index}
-                                                            className="flex items-center justify-between p-2 bg-white/5 rounded-lg"
-                                                        >
-                                                            <div className="flex items-center gap-3">
+                                            {(() => {
+                                                // 🔹 Mapear el periodo del UI al key interno
+                                                const periodoMap: Record<string, keyof RendimientoPorPeriodo> = {
+                                                    diario: 'dia',
+                                                    semanal: 'semana',
+                                                    mensual: 'mes',
+                                                };
+                                                const periodoKey = periodoMap[periodoTecnicos] ?? 'dia';
+                                                const datosTecnicos = rendimientoTecnicos[periodoKey] ?? [];
+
+                                                return datosTecnicos.length > 0 ? (
+                                                    [...datosTecnicos]
+                                                        .sort((a, b) => (b.total_tickets ?? 0) - (a.total_tickets ?? 0))
+                                                        .slice(0, 3)
+                                                        .map((tecnico, index) => {
+                                                            const eficiencia = tecnico.tasa_exito ?? 0;
+                                                            return (
                                                                 <div
-                                                                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold
-                                                ${index === 0
-                                                                            ? 'bg-yellow-500'
-                                                                            : index === 1
-                                                                                ? 'bg-gray-400'
-                                                                                : 'bg-orange-400'
-                                                                        }`}
+                                                                    key={index}
+                                                                    className="flex items-center justify-between p-2 bg-white/5 rounded-lg"
                                                                 >
-                                                                    {index + 1}
-                                                                </div>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div
+                                                                            className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${index === 0
+                                                                                ? 'bg-yellow-500'
+                                                                                : index === 1
+                                                                                    ? 'bg-gray-400'
+                                                                                    : 'bg-orange-400'
+                                                                                }`}
+                                                                        >
+                                                                            {index + 1}
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="font-semibold">{tecnico.tecnico || 'Sin nombre'}</span>
+                                                                            <div className="text-xs text-white-dark">
+                                                                                {tecnico.total_tickets ?? 0} tickets • {eficiencia}%
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
 
-                                                                <div>
-                                                                    <span className="font-semibold">
-                                                                        {tecnico?.tecnico || 'Sin nombre'}
-                                                                    </span>
-
-                                                                    <div className="text-xs text-white-dark">
-                                                                        {tecnico?.tickets ?? 0} tickets •{' '}
-                                                                        {tecnico?.eficiencia ?? 0}%
+                                                                    <div className="text-right">
+                                                                        <div className="font-bold text-lg">{tecnico.total_tickets ?? 0}</div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-
-                                                            <div className="text-right">
-                                                                <div className="font-bold text-lg">
-                                                                    {tecnico?.tickets ?? 0}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                            ) : (
-                                                <div className="text-center text-white-dark text-sm py-3">
-                                                    Sin datos
-                                                </div>
-                                            )}
+                                                            );
+                                                        })
+                                                ) : (
+                                                    <div className="text-center text-white-dark text-sm py-3">Sin datos</div>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 </>
@@ -1591,7 +1610,7 @@ const Analytics = () => {
                                     </p>
 
                                     <p className="text-3xl font-bold text-danger">
-                                        {dashboardData?.reincidencias?.reincidentes ?? 0}
+                                        {dashboardData?.ticketsMas2Visitas ?? 0}
                                     </p>
 
                                     <p className="text-xs text-white-dark mt-1">
@@ -1601,65 +1620,56 @@ const Analytics = () => {
                                 </div>
 
                                 <div className="bg-white-dark/5 rounded-lg p-4">
-
-                                    <h6 className="font-semibold mb-2 text-sm">
+                                    <h6 className="font-semibold mb-3 text-sm text-white-dark/80">
                                         Técnicos con más reincidencias
                                     </h6>
 
-                                    {(dashboardData?.reincidencias?.porTecnico ?? []).map((item: any, index: number) => (
-
-                                        <div
-                                            key={index}
-                                            className="flex justify-between items-center text-sm py-1"
-                                        >
-
-                                            <span>{item.tecnico}</span>
-
-                                            <span className="font-semibold text-danger">
-                                                {item.reincidencias}
-                                            </span>
-
-                                        </div>
-
-                                    ))}
-
+                                    {(dashboardData?.tecnicosMasReincidencias ?? [])
+                                        .sort(
+                                            (a: { idUsuario: number; tecnico: string; reincidencias: number },
+                                                b: { idUsuario: number; tecnico: string; reincidencias: number }) => b.reincidencias - a.reincidencias
+                                        )
+                                        .map((item: { idUsuario: number; tecnico: string; reincidencias: number }, index: number) => (
+                                            <div
+                                                key={item.idUsuario}
+                                                className={`flex justify-between items-center text-sm py-1 px-2 rounded-md transition-colors ${index % 2 === 0 ? 'bg-white-dark/10' : 'bg-white-dark/5'
+                                                    } hover:bg-primary/10`}
+                                            >
+                                                <span className="font-medium text-white-dark">{item.tecnico}</span>
+                                                <span
+                                                    className={`font-bold ${index === 0
+                                                        ? 'text-yellow-400'
+                                                        : index === 1
+                                                            ? 'text-gray-300'
+                                                            : index === 2
+                                                                ? 'text-orange-400'
+                                                                : 'text-danger'
+                                                        }`}
+                                                >
+                                                    {item.reincidencias}
+                                                </span>
+                                            </div>
+                                        ))}
                                 </div>
 
                                 <div className="bg-success/5 rounded-lg p-4">
-
                                     <div className="flex items-center justify-between">
-
+                                        {/* 🔹 Tasa de éxito */}
                                         <div>
-
-                                            <p className="text-xs text-white-dark">
-                                                Tasa de éxito
-                                            </p>
-
+                                            <p className="text-xs text-white-dark">Tasa de éxito</p>
                                             <p className="text-xl font-bold text-success">
-
-                                                {100 - (dashboardData?.reincidencias?.porcentaje ?? 0)}%
-
+                                                {dashboardData?.tasaExito?.tasa_exito ?? 0}%
                                             </p>
-
                                         </div>
 
+                                        {/* 🔹 Tickets completados en 1 visita */}
                                         <div className="text-right">
-
-                                            <p className="text-xs text-white-dark">
-                                                1ra visita
-                                            </p>
-
+                                            <p className="text-xs text-white-dark">1ra visita</p>
                                             <p className="text-lg font-semibold">
-
-                                                {(dashboardData?.ticketsPorPeriodo?.mes ?? 0) -
-                                                    (dashboardData?.reincidencias?.total ?? 0)}
-
+                                                {dashboardData?.tasaExito?.tickets_completados ?? 0}
                                             </p>
-
                                         </div>
-
                                     </div>
-
                                 </div>
 
                             </div>
@@ -1669,43 +1679,6 @@ const Analytics = () => {
                     </div>
                 </div>
 
-                {/* Fila 7: Resumen Ejecutivo */}
-                <div className="grid grid-cols-1 gap-6 mt-6">
-                    <div className="panel bg-gradient-to-r from-primary to-secondary text-white">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h5 className="font-semibold text-lg mb-2">Resumen Ejecutivo</h5>
-                                <p className="text-white/80 text-sm">Última actualización: Hoy 10:30 AM</p>
-                            </div>
-                            <button className="bg-white/20 hover:bg-white/30 rounded-lg p-2 transition-colors">
-                                <FontAwesomeIcon icon={faRefresh} />
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                            <div>
-                                <p className="text-white/70 text-xs">SLAs cumplidos</p>
-                                <p className="text-2xl font-bold">94%</p>
-                                <p className="text-green-300 text-xs">+2.5% vs ayer</p>
-                            </div>
-                            <div>
-                                <p className="text-white/70 text-xs">Satisfacción cliente</p>
-                                <p className="text-2xl font-bold">4.8/5.0</p>
-                                <p className="text-green-300 text-xs">+0.3 puntos</p>
-                            </div>
-                            <div>
-                                <p className="text-white/70 text-xs">Tickets pendientes</p>
-                                <p className="text-2xl font-bold">368</p>
-                                <p className="text-yellow-300 text-xs">-12 vs ayer</p>
-                            </div>
-                            <div>
-                                <p className="text-white/70 text-xs">Productividad</p>
-                                <p className="text-2xl font-bold">87%</p>
-                                <p className="text-green-300 text-xs">Meta: 85%</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     );
