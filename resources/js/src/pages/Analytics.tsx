@@ -125,63 +125,23 @@ const ResponsiveEChart = ({ option, style, ...props }: any) => {
 
 const Analytics = () => {
     const dispatch = useDispatch();
-    const [periodoTickets, setPeriodoTickets] = useState<'dia' | 'semana' | 'mes' | 'año'>('mes');
+    const [periodoTickets, setPeriodoTickets] = useState<'dia' | 'mes' | 'anio'>('dia');
     const [periodoTecnicos, setPeriodoTecnicos] = useState<'diario' | 'semanal' | 'mensual'>('diario');
     const [vistaDistritos, setVistaDistritos] = useState<'grafico' | 'tabla'>('grafico');
     const [expandido, setExpandido] = useState(false);
     const [dashboardData, setDashboardData] = useState<any>(null);
-    const [tiempoResolucion, setTiempoResolucion] = useState<any>(null);
-    const [ticketsCerrados, setTicketsCerrados] = useState<any>(null);
-    const [reincidencias, setReincidencias] = useState<any>(null);
-    const [ticketsEstados, setTicketsEstados] = useState<any[]>([]);
-    const [tendenciaTickets, setTendenciaTickets] = useState<any[]>([]);
-    const [ticketsDistrito, setTicketsDistrito] = useState<any[]>([]);
-    const [ticketsFalla, setTicketsFalla] = useState<any[]>([]);
-    const [flujoEstados, setFlujoEstados] = useState<any[]>([]);
-    const [rendimientoTecnicos, setRendimientoTecnicos] = useState<any[]>([]);
-    const [rendimientoPersonal, setRendimientoPersonal] = useState<any>(null);
-    const [tecnicosReincidencias, setTecnicosReincidencias] = useState<any[]>([]);
-    const [ticketsMasVisitas, setTicketsMasVisitas] = useState<number>(0);
-    const [tasaExito, setTasaExito] = useState<number>(0);
+    type TicketDistrito = {
+        id_ubigeo: string;
+        nombre_ubigeo: string;
+        total: number;
+    };
+
+
     useEffect(() => {
         const loadAnalytics = async () => {
             try {
-
-                const [
-                    dashboard,
-                    cerrados,
-                    tendencia,
-                    distrito,
-                    flujo,
-                    tecnicos,
-                    personal,
-                    reincidentes,
-                    visitas,
-                    exito
-                ] = await Promise.all([
-                    analyticsService.getDashboard(),
-                    analyticsService.getTicketsCerrados(),
-                    analyticsService.getTendenciaTickets(),
-                    analyticsService.getTicketsPorDistrito(),
-                    analyticsService.getFlujoEstados(),
-                    analyticsService.getRendimientoTecnicos(),
-                    analyticsService.getRendimientoPersonal(),
-                    analyticsService.getTecnicosMasReincidencias(),
-                    analyticsService.getTicketsMas1Visita(),
-                    analyticsService.getTasaExito()
-                ]);
-
+                const dashboard = await analyticsService.getDashboard();
                 setDashboardData(dashboard);
-                setTicketsCerrados(cerrados);
-                setTendenciaTickets(tendencia);
-                setTicketsDistrito(distrito);
-                setFlujoEstados(flujo);
-                setRendimientoTecnicos(tecnicos);
-                setRendimientoPersonal(personal);
-                setTecnicosReincidencias(reincidentes);
-                setTicketsMasVisitas(visitas);
-                setTasaExito(exito);
-
             } catch (error) {
                 console.error("Error cargando analytics", error);
             }
@@ -192,6 +152,9 @@ const Analytics = () => {
 
     const isDark = useSelector((state: IRootState) => state.themeConfig.theme === 'dark' || state.themeConfig.isDarkMode);
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
+    // 🔹 Tipo
+
+
 
     // ==================== FORZAR RESIZE INICIAL ====================
     useEffect(() => {
@@ -218,17 +181,37 @@ const Analytics = () => {
 
         return () => observer.disconnect();
     }, []);
+    // 🔹 Data segura
 
-    const dataTickets = (tendenciaTickets && Array.isArray(tendenciaTickets)) ? tendenciaTickets.map(t => t.total) : [];
+    // 🔹 Derivados
+
+    const tendenciaSource =
+        periodoTickets === 'dia'
+            ? dashboardData?.tendenciaTickets?.porDia
+            : periodoTickets === 'mes'
+                ? dashboardData?.tendenciaTickets?.porMes
+                : dashboardData?.tendenciaTickets?.porAnio;
+
+    const dataTickets = Array.isArray(tendenciaSource)
+        ? tendenciaSource.map((t: any) => t.total)
+        : [];
+
+    const labels = Array.isArray(tendenciaSource)
+        ? tendenciaSource.map((t: any) =>
+            periodoTickets === 'dia'
+                ? t.fecha
+                : periodoTickets === 'mes'
+                    ? t.mes
+                    : t.anio
+        )
+        : [];
 
     const tendenciaTicketsOption = {
         tooltip: { trigger: 'axis' },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: periodoTickets === 'dia'
-                ? Array.from({ length: 30 }, (_, i) => `Día ${i + 1}`)
-                : ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+            data: labels,
             axisLabel: { color: isDark ? '#bfc9d4' : '#506690' }
         },
         yAxis: {
@@ -244,20 +227,35 @@ const Analytics = () => {
             lineStyle: { width: 3, color: '#4361ee' },
             areaStyle: { color: isDark ? '#4361ee20' : '#4361ee10' },
             symbol: 'circle',
-            symbolSize: 8
+            symbolSize: 6
         }]
     };
+    // 🔹 Tipos
 
-    // Configuración para gráfico de tickets por distrito
+
+    const ticketsDistrito: TicketDistrito[] = Array.isArray(dashboardData?.ticketsPorDistrito)
+        ? dashboardData.ticketsPorDistrito
+        : [];
+
+    const totalTicketsDistrito = ticketsDistrito.reduce(
+        (acc, item) => acc + item.total,
+        0
+    );
+
+
+    // 🔹 Configuración para gráfico de tickets por distrito
     const ticketsDistritoOption = {
         tooltip: {
             trigger: 'axis',
             axisPointer: { type: 'shadow' },
             formatter: (params: any) => {
-                const item = ticketsDistrito[params[0].dataIndex];
+                const index = params?.[0]?.dataIndex ?? 0;
+                const item = ticketsDistrito[index];
+
+                if (!item) return '';
 
                 return `
-                <div class="font-semibold">${item.distrito}</div>
+                <div class="font-semibold">${item.nombre_ubigeo}</div>
                 <div class="flex justify-between mt-1">
                     <span>Tickets:</span>
                     <span class="font-bold">${item.total}</span>
@@ -276,7 +274,7 @@ const Analytics = () => {
 
         yAxis: {
             type: 'category',
-            data: ticketsDistrito.map(item => item.distrito),
+            data: ticketsDistrito.map(item => item.nombre_ubigeo), // ✅ FIX
             axisLabel: { color: isDark ? '#bfc9d4' : '#506690' },
             axisLine: { lineStyle: { color: isDark ? '#3b3f5c' : '#e0e6ed' } }
         },
@@ -297,9 +295,7 @@ const Analytics = () => {
                 label: {
                     show: true,
                     position: 'right',
-                    formatter: (params: any) => {
-                        return `${params.value}`;
-                    },
+                    formatter: (params: any) => `${params.value ?? 0}`,
                     color: isDark ? '#bfc9d4' : '#506690',
                     fontSize: 11
                 }
@@ -308,77 +304,71 @@ const Analytics = () => {
     };
 
     // Configuración para gráfico de tickets por falla
+    // 🔹 Tipos
+    type TicketFalla = {
+        falla: string;
+        total: number;
+    };
+
+    // 🔹 Data segura desde dashboardData
+    const ticketsFalla = [
+        { falla: 'Pantalla', total: 45 },
+        { falla: 'Batería', total: 30 },
+        { falla: 'Software', total: 25 },
+        { falla: 'Conectividad', total: 20 },
+        { falla: 'Otros', total: 10 },
+    ];
+
+    // 🔹 Configuración para gráfico de tickets por falla
     const ticketsFallaOption = {
         tooltip: {
             trigger: 'item',
-            formatter: (params: any) => {
-                return `${params.name}: ${params.value} tickets (${params.percent}%)`;
-            }
         },
-
-        legend: {
-            orient: 'vertical',
-            left: 'left',
-            textStyle: { color: isDark ? '#bfc9d4' : '#506690' }
-        },
-
         series: [
             {
-                name: 'Tickets por Falla',
+                name: 'Fallas',
                 type: 'pie',
-                radius: ['40%', '70%'],
-                center: ['50%', '50%'],
-                avoidLabelOverlap: false,
-
-                itemStyle: {
-                    borderRadius: 10,
-                    borderColor: isDark ? '#1b2e4b' : '#fff',
-                    borderWidth: 2
-                },
-
-                label: {
-                    show: true,
-                    position: 'outside',
-                    formatter: '{b}: {d}%',
-                    color: isDark ? '#bfc9d4' : '#506690'
-                },
-
-                emphasis: {
-                    label: {
-                        show: true,
-                        fontSize: 14,
-                        fontWeight: 'bold'
-                    }
-                },
-
-                data: ticketsFalla.map(item => ({
+                radius: '70%',
+                data: ticketsFalla.map((item) => ({
+                    value: item.total,
                     name: item.falla,
-                    value: item.total
-                }))
-            }
-        ]
+                })),
+            },
+        ],
     };
 
+    type FlujoEstado = {
+        descripcion: string;
+        total: number;
+        color: string;
+    };
+
+    // 🔹 Data segura desde dashboardData
+    const flujoEstados: FlujoEstado[] = Array.isArray(dashboardData?.flujoTicketsEstado)
+        ? dashboardData.flujoTicketsEstado
+        : [];
+    // 🔹 Total calculado (evita recalcular en cada tooltip)
+    const totalTicketsEstados = flujoEstados.reduce(
+        (sum, item) => sum + item.total,
+        0
+    );
     const ticketsEstadoOption = {
         tooltip: {
             trigger: 'axis',
             axisPointer: { type: 'shadow' },
 
             formatter: (params: any) => {
-                const data = params[0];
-                const item = flujoEstados[data.dataIndex];
+                const index = params?.[0]?.dataIndex ?? 0;
+                const item = flujoEstados[index];
 
-                const totalTickets = flujoEstados.reduce(
-                    (sum, i) => sum + i.total,
-                    0
-                );
+                if (!item) return '';
 
-                const porcentaje = totalTickets
-                    ? Math.round((item.total / totalTickets) * 100)
+                const porcentaje = totalTicketsEstados
+                    ? Math.round((item.total / totalTicketsEstados) * 100)
                     : 0;
 
                 return `
-                <div class="font-semibold">${item.estado}</div>
+                <div class="font-semibold">${item.descripcion}</div>
                 <div class="flex justify-between mt-1">
                     <span>Tickets:</span>
                     <span class="font-bold">${item.total}</span>
@@ -395,11 +385,13 @@ const Analytics = () => {
 
         xAxis: {
             type: 'category',
-            data: flujoEstados.map(item => item.estado),
+            data: flujoEstados.map(item => item.descripcion),
 
             axisLabel: {
+                formatter: (value: string) =>
+                    value.length > 15 ? value.substring(0, 15) + '...' : value,
                 color: isDark ? '#bfc9d4' : '#506690',
-                rotate: 15,
+                rotate: 20,
                 fontSize: 11
             },
 
@@ -426,14 +418,7 @@ const Analytics = () => {
                 itemStyle: {
                     borderRadius: [8, 8, 0, 0],
                     color: (params: any) => {
-                        const colors = [
-                            '#3b82f6',
-                            '#f59e0b',
-                            '#10b981',
-                            '#ef4444',
-                            '#8b5cf6'
-                        ];
-                        return colors[params.dataIndex % colors.length];
+                        return flujoEstados[params.dataIndex]?.color || '#3b82f6';
                     }
                 },
 
@@ -444,13 +429,27 @@ const Analytics = () => {
                     position: 'top',
                     color: isDark ? '#bfc9d4' : '#506690',
                     fontSize: 11,
-                    formatter: (params: any) => params.value
+                    formatter: (params: any) => `${params.value ?? 0}`
                 }
             }
         ]
     };
 
     // Configuración para gráfico de tickets por técnico
+    // 🔹 Tipos
+    type RendimientoTecnico = {
+        tecnico: string;
+        total_tickets: number;
+        tasa_exito: number;
+        reincidencias: number;
+    };
+
+    // 🔹 Data segura desde dashboardData
+    const rendimientoTecnicos: RendimientoTecnico[] = Array.isArray(dashboardData?.rendimientoTecnico)
+        ? dashboardData.rendimientoTecnico
+        : [];
+
+    // 🔹 Configuración para gráfico de tickets por técnico
     const ticketsTecnicoOption = {
 
         tooltip: {
@@ -458,8 +457,10 @@ const Analytics = () => {
             axisPointer: { type: 'shadow' },
 
             formatter: (params: any) => {
-                const data = params[0];
-                const item = rendimientoTecnicos[data.dataIndex];
+                const index = params?.[0]?.dataIndex ?? 0;
+                const item = rendimientoTecnicos[index];
+
+                if (!item) return '';
 
                 return `
                 <div class="font-semibold">${item.tecnico}</div>
@@ -486,8 +487,8 @@ const Analytics = () => {
         xAxis: {
             type: 'category',
 
-            data: rendimientoTecnicos.map(item =>
-                item.tecnico.split(' ')[0]
+            data: rendimientoTecnicos.map((item: RendimientoTecnico) =>
+                item.tecnico?.split(' ')[0] ?? ''
             ),
 
             axisLabel: {
@@ -514,7 +515,7 @@ const Analytics = () => {
                 name: 'Tickets',
                 type: 'bar',
 
-                data: rendimientoTecnicos.map(item => item.total_tickets),
+                data: rendimientoTecnicos.map((item: RendimientoTecnico) => item.total_tickets),
 
                 itemStyle: {
                     color: '#e2a03f',
@@ -528,7 +529,7 @@ const Analytics = () => {
                     position: 'top',
                     color: isDark ? '#bfc9d4' : '#506690',
                     fontSize: 11,
-                    formatter: (params: any) => params.value
+                    formatter: (params: any) => `${params.value ?? 0}`
                 }
             }
         ]
@@ -576,18 +577,25 @@ const Analytics = () => {
                         <div className="flex items-center justify-between mb-3">
                             <p className="text-white-dark text-sm">Tickets Cerrados</p>
                             <span className="text-xs bg-success/10 text-success px-2 py-1 rounded-full">
-                                {ticketsCerrados?.porcentaje_total ?? 0}% del total
+                                {dashboardData?.ticketsCerrados?.porcentaje_total ?? 0}% del total
                             </span>
                         </div>
+
                         <div className="flex items-center gap-3">
                             <div className="bg-success/10 text-success rounded-full w-12 h-12 flex items-center justify-center">
                                 <FontAwesomeIcon icon={faCircleCheck} className="text-2xl" />
                             </div>
+
                             <div>
-                                <h4 className="text-2xl font-bold">{ticketsCerrados?.total_cerrados ?? 0}</h4>
+                                <h4 className="text-2xl font-bold">
+                                    {dashboardData?.ticketsCerrados?.total_cerrados ?? 0}
+                                </h4>
+
                                 <div className="flex items-center gap-2 text-xs">
                                     <FontAwesomeIcon icon={faArrowTrendUp} className="text-success" />
-                                    <span className="text-success">{ticketsCerrados?.variacion_mes_anterior ?? 0}% vs mes anterior</span>
+                                    <span className="text-success">
+                                        {dashboardData?.ticketsCerrados?.variacion_mes_anterior ?? 0}% vs mes anterior
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -609,19 +617,19 @@ const Analytics = () => {
 
                             <div>
                                 <h4 className="text-2xl font-bold">
-                                    {tiempoResolucion?.promedio_horas ?? 0}h
+                                    {dashboardData?.tiempoResolucion?.promedio_horas ?? 0}h
                                 </h4>
 
                                 <div className="flex items-center gap-2 text-xs">
 
                                     <FontAwesomeIcon
                                         icon={
-                                            (tiempoResolucion?.variacion_ayer ?? 0) > 0
+                                            (dashboardData?.tiempoResolucion?.variacion_ayer ?? 0) > 0
                                                 ? faArrowTrendUp
                                                 : faArrowTrendDown
                                         }
                                         className={
-                                            (tiempoResolucion?.variacion_ayer ?? 0) > 0
+                                            (dashboardData?.tiempoResolucion?.variacion_ayer ?? 0) > 0
                                                 ? "text-danger"
                                                 : "text-success"
                                         }
@@ -629,12 +637,14 @@ const Analytics = () => {
 
                                     <span
                                         className={
-                                            (tiempoResolucion?.variacion_ayer ?? 0) > 0
+                                            (dashboardData?.tiempoResolucion?.variacion_ayer ?? 0) > 0
                                                 ? "text-danger"
                                                 : "text-success"
                                         }
                                     >
-                                        {Math.abs(tiempoResolucion?.variacion_ayer ?? 0)}h vs ayer
+                                        {Math.abs(
+                                            dashboardData?.tiempoResolucion?.variacion_horas ?? 0
+                                        )}h vs mes anterior
                                     </span>
 
                                 </div>
@@ -646,41 +656,47 @@ const Analytics = () => {
                         <div className="flex items-center justify-between mb-3">
                             <p className="text-white-dark text-sm">Reincidencias</p>
 
-                            <span className="text-xs bg-danger/10 text-danger px-2 py-1 rounded-full">
-                                <FontAwesomeIcon
-                                    icon={
-                                        (reincidencias?.tendencia ?? 0) > 0
-                                            ? faArrowTrendUp
-                                            : faArrowTrendDown
-                                    }
-                                    className="mr-1"
-                                />
-                                {Math.abs(reincidencias?.tendencia ?? 0)}%
-                            </span>
+                            {(() => {
+                                const variacion = dashboardData?.reincidencias?.variacion_mes_anterior ?? 0;
+                                const esMejora = variacion < 0; // 🔥 menos reincidencias = mejor
+
+                                return (
+                                    <span
+                                        className={`text-xs px-2 py-1 rounded-full ${esMejora
+                                            ? 'bg-success/10 text-success'
+                                            : 'bg-danger/10 text-danger'
+                                            }`}
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={esMejora ? faArrowTrendDown : faArrowTrendUp}
+                                            className="mr-1"
+                                        />
+                                        {Math.abs(variacion)}%
+                                    </span>
+                                );
+                            })()}
                         </div>
 
                         <div className="flex items-center gap-3">
-
                             <div className="bg-danger/10 text-danger rounded-full w-12 h-12 flex items-center justify-center">
                                 <FontAwesomeIcon icon={faRotateRight} className="text-2xl" />
                             </div>
 
                             <div>
                                 <h4 className="text-2xl font-bold">
-                                    {reincidencias?.porcentaje ?? 0}%
+                                    {dashboardData?.reincidencias?.porcentaje_reincidencias ?? 0}%
                                 </h4>
 
                                 <div className="flex items-center gap-1 text-xs">
                                     <span className="text-white-dark">
-                                        {reincidencias?.reincidentes ?? 0} tickets
+                                        {dashboardData?.reincidencias?.tickets_reincidencias ?? 0} tickets
                                     </span>
 
                                     <span className="text-danger">
-                                        • {reincidencias?.total ?? 0} únicos
+                                        • {dashboardData?.reincidencias?.tickets_unicos ?? 0} únicos
                                     </span>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -694,9 +710,37 @@ const Analytics = () => {
                                 <h5 className="font-semibold text-lg">Tendencia de Tickets</h5>
                             </div>
                             <div className="flex gap-2">
-                                <button className="px-3 py-1 text-xs bg-primary/10 text-primary rounded-md">
-                                    <FontAwesomeIcon icon={faCalendarDay} className="mr-1" /> Últimos 30 días
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setPeriodoTickets('dia')}
+                                        className={`px-3 py-1 text-xs rounded-md ${periodoTickets === 'dia'
+                                            ? 'bg-primary text-white'
+                                            : 'bg-primary/10 text-primary'
+                                            }`}
+                                    >
+                                        Día
+                                    </button>
+
+                                    <button
+                                        onClick={() => setPeriodoTickets('mes')}
+                                        className={`px-3 py-1 text-xs rounded-md ${periodoTickets === 'mes'
+                                            ? 'bg-primary text-white'
+                                            : 'bg-primary/10 text-primary'
+                                            }`}
+                                    >
+                                        Mes
+                                    </button>
+
+                                    <button
+                                        onClick={() => setPeriodoTickets('anio')}
+                                        className={`px-3 py-1 text-xs rounded-md ${periodoTickets === 'anio'
+                                            ? 'bg-primary text-white'
+                                            : 'bg-primary/10 text-primary'
+                                            }`}
+                                    >
+                                        Año
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         {/* 👇 CAMBIADO a ResponsiveEChart */}
@@ -706,6 +750,7 @@ const Analytics = () => {
 
                 {/* Fila 2: Tickets por Distrito y por Falla */}
                 <div className="grid lg:grid-cols-2 gap-6 mb-6">
+                    {/* 🔹 UI */}
                     <div className="panel">
 
                         <div className="flex justify-between items-center mb-5">
@@ -733,10 +778,16 @@ const Analytics = () => {
 
                         {vistaDistritos === 'grafico' ? (
                             <>
-                                <ResponsiveEChart
-                                    option={ticketsDistritoOption}
-                                    style={{ height: '350px' }}
-                                />
+                                {ticketsDistrito.length === 0 ? (
+                                    <div className="h-[350px] flex items-center justify-center text-white-dark">
+                                        No hay datos
+                                    </div>
+                                ) : (
+                                    <ResponsiveEChart
+                                        option={ticketsDistritoOption}
+                                        style={{ height: '350px' }}
+                                    />
+                                )}
 
                                 <div className="mt-4 flex flex-wrap gap-2 text-sm">
                                     <span className="bg-success/10 text-success px-2 py-1 rounded-full text-xs">
@@ -756,26 +807,26 @@ const Analytics = () => {
                                     <thead>
                                         <tr>
                                             <th className="text-left">Distrito</th>
-                                            <th className="text-left">Provincia</th>
                                             <th className="text-right">Tickets</th>
                                         </tr>
                                     </thead>
 
                                     <tbody>
 
-                                        {ticketsDistrito.map((item, index) => (
-
-                                            <tr key={index}>
-                                                <td className="font-semibold">{item.distrito}</td>
-
-                                                <td>{item.provincia ?? '-'}</td>
-
-                                                <td className="text-right">
-                                                    {item.total}
+                                        {ticketsDistrito.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={2} className="text-center py-4 text-white-dark">
+                                                    No hay datos
                                                 </td>
                                             </tr>
-
-                                        ))}
+                                        ) : (
+                                            ticketsDistrito.map((item: TicketDistrito, index: number) => (
+                                                <tr key={index}>
+                                                    <td className="font-semibold">{item.nombre_ubigeo}</td>
+                                                    <td className="text-right">{item.total}</td>
+                                                </tr>
+                                            ))
+                                        )}
 
                                     </tbody>
 
@@ -787,21 +838,11 @@ const Analytics = () => {
 
                             <span>
                                 <FontAwesomeIcon icon={faBuilding} className="mr-1" />
-
-                                {
-                                    [...new Set(
-                                        ticketsDistrito.map(item => item.provincia)
-                                    )].length
-                                } provincias
+                                {ticketsDistrito.length} distritos
                             </span>
 
                             <span className="font-semibold">
-                                Total: {
-                                    ticketsDistrito.reduce(
-                                        (acc, item) => acc + item.total,
-                                        0
-                                    )
-                                } tickets
+                                Total: {totalTicketsDistrito} tickets
                             </span>
 
                         </div>
