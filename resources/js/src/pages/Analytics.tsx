@@ -182,7 +182,10 @@ const Analytics = () => {
         return () => observer.disconnect();
     }, []);
     // 🔹 Data segura
+    const tecnicosData =
+        dashboardData?.ticketsPorTecnico?.[periodoTecnicos] ?? [];
 
+    const personalData = dashboardData?.ticketsPorPersonal ?? {};
     // 🔹 Derivados
 
     const tendenciaSource =
@@ -1161,280 +1164,290 @@ const Analytics = () => {
                                 <FontAwesomeIcon icon={faUserGear} className="text-primary text-xl" />
                                 <h5 className="font-semibold text-lg">Rendimiento por Técnico</h5>
                             </div>
+
                             <div className="flex gap-1 bg-white-dark/10 rounded-lg p-1">
                                 <button
                                     onClick={() => setPeriodoTecnicos('diario')}
-                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'diario' ? 'bg-primary text-white' : ''}`}
+                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'diario' ? 'bg-primary text-white' : ''
+                                        }`}
                                 >
                                     <FontAwesomeIcon icon={faCalendarDay} /> Día
                                 </button>
+
                                 <button
                                     onClick={() => setPeriodoTecnicos('semanal')}
-                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'semanal' ? 'bg-primary text-white' : ''}`}
+                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'semanal' ? 'bg-primary text-white' : ''
+                                        }`}
                                 >
                                     <FontAwesomeIcon icon={faCalendarWeek} /> Semana
                                 </button>
+
                                 <button
                                     onClick={() => setPeriodoTecnicos('mensual')}
-                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'mensual' ? 'bg-primary text-white' : ''}`}
+                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'mensual' ? 'bg-primary text-white' : ''
+                                        }`}
                                 >
                                     <FontAwesomeIcon icon={faCalendarAlt} /> Mes
                                 </button>
                             </div>
                         </div>
 
-                        <div className="panel">
+                        {/* 🔹 DATA SEGURA */}
+                        {(() => {
+                            const tecnicos =
+                                dashboardData?.ticketsPorTecnico?.[periodoTecnicos] ?? [];
 
-                            <div className="flex items-center gap-2 mb-5">
-                                <FontAwesomeIcon icon={faGear} className="text-primary text-xl" />
-                                <h5 className="font-semibold text-lg">Tickets por Tipo de Falla</h5>
-                            </div>
+                            return (
+                                <>
+                                    {/* 🔹 TARJETAS */}
+                                    <div className="grid grid-cols-1 gap-3 mb-4">
+                                        {tecnicos.length > 0 ? (
+                                            tecnicos.map((tecnico: any, index: number) => (
+                                                <div
+                                                    key={index}
+                                                    className="bg-white-dark/5 rounded-lg p-3 hover:bg-primary/5 transition-colors"
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            {/* Avatar */}
+                                                            <div
+                                                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold
+                                            ${index === 0
+                                                                        ? 'bg-yellow-500'
+                                                                        : index === 1
+                                                                            ? 'bg-gray-400'
+                                                                            : index === 2
+                                                                                ? 'bg-orange-400'
+                                                                                : 'bg-primary/50'
+                                                                    }`}
+                                                            >
+                                                                {tecnico?.tecnico
+                                                                    ?.split(' ')
+                                                                    ?.map((n: string) => n[0])
+                                                                    ?.join('') || '?'}
+                                                            </div>
 
-                            {/* Leyenda */}
-                            <div className="grid grid-cols-2 gap-2 mb-4">
+                                                            {/* Info */}
+                                                            <div>
+                                                                <div className="font-semibold flex items-center gap-2">
+                                                                    {tecnico?.tecnico || 'Sin nombre'}
 
-                                {ticketsFalla.map((falla, index) => {
+                                                                    {index === 0 && (
+                                                                        <FontAwesomeIcon
+                                                                            icon={faMedal}
+                                                                            className="text-yellow-500"
+                                                                        />
+                                                                    )}
 
-                                    const totalTickets = ticketsFalla.reduce((acc, i) => acc + i.total, 0);
-                                    const porcentaje = totalTickets
-                                        ? Math.round((falla.total / totalTickets) * 100)
-                                        : 0;
+                                                                    {tecnico?.eficiencia >= 95 && (
+                                                                        <FontAwesomeIcon
+                                                                            icon={faStar}
+                                                                            className="text-yellow-500 text-xs"
+                                                                        />
+                                                                    )}
+                                                                </div>
 
-                                    return (
-                                        <div key={index} className="flex items-center gap-2 text-sm">
+                                                                <div className="flex items-center gap-3 text-xs">
+                                                                    <span className="text-white-dark">
+                                                                        <FontAwesomeIcon icon={faTicket} className="mr-1" />
+                                                                        {tecnico?.tickets ?? 0} tickets
+                                                                    </span>
 
-                                            <span
-                                                className="w-3 h-3 rounded-full"
-                                                style={{
-                                                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][index % 5]
-                                                }}
-                                            />
+                                                                    <span
+                                                                        className={
+                                                                            tecnico?.eficiencia >= 90
+                                                                                ? 'text-success'
+                                                                                : 'text-warning'
+                                                                        }
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faChartLine} className="mr-1" />
+                                                                        {tecnico?.eficiencia ?? 0}%
+                                                                    </span>
 
-                                            <span className="flex-1">{falla.falla}</span>
+                                                                    {tecnico?.reincidencias > 0 && (
+                                                                        <span className="text-danger">
+                                                                            <FontAwesomeIcon icon={faRotateRight} className="mr-1" />
+                                                                            {tecnico.reincidencias}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
 
-                                            <span className="font-semibold">{porcentaje}%</span>
-
-                                        </div>
-                                    );
-                                })}
-
-                            </div>
-
-                            <ResponsiveEChart
-                                option={ticketsFallaOption}
-                                style={{ height: '300px' }}
-                            />
-
-                            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-
-                                {/* Principal */}
-                                <div className="bg-primary/5 p-2 rounded">
-
-                                    <div className="text-xs text-white-dark">
-                                        Principal
+                                                        {/* Barra */}
+                                                        <div className="w-24">
+                                                            <div className="w-full bg-white-dark/20 rounded-full h-2">
+                                                                <div
+                                                                    className={`h-2 rounded-full ${tecnico?.eficiencia >= 90
+                                                                        ? 'bg-success'
+                                                                        : tecnico?.eficiencia >= 80
+                                                                            ? 'bg-warning'
+                                                                            : 'bg-danger'
+                                                                        }`}
+                                                                    style={{
+                                                                        width: `${tecnico?.eficiencia ?? 0}%`
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="text-center text-white-dark text-sm py-4">
+                                                Sin datos
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <div className="font-semibold">
-                                        {ticketsFalla[0]?.falla ?? '-'}
-                                    </div>
-
-                                    <div className="text-primary text-sm">
-                                        {ticketsFalla[0]?.total ?? 0}
-                                    </div>
-
-                                </div>
-
-                                {/* Total fallas */}
-                                <div className="bg-success/5 p-2 rounded">
-
-                                    <div className="text-xs text-white-dark">
-                                        Tipos de falla
-                                    </div>
-
-                                    <div className="font-semibold">
-                                        {ticketsFalla.length}
-                                    </div>
-
-                                    <div className="text-success text-sm">
-                                        registradas
-                                    </div>
-
-                                </div>
-
-                                {/* Total tickets */}
-                                <div className="bg-danger/5 p-2 rounded">
-
-                                    <div className="text-xs text-white-dark">
-                                        Total tickets
-                                    </div>
-
-                                    <div className="font-semibold">
-                                        {ticketsFalla.reduce((acc, i) => acc + i.total, 0)}
-                                    </div>
-
-                                    <div className="text-danger text-sm">
-                                        analizados
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        {/* Mini gráfico de comparativa */}
-                        {/* 👇 CAMBIADO a ResponsiveEChart */}
-                        <ResponsiveEChart option={ticketsTecnicoOption} style={{ height: '150px' }} />
+                                    {/* 🔹 GRÁFICO */}
+                                    <ResponsiveEChart
+                                        option={ticketsTecnicoOption}
+                                        style={{ height: '150px' }}
+                                    />
+                                </>
+                            );
+                        })()}
                     </div>
 
                     <div className="panel">
-
                         <div className="flex items-center gap-2 mb-5">
                             <FontAwesomeIcon icon={faUsers} className="text-primary text-xl" />
                             <h5 className="font-semibold text-lg">Rendimiento del Personal</h5>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4 mb-6">
+                        {(() => {
+                            const personal = dashboardData?.ticketsPorPersonal ?? {};
 
-                            {['Diario', 'Semanal', 'Mensual'].map((periodo, index) => {
+                            const valores = [
+                                personal?.diario ?? 0,
+                                personal?.semanal ?? 0,
+                                personal?.mensual ?? 0
+                            ];
 
-                                const valores = [
-                                    dashboardData?.ticketsPorPersonal?.diario ?? 0,
-                                    dashboardData?.ticketsPorPersonal?.semanal ?? 0,
-                                    dashboardData?.ticketsPorPersonal?.mensual ?? 0
-                                ]
+                            const objetivos = [
+                                personal?.objetivos?.diario ?? 1,
+                                personal?.objetivos?.semanal ?? 1,
+                                personal?.objetivos?.mensual ?? 1
+                            ];
 
-                                const objetivos = [
-                                    dashboardData?.ticketsPorPersonal?.objetivos?.diario ?? 0,
-                                    dashboardData?.ticketsPorPersonal?.objetivos?.semanal ?? 0,
-                                    dashboardData?.ticketsPorPersonal?.objetivos?.mensual ?? 0
-                                ]
+                            const tecnicos =
+                                dashboardData?.ticketsPorTecnico?.[periodoTecnicos] ?? [];
 
-                                const alcanzado =
-                                    objetivos[index] > 0
-                                        ? (valores[index] / objetivos[index]) * 100
-                                        : 0
+                            return (
+                                <>
+                                    {/* 🔹 CARDS */}
+                                    <div className="grid grid-cols-3 gap-4 mb-6">
+                                        {['Diario', 'Semanal', 'Mensual'].map((periodo, index) => {
+                                            const alcanzado = (valores[index] / objetivos[index]) * 100;
 
-                                const iconos = [faCalendarDay, faCalendarWeek, faCalendarAlt]
-
-                                const coloresTexto = ["text-primary", "text-success", "text-warning"]
-                                const coloresBarra = ["bg-primary", "bg-success", "bg-warning"]
-
-                                return (
-
-                                    <div
-                                        key={index}
-                                        className="text-center p-4 bg-white-dark/5 rounded-lg hover:shadow-lg transition-all"
-                                    >
-
-                                        <FontAwesomeIcon
-                                            icon={iconos[index]}
-                                            className={`text-2xl mb-2 ${coloresTexto[index]}`}
-                                        />
-
-                                        <p className="text-white-dark text-sm">
-                                            {periodo}
-                                        </p>
-
-                                        <p className="text-2xl font-bold">
-                                            {valores[index]}
-                                        </p>
-
-                                        <div className="mt-2">
-
-                                            <div className="w-full bg-white-dark/20 rounded-full h-1.5">
-
+                                            return (
                                                 <div
-                                                    className={`h-1.5 rounded-full ${coloresBarra[index]}`}
-                                                    style={{
-                                                        width: `${Math.min(100, alcanzado)}%`
-                                                    }}
-                                                />
+                                                    key={index}
+                                                    className="text-center p-4 bg-white-dark/5 rounded-lg hover:shadow-lg transition-all"
+                                                >
+                                                    <FontAwesomeIcon
+                                                        icon={
+                                                            index === 0
+                                                                ? faCalendarDay
+                                                                : index === 1
+                                                                    ? faCalendarWeek
+                                                                    : faCalendarAlt
+                                                        }
+                                                        className={`text-2xl mb-2 ${index === 0
+                                                            ? 'text-primary'
+                                                            : index === 1
+                                                                ? 'text-success'
+                                                                : 'text-warning'
+                                                            }`}
+                                                    />
 
-                                            </div>
+                                                    <p className="text-white-dark text-sm">{periodo}</p>
+                                                    <p className="text-2xl font-bold">{valores[index]}</p>
 
-                                            <p className="text-xs text-white-dark mt-1">
-                                                {Math.round(alcanzado)}% de meta ({objetivos[index]})
-                                            </p>
+                                                    <div className="mt-2">
+                                                        <div className="w-full bg-white-dark/20 rounded-full h-1.5">
+                                                            <div
+                                                                className={`h-1.5 rounded-full ${index === 0
+                                                                    ? 'bg-primary'
+                                                                    : index === 1
+                                                                        ? 'bg-success'
+                                                                        : 'bg-warning'
+                                                                    }`}
+                                                                style={{
+                                                                    width: `${Math.min(100, alcanzado)}%`
+                                                                }}
+                                                            />
+                                                        </div>
 
-                                        </div>
-
+                                                        <p className="text-xs text-white-dark mt-1">
+                                                            {Math.round(alcanzado)}% de meta ({objetivos[index]})
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
 
-                                )
+                                    {/* 🔹 PODIO */}
+                                    <div className="bg-gradient-to-r from-primary/5 to-transparent rounded-lg p-4">
+                                        <h6 className="font-semibold mb-3 flex items-center gap-2">
+                                            <FontAwesomeIcon icon={faMedal} className="text-yellow-500" />
+                                            Podio de Honor - {periodoTecnicos}
+                                        </h6>
 
-                            })}
+                                        <div className="space-y-3">
+                                            {tecnicos.length > 0 ? (
+                                                [...tecnicos]
+                                                    .sort((a: any, b: any) => b.tickets - a.tickets) // 🔥 ordenar real
+                                                    .slice(0, 3)
+                                                    .map((tecnico: any, index: number) => (
+                                                        <div
+                                                            key={index}
+                                                            className="flex items-center justify-between p-2 bg-white/5 rounded-lg"
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div
+                                                                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold
+                                                ${index === 0
+                                                                            ? 'bg-yellow-500'
+                                                                            : index === 1
+                                                                                ? 'bg-gray-400'
+                                                                                : 'bg-orange-400'
+                                                                        }`}
+                                                                >
+                                                                    {index + 1}
+                                                                </div>
 
-                        </div>
+                                                                <div>
+                                                                    <span className="font-semibold">
+                                                                        {tecnico?.tecnico || 'Sin nombre'}
+                                                                    </span>
 
-                        {/* Podio técnicos */}
+                                                                    <div className="text-xs text-white-dark">
+                                                                        {tecnico?.tickets ?? 0} tickets •{' '}
+                                                                        {tecnico?.eficiencia ?? 0}%
+                                                                    </div>
+                                                                </div>
+                                                            </div>
 
-                        <div className="bg-gradient-to-r from-primary/5 to-transparent rounded-lg p-4">
-
-                            <h6 className="font-semibold mb-3 flex items-center gap-2">
-                                <FontAwesomeIcon icon={faMedal} className="text-yellow-500" />
-                                Podio de Honor - {periodoTecnicos}
-                            </h6>
-
-                            <div className="space-y-3">
-
-                                {(dashboardData?.ticketsPorTecnico?.[periodoTecnicos] ?? [])
-                                    .slice(0, 3)
-                                    .map((tecnico: any, index: number) => (
-
-                                        <div
-                                            key={index}
-                                            className="flex items-center justify-between p-2 bg-white/5 rounded-lg"
-                                        >
-
-                                            <div className="flex items-center gap-3">
-
-                                                <div
-                                                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold
-                            ${index === 0
-                                                            ? "bg-yellow-500"
-                                                            : index === 1
-                                                                ? "bg-gray-400"
-                                                                : "bg-orange-400"
-                                                        }`}
-                                                >
-                                                    {index + 1}
+                                                            <div className="text-right">
+                                                                <div className="font-bold text-lg">
+                                                                    {tecnico?.tickets ?? 0}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                            ) : (
+                                                <div className="text-center text-white-dark text-sm py-3">
+                                                    Sin datos
                                                 </div>
-
-                                                <div>
-
-                                                    <span className="font-semibold">
-                                                        {tecnico.tecnico}
-                                                    </span>
-
-                                                    <div className="text-xs text-white-dark">
-                                                        {tecnico.tickets} tickets • {tecnico.eficiencia}% efectividad
-                                                    </div>
-
-                                                </div>
-
-                                            </div>
-
-                                            <div className="text-right">
-
-                                                <div className="font-bold text-lg">
-                                                    {tecnico.tickets}
-                                                </div>
-
-                                                <div className="text-xs text-success">
-                                                    +{Math.round(tecnico.tickets * 0.15)} vs promedio
-                                                </div>
-
-                                            </div>
-
+                                            )}
                                         </div>
-
-                                    ))}
-
-                            </div>
-
-                        </div>
-
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
 
