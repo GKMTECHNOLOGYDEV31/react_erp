@@ -125,63 +125,23 @@ const ResponsiveEChart = ({ option, style, ...props }: any) => {
 
 const Analytics = () => {
     const dispatch = useDispatch();
-    const [periodoTickets, setPeriodoTickets] = useState<'dia' | 'semana' | 'mes' | 'año'>('mes');
+    const [periodoTickets, setPeriodoTickets] = useState<'dia' | 'mes' | 'anio'>('dia');
     const [periodoTecnicos, setPeriodoTecnicos] = useState<'diario' | 'semanal' | 'mensual'>('diario');
     const [vistaDistritos, setVistaDistritos] = useState<'grafico' | 'tabla'>('grafico');
     const [expandido, setExpandido] = useState(false);
     const [dashboardData, setDashboardData] = useState<any>(null);
-    const [tiempoResolucion, setTiempoResolucion] = useState<any>(null);
-    const [ticketsCerrados, setTicketsCerrados] = useState<any>(null);
-    const [reincidencias, setReincidencias] = useState<any>(null);
-    const [ticketsEstados, setTicketsEstados] = useState<any[]>([]);
-    const [tendenciaTickets, setTendenciaTickets] = useState<any[]>([]);
-    const [ticketsDistrito, setTicketsDistrito] = useState<any[]>([]);
-    const [ticketsFalla, setTicketsFalla] = useState<any[]>([]);
-    const [flujoEstados, setFlujoEstados] = useState<any[]>([]);
-    const [rendimientoTecnicos, setRendimientoTecnicos] = useState<any[]>([]);
-    const [rendimientoPersonal, setRendimientoPersonal] = useState<any>(null);
-    const [tecnicosReincidencias, setTecnicosReincidencias] = useState<any[]>([]);
-    const [ticketsMasVisitas, setTicketsMasVisitas] = useState<number>(0);
-    const [tasaExito, setTasaExito] = useState<number>(0);
+    type TicketDistrito = {
+        id_ubigeo: string;
+        nombre_ubigeo: string;
+        total: number;
+    };
+
+
     useEffect(() => {
         const loadAnalytics = async () => {
             try {
-
-                const [
-                    dashboard,
-                    cerrados,
-                    tendencia,
-                    distrito,
-                    flujo,
-                    tecnicos,
-                    personal,
-                    reincidentes,
-                    visitas,
-                    exito
-                ] = await Promise.all([
-                    analyticsService.getDashboard(),
-                    analyticsService.getTicketsCerrados(),
-                    analyticsService.getTendenciaTickets(),
-                    analyticsService.getTicketsPorDistrito(),
-                    analyticsService.getFlujoEstados(),
-                    analyticsService.getRendimientoTecnicos(),
-                    analyticsService.getRendimientoPersonal(),
-                    analyticsService.getTecnicosMasReincidencias(),
-                    analyticsService.getTicketsMas1Visita(),
-                    analyticsService.getTasaExito()
-                ]);
-
+                const dashboard = await analyticsService.getDashboard();
                 setDashboardData(dashboard);
-                setTicketsCerrados(cerrados);
-                setTendenciaTickets(tendencia);
-                setTicketsDistrito(distrito);
-                setFlujoEstados(flujo);
-                setRendimientoTecnicos(tecnicos);
-                setRendimientoPersonal(personal);
-                setTecnicosReincidencias(reincidentes);
-                setTicketsMasVisitas(visitas);
-                setTasaExito(exito);
-
             } catch (error) {
                 console.error("Error cargando analytics", error);
             }
@@ -192,6 +152,9 @@ const Analytics = () => {
 
     const isDark = useSelector((state: IRootState) => state.themeConfig.theme === 'dark' || state.themeConfig.isDarkMode);
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
+    // 🔹 Tipo
+
+
 
     // ==================== FORZAR RESIZE INICIAL ====================
     useEffect(() => {
@@ -218,17 +181,62 @@ const Analytics = () => {
 
         return () => observer.disconnect();
     }, []);
+    // 🔹 Data segura
+    const tecnicosData =
+        dashboardData?.ticketsPorTecnico?.[periodoTecnicos] ?? [];
 
-    const dataTickets = (tendenciaTickets && Array.isArray(tendenciaTickets)) ? tendenciaTickets.map(t => t.total) : [];
+    const personalData = dashboardData?.ticketsPorPersonal ?? {};
+    // 🔹 Derivados
+    const periodos: ('diario' | 'semanal' | 'mensual')[] = ['diario', 'semanal', 'mensual'];
+
+    {
+        periodos.map((p) => (
+            <button
+                key={p}
+                onClick={() => setPeriodoTecnicos(p)}
+                className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === p ? 'bg-primary text-white' : ''
+                    }`}
+            >
+                <FontAwesomeIcon
+                    icon={
+                        p === 'diario'
+                            ? faCalendarDay
+                            : p === 'semanal'
+                                ? faCalendarWeek
+                                : faCalendarAlt
+                    }
+                />
+                {p === 'diario' ? 'Día' : p === 'semanal' ? 'Semana' : 'Mes'}
+            </button>
+        ))
+    }
+    const tendenciaSource =
+        periodoTickets === 'dia'
+            ? dashboardData?.tendenciaTickets?.porDia
+            : periodoTickets === 'mes'
+                ? dashboardData?.tendenciaTickets?.porMes
+                : dashboardData?.tendenciaTickets?.porAnio;
+
+    const dataTickets = Array.isArray(tendenciaSource)
+        ? tendenciaSource.map((t: any) => t.total)
+        : [];
+
+    const labels = Array.isArray(tendenciaSource)
+        ? tendenciaSource.map((t: any) =>
+            periodoTickets === 'dia'
+                ? t.fecha
+                : periodoTickets === 'mes'
+                    ? t.mes
+                    : t.anio
+        )
+        : [];
 
     const tendenciaTicketsOption = {
         tooltip: { trigger: 'axis' },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'category',
-            data: periodoTickets === 'dia'
-                ? Array.from({ length: 30 }, (_, i) => `Día ${i + 1}`)
-                : ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+            data: labels,
             axisLabel: { color: isDark ? '#bfc9d4' : '#506690' }
         },
         yAxis: {
@@ -244,20 +252,35 @@ const Analytics = () => {
             lineStyle: { width: 3, color: '#4361ee' },
             areaStyle: { color: isDark ? '#4361ee20' : '#4361ee10' },
             symbol: 'circle',
-            symbolSize: 8
+            symbolSize: 6
         }]
     };
+    // 🔹 Tipos
 
-    // Configuración para gráfico de tickets por distrito
+
+    const ticketsDistrito: TicketDistrito[] = Array.isArray(dashboardData?.ticketsPorDistrito)
+        ? dashboardData.ticketsPorDistrito
+        : [];
+
+    const totalTicketsDistrito = ticketsDistrito.reduce(
+        (acc, item) => acc + item.total,
+        0
+    );
+
+
+    // 🔹 Configuración para gráfico de tickets por distrito
     const ticketsDistritoOption = {
         tooltip: {
             trigger: 'axis',
             axisPointer: { type: 'shadow' },
             formatter: (params: any) => {
-                const item = ticketsDistrito[params[0].dataIndex];
+                const index = params?.[0]?.dataIndex ?? 0;
+                const item = ticketsDistrito[index];
+
+                if (!item) return '';
 
                 return `
-                <div class="font-semibold">${item.distrito}</div>
+                <div class="font-semibold">${item.nombre_ubigeo}</div>
                 <div class="flex justify-between mt-1">
                     <span>Tickets:</span>
                     <span class="font-bold">${item.total}</span>
@@ -276,7 +299,7 @@ const Analytics = () => {
 
         yAxis: {
             type: 'category',
-            data: ticketsDistrito.map(item => item.distrito),
+            data: ticketsDistrito.map(item => item.nombre_ubigeo), // ✅ FIX
             axisLabel: { color: isDark ? '#bfc9d4' : '#506690' },
             axisLine: { lineStyle: { color: isDark ? '#3b3f5c' : '#e0e6ed' } }
         },
@@ -297,9 +320,7 @@ const Analytics = () => {
                 label: {
                     show: true,
                     position: 'right',
-                    formatter: (params: any) => {
-                        return `${params.value}`;
-                    },
+                    formatter: (params: any) => `${params.value ?? 0}`,
                     color: isDark ? '#bfc9d4' : '#506690',
                     fontSize: 11
                 }
@@ -308,77 +329,71 @@ const Analytics = () => {
     };
 
     // Configuración para gráfico de tickets por falla
+    // 🔹 Tipos
+    type TicketFalla = {
+        falla: string;
+        total: number;
+    };
+
+    // 🔹 Data segura desde dashboardData
+    const ticketsFalla = [
+        { falla: 'Pantalla', total: 45 },
+        { falla: 'Batería', total: 30 },
+        { falla: 'Software', total: 25 },
+        { falla: 'Conectividad', total: 20 },
+        { falla: 'Otros', total: 10 },
+    ];
+
+    // 🔹 Configuración para gráfico de tickets por falla
     const ticketsFallaOption = {
         tooltip: {
             trigger: 'item',
-            formatter: (params: any) => {
-                return `${params.name}: ${params.value} tickets (${params.percent}%)`;
-            }
         },
-
-        legend: {
-            orient: 'vertical',
-            left: 'left',
-            textStyle: { color: isDark ? '#bfc9d4' : '#506690' }
-        },
-
         series: [
             {
-                name: 'Tickets por Falla',
+                name: 'Fallas',
                 type: 'pie',
-                radius: ['40%', '70%'],
-                center: ['50%', '50%'],
-                avoidLabelOverlap: false,
-
-                itemStyle: {
-                    borderRadius: 10,
-                    borderColor: isDark ? '#1b2e4b' : '#fff',
-                    borderWidth: 2
-                },
-
-                label: {
-                    show: true,
-                    position: 'outside',
-                    formatter: '{b}: {d}%',
-                    color: isDark ? '#bfc9d4' : '#506690'
-                },
-
-                emphasis: {
-                    label: {
-                        show: true,
-                        fontSize: 14,
-                        fontWeight: 'bold'
-                    }
-                },
-
-                data: ticketsFalla.map(item => ({
+                radius: '70%',
+                data: ticketsFalla.map((item) => ({
+                    value: item.total,
                     name: item.falla,
-                    value: item.total
-                }))
-            }
-        ]
+                })),
+            },
+        ],
     };
 
+    type FlujoEstado = {
+        descripcion: string;
+        total: number;
+        color: string;
+    };
+
+    // 🔹 Data segura desde dashboardData
+    const flujoEstados: FlujoEstado[] = Array.isArray(dashboardData?.flujoTicketsEstado)
+        ? dashboardData.flujoTicketsEstado
+        : [];
+    // 🔹 Total calculado (evita recalcular en cada tooltip)
+    const totalTicketsEstados = flujoEstados.reduce(
+        (sum, item) => sum + item.total,
+        0
+    );
     const ticketsEstadoOption = {
         tooltip: {
             trigger: 'axis',
             axisPointer: { type: 'shadow' },
 
             formatter: (params: any) => {
-                const data = params[0];
-                const item = flujoEstados[data.dataIndex];
+                const index = params?.[0]?.dataIndex ?? 0;
+                const item = flujoEstados[index];
 
-                const totalTickets = flujoEstados.reduce(
-                    (sum, i) => sum + i.total,
-                    0
-                );
+                if (!item) return '';
 
-                const porcentaje = totalTickets
-                    ? Math.round((item.total / totalTickets) * 100)
+                const porcentaje = totalTicketsEstados
+                    ? Math.round((item.total / totalTicketsEstados) * 100)
                     : 0;
 
                 return `
-                <div class="font-semibold">${item.estado}</div>
+                <div class="font-semibold">${item.descripcion}</div>
                 <div class="flex justify-between mt-1">
                     <span>Tickets:</span>
                     <span class="font-bold">${item.total}</span>
@@ -395,11 +410,13 @@ const Analytics = () => {
 
         xAxis: {
             type: 'category',
-            data: flujoEstados.map(item => item.estado),
+            data: flujoEstados.map(item => item.descripcion),
 
             axisLabel: {
+                formatter: (value: string) =>
+                    value.length > 15 ? value.substring(0, 15) + '...' : value,
                 color: isDark ? '#bfc9d4' : '#506690',
-                rotate: 15,
+                rotate: 20,
                 fontSize: 11
             },
 
@@ -426,14 +443,7 @@ const Analytics = () => {
                 itemStyle: {
                     borderRadius: [8, 8, 0, 0],
                     color: (params: any) => {
-                        const colors = [
-                            '#3b82f6',
-                            '#f59e0b',
-                            '#10b981',
-                            '#ef4444',
-                            '#8b5cf6'
-                        ];
-                        return colors[params.dataIndex % colors.length];
+                        return flujoEstados[params.dataIndex]?.color || '#3b82f6';
                     }
                 },
 
@@ -444,40 +454,86 @@ const Analytics = () => {
                     position: 'top',
                     color: isDark ? '#bfc9d4' : '#506690',
                     fontSize: 11,
-                    formatter: (params: any) => params.value
+                    formatter: (params: any) => `${params.value ?? 0}`
                 }
             }
         ]
     };
 
     // Configuración para gráfico de tickets por técnico
-    const ticketsTecnicoOption = {
+    // 🔹 Tipos
 
+    type Tecnico = {
+        idTecnico: number;
+        tecnico: string;
+        total_tickets?: number;
+        reincidencias?: string | number;
+        tasa_exito?: string; // porcentaje como string, ej. "95"
+    };
+    // 🔹 Data segura desde dashboardData
+    // Definir el tipo de técnico
+    type RendimientoTecnico = {
+        idTecnico: number;
+        tecnico: string;
+        total_tickets?: number;
+        reincidencias?: number;
+        tasa_exito?: number; // porcentaje como número
+    };
+
+    // Tipo por periodo
+    type RendimientoPorPeriodo = {
+        dia: RendimientoTecnico[];
+        semana: RendimientoTecnico[];
+        mes: RendimientoTecnico[];
+    };
+
+    // Asegurarse de que dashboardData.rendimientoTecnico sea del tipo correcto
+    const rendimientoTecnicos: RendimientoPorPeriodo = {
+        dia: Array.isArray(dashboardData?.rendimientoTecnico?.dia) ? dashboardData.rendimientoTecnico.dia : [],
+        semana: Array.isArray(dashboardData?.rendimientoTecnico?.semana) ? dashboardData.rendimientoTecnico.semana : [],
+        mes: Array.isArray(dashboardData?.rendimientoTecnico?.mes) ? dashboardData.rendimientoTecnico.mes : []
+    };
+    // Mapear periodos del UI a los keys internos
+    const periodoMap: Record<string, keyof RendimientoPorPeriodo> = {
+        diario: 'dia',
+        semanal: 'semana',
+        mensual: 'mes',
+    };
+
+    // Obtener los datos del periodo seleccionado de forma segura
+    const periodoKey = periodoMap[periodoTecnicos]; // ahora es 'dia' | 'semana' | 'mes'
+    const datosTecnicos = rendimientoTecnicos[periodoKey] ?? [];
+    // 🔹 Configuración para gráfico de tickets por técnico
+    const ticketsTecnicoOption = {
         tooltip: {
             trigger: 'axis',
             axisPointer: { type: 'shadow' },
-
             formatter: (params: any) => {
-                const data = params[0];
-                const item = rendimientoTecnicos[data.dataIndex];
+                const index: number = params?.[0]?.dataIndex ?? 0;
+                const periodoItems = rendimientoTecnicos[periodoTecnicos as keyof RendimientoPorPeriodo];
+                const item: RendimientoTecnico | undefined = periodoItems[index];
+
+                if (!item) return '';
+
+                const eficiencia = item.tasa_exito ?? 0;
+                const tickets = item.total_tickets ?? 0;
+                const reincidencias = item.reincidencias ?? 0;
 
                 return `
-                <div class="font-semibold">${item.tecnico}</div>
-                <div class="flex justify-between mt-1">
-                    <span>Tickets:</span>
-                    <span class="font-bold">${item.total_tickets}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Eficiencia:</span>
-                    <span class="${item.tasa_exito >= 90 ? 'text-success' : 'text-warning'}">
-                        ${item.tasa_exito}%
-                    </span>
-                </div>
-                <div class="flex justify-between">
-                    <span>Reincidencias:</span>
-                    <span class="text-danger">${item.reincidencias}</span>
-                </div>
-            `;
+<div class="font-semibold">${item.tecnico}</div>
+<div class="flex justify-between mt-1">
+  <span>Tickets:</span>
+  <span class="font-bold">${tickets}</span>
+</div>
+<div class="flex justify-between">
+  <span>Eficiencia:</span>
+  <span class="${eficiencia >= 90 ? 'text-success' : 'text-warning'}">${eficiencia}%</span>
+</div>
+<div class="flex justify-between">
+  <span>Reincidencias:</span>
+  <span class="text-danger">${reincidencias}</span>
+</div>
+`;
             }
         },
 
@@ -485,16 +541,11 @@ const Analytics = () => {
 
         xAxis: {
             type: 'category',
-
-            data: rendimientoTecnicos.map(item =>
-                item.tecnico.split(' ')[0]
-            ),
-
+            data: datosTecnicos.map((item) => item.total_tickets ?? 0),
             axisLabel: {
                 color: isDark ? '#bfc9d4' : '#506690',
                 rotate: 15
             },
-
             axisLine: {
                 lineStyle: { color: isDark ? '#3b3f5c' : '#e0e6ed' }
             }
@@ -503,7 +554,6 @@ const Analytics = () => {
         yAxis: {
             type: 'value',
             axisLabel: { color: isDark ? '#bfc9d4' : '#506690' },
-
             splitLine: {
                 lineStyle: { color: isDark ? '#191e3a' : '#e0e6ed' }
             }
@@ -513,22 +563,20 @@ const Analytics = () => {
             {
                 name: 'Tickets',
                 type: 'bar',
-
-                data: rendimientoTecnicos.map(item => item.total_tickets),
-
+                data: rendimientoTecnicos[periodoTecnicos as keyof RendimientoPorPeriodo]?.map(
+                    (item) => item.total_tickets ?? 0
+                ),
                 itemStyle: {
                     color: '#e2a03f',
                     borderRadius: [8, 8, 0, 0]
                 },
-
                 barWidth: 30,
-
                 label: {
                     show: true,
                     position: 'top',
                     color: isDark ? '#bfc9d4' : '#506690',
                     fontSize: 11,
-                    formatter: (params: any) => params.value
+                    formatter: (params: any) => `${params.value ?? 0}`
                 }
             }
         ]
@@ -576,18 +624,25 @@ const Analytics = () => {
                         <div className="flex items-center justify-between mb-3">
                             <p className="text-white-dark text-sm">Tickets Cerrados</p>
                             <span className="text-xs bg-success/10 text-success px-2 py-1 rounded-full">
-                                {ticketsCerrados?.porcentaje_total ?? 0}% del total
+                                {dashboardData?.ticketsCerrados?.porcentaje_total ?? 0}% del total
                             </span>
                         </div>
+
                         <div className="flex items-center gap-3">
                             <div className="bg-success/10 text-success rounded-full w-12 h-12 flex items-center justify-center">
                                 <FontAwesomeIcon icon={faCircleCheck} className="text-2xl" />
                             </div>
+
                             <div>
-                                <h4 className="text-2xl font-bold">{ticketsCerrados?.total_cerrados ?? 0}</h4>
+                                <h4 className="text-2xl font-bold">
+                                    {dashboardData?.ticketsCerrados?.total_cerrados ?? 0}
+                                </h4>
+
                                 <div className="flex items-center gap-2 text-xs">
                                     <FontAwesomeIcon icon={faArrowTrendUp} className="text-success" />
-                                    <span className="text-success">{ticketsCerrados?.variacion_mes_anterior ?? 0}% vs mes anterior</span>
+                                    <span className="text-success">
+                                        {dashboardData?.ticketsCerrados?.variacion_mes_anterior ?? 0}% vs mes anterior
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -609,19 +664,19 @@ const Analytics = () => {
 
                             <div>
                                 <h4 className="text-2xl font-bold">
-                                    {tiempoResolucion?.promedio_horas ?? 0}h
+                                    {dashboardData?.tiempoResolucion?.promedio_horas ?? 0}h
                                 </h4>
 
                                 <div className="flex items-center gap-2 text-xs">
 
                                     <FontAwesomeIcon
                                         icon={
-                                            (tiempoResolucion?.variacion_ayer ?? 0) > 0
+                                            (dashboardData?.tiempoResolucion?.variacion_ayer ?? 0) > 0
                                                 ? faArrowTrendUp
                                                 : faArrowTrendDown
                                         }
                                         className={
-                                            (tiempoResolucion?.variacion_ayer ?? 0) > 0
+                                            (dashboardData?.tiempoResolucion?.variacion_ayer ?? 0) > 0
                                                 ? "text-danger"
                                                 : "text-success"
                                         }
@@ -629,12 +684,14 @@ const Analytics = () => {
 
                                     <span
                                         className={
-                                            (tiempoResolucion?.variacion_ayer ?? 0) > 0
+                                            (dashboardData?.tiempoResolucion?.variacion_ayer ?? 0) > 0
                                                 ? "text-danger"
                                                 : "text-success"
                                         }
                                     >
-                                        {Math.abs(tiempoResolucion?.variacion_ayer ?? 0)}h vs ayer
+                                        {Math.abs(
+                                            dashboardData?.tiempoResolucion?.variacion_horas ?? 0
+                                        )}h vs mes anterior
                                     </span>
 
                                 </div>
@@ -646,41 +703,47 @@ const Analytics = () => {
                         <div className="flex items-center justify-between mb-3">
                             <p className="text-white-dark text-sm">Reincidencias</p>
 
-                            <span className="text-xs bg-danger/10 text-danger px-2 py-1 rounded-full">
-                                <FontAwesomeIcon
-                                    icon={
-                                        (reincidencias?.tendencia ?? 0) > 0
-                                            ? faArrowTrendUp
-                                            : faArrowTrendDown
-                                    }
-                                    className="mr-1"
-                                />
-                                {Math.abs(reincidencias?.tendencia ?? 0)}%
-                            </span>
+                            {(() => {
+                                const variacion = dashboardData?.reincidencias?.variacion_mes_anterior ?? 0;
+                                const esMejora = variacion < 0; // 🔥 menos reincidencias = mejor
+
+                                return (
+                                    <span
+                                        className={`text-xs px-2 py-1 rounded-full ${esMejora
+                                            ? 'bg-success/10 text-success'
+                                            : 'bg-danger/10 text-danger'
+                                            }`}
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={esMejora ? faArrowTrendDown : faArrowTrendUp}
+                                            className="mr-1"
+                                        />
+                                        {Math.abs(variacion)}%
+                                    </span>
+                                );
+                            })()}
                         </div>
 
                         <div className="flex items-center gap-3">
-
                             <div className="bg-danger/10 text-danger rounded-full w-12 h-12 flex items-center justify-center">
                                 <FontAwesomeIcon icon={faRotateRight} className="text-2xl" />
                             </div>
 
                             <div>
                                 <h4 className="text-2xl font-bold">
-                                    {reincidencias?.porcentaje ?? 0}%
+                                    {dashboardData?.reincidencias?.porcentaje_reincidencias ?? 0}%
                                 </h4>
 
                                 <div className="flex items-center gap-1 text-xs">
                                     <span className="text-white-dark">
-                                        {reincidencias?.reincidentes ?? 0} tickets
+                                        {dashboardData?.reincidencias?.tickets_reincidencias ?? 0} tickets
                                     </span>
 
                                     <span className="text-danger">
-                                        • {reincidencias?.total ?? 0} únicos
+                                        • {dashboardData?.reincidencias?.tickets_unicos ?? 0} únicos
                                     </span>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -694,9 +757,37 @@ const Analytics = () => {
                                 <h5 className="font-semibold text-lg">Tendencia de Tickets</h5>
                             </div>
                             <div className="flex gap-2">
-                                <button className="px-3 py-1 text-xs bg-primary/10 text-primary rounded-md">
-                                    <FontAwesomeIcon icon={faCalendarDay} className="mr-1" /> Últimos 30 días
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setPeriodoTickets('dia')}
+                                        className={`px-3 py-1 text-xs rounded-md ${periodoTickets === 'dia'
+                                            ? 'bg-primary text-white'
+                                            : 'bg-primary/10 text-primary'
+                                            }`}
+                                    >
+                                        Día
+                                    </button>
+
+                                    <button
+                                        onClick={() => setPeriodoTickets('mes')}
+                                        className={`px-3 py-1 text-xs rounded-md ${periodoTickets === 'mes'
+                                            ? 'bg-primary text-white'
+                                            : 'bg-primary/10 text-primary'
+                                            }`}
+                                    >
+                                        Mes
+                                    </button>
+
+                                    <button
+                                        onClick={() => setPeriodoTickets('anio')}
+                                        className={`px-3 py-1 text-xs rounded-md ${periodoTickets === 'anio'
+                                            ? 'bg-primary text-white'
+                                            : 'bg-primary/10 text-primary'
+                                            }`}
+                                    >
+                                        Año
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         {/* 👇 CAMBIADO a ResponsiveEChart */}
@@ -706,6 +797,7 @@ const Analytics = () => {
 
                 {/* Fila 2: Tickets por Distrito y por Falla */}
                 <div className="grid lg:grid-cols-2 gap-6 mb-6">
+                    {/* 🔹 UI */}
                     <div className="panel">
 
                         <div className="flex justify-between items-center mb-5">
@@ -733,10 +825,16 @@ const Analytics = () => {
 
                         {vistaDistritos === 'grafico' ? (
                             <>
-                                <ResponsiveEChart
-                                    option={ticketsDistritoOption}
-                                    style={{ height: '350px' }}
-                                />
+                                {ticketsDistrito.length === 0 ? (
+                                    <div className="h-[350px] flex items-center justify-center text-white-dark">
+                                        No hay datos
+                                    </div>
+                                ) : (
+                                    <ResponsiveEChart
+                                        option={ticketsDistritoOption}
+                                        style={{ height: '350px' }}
+                                    />
+                                )}
 
                                 <div className="mt-4 flex flex-wrap gap-2 text-sm">
                                     <span className="bg-success/10 text-success px-2 py-1 rounded-full text-xs">
@@ -756,26 +854,26 @@ const Analytics = () => {
                                     <thead>
                                         <tr>
                                             <th className="text-left">Distrito</th>
-                                            <th className="text-left">Provincia</th>
                                             <th className="text-right">Tickets</th>
                                         </tr>
                                     </thead>
 
                                     <tbody>
 
-                                        {ticketsDistrito.map((item, index) => (
-
-                                            <tr key={index}>
-                                                <td className="font-semibold">{item.distrito}</td>
-
-                                                <td>{item.provincia ?? '-'}</td>
-
-                                                <td className="text-right">
-                                                    {item.total}
+                                        {ticketsDistrito.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={2} className="text-center py-4 text-white-dark">
+                                                    No hay datos
                                                 </td>
                                             </tr>
-
-                                        ))}
+                                        ) : (
+                                            ticketsDistrito.map((item: TicketDistrito, index: number) => (
+                                                <tr key={index}>
+                                                    <td className="font-semibold">{item.nombre_ubigeo}</td>
+                                                    <td className="text-right">{item.total}</td>
+                                                </tr>
+                                            ))
+                                        )}
 
                                     </tbody>
 
@@ -787,21 +885,11 @@ const Analytics = () => {
 
                             <span>
                                 <FontAwesomeIcon icon={faBuilding} className="mr-1" />
-
-                                {
-                                    [...new Set(
-                                        ticketsDistrito.map(item => item.provincia)
-                                    )].length
-                                } provincias
+                                {ticketsDistrito.length} distritos
                             </span>
 
                             <span className="font-semibold">
-                                Total: {
-                                    ticketsDistrito.reduce(
-                                        (acc, item) => acc + item.total,
-                                        0
-                                    )
-                                } tickets
+                                Total: {totalTicketsDistrito} tickets
                             </span>
 
                         </div>
@@ -1120,280 +1208,265 @@ const Analytics = () => {
                                 <FontAwesomeIcon icon={faUserGear} className="text-primary text-xl" />
                                 <h5 className="font-semibold text-lg">Rendimiento por Técnico</h5>
                             </div>
+
+                            {/* Botones de periodo */}
                             <div className="flex gap-1 bg-white-dark/10 rounded-lg p-1">
-                                <button
-                                    onClick={() => setPeriodoTecnicos('diario')}
-                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'diario' ? 'bg-primary text-white' : ''}`}
-                                >
-                                    <FontAwesomeIcon icon={faCalendarDay} /> Día
-                                </button>
-                                <button
-                                    onClick={() => setPeriodoTecnicos('semanal')}
-                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'semanal' ? 'bg-primary text-white' : ''}`}
-                                >
-                                    <FontAwesomeIcon icon={faCalendarWeek} /> Semana
-                                </button>
-                                <button
-                                    onClick={() => setPeriodoTecnicos('mensual')}
-                                    className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === 'mensual' ? 'bg-primary text-white' : ''}`}
-                                >
-                                    <FontAwesomeIcon icon={faCalendarAlt} /> Mes
-                                </button>
+                                {periodos.map((p) => (
+                                    <button
+                                        key={p}
+                                        onClick={() => setPeriodoTecnicos(p)}
+                                        className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${periodoTecnicos === p ? 'bg-primary text-white' : ''
+                                            }`}
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={
+                                                p === 'diario'
+                                                    ? faCalendarDay
+                                                    : p === 'semanal'
+                                                        ? faCalendarWeek
+                                                        : faCalendarAlt
+                                            }
+                                        />
+                                        {p === 'diario' ? 'Día' : p === 'semanal' ? 'Semana' : 'Mes'}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        <div className="panel">
+                        {/* Tarjetas de técnicos */}
+                        <div className="grid grid-cols-1 gap-3 mb-4">
+                            {datosTecnicos.length > 0 ? (
+                                datosTecnicos.map((tecnico: RendimientoTecnico, index: number) => {
+                                    const eficiencia = parseFloat(tecnico.tasa_exito?.toString() || '0');
+                                    const tickets = tecnico.total_tickets ?? 0;
+                                    const reincidencias = parseInt(tecnico.reincidencias?.toString() || '0');
+                                    const iniciales = tecnico.tecnico?.split(' ').map(n => n[0]).join('') || '';
 
-                            <div className="flex items-center gap-2 mb-5">
-                                <FontAwesomeIcon icon={faGear} className="text-primary text-xl" />
-                                <h5 className="font-semibold text-lg">Tickets por Tipo de Falla</h5>
-                            </div>
-
-                            {/* Leyenda */}
-                            <div className="grid grid-cols-2 gap-2 mb-4">
-
-                                {ticketsFalla.map((falla, index) => {
-
-                                    const totalTickets = ticketsFalla.reduce((acc, i) => acc + i.total, 0);
-                                    const porcentaje = totalTickets
-                                        ? Math.round((falla.total / totalTickets) * 100)
-                                        : 0;
 
                                     return (
-                                        <div key={index} className="flex items-center gap-2 text-sm">
+                                        <div
+                                            key={tecnico.idTecnico}
+                                            className="bg-white-dark/5 rounded-lg p-3 hover:bg-primary/5 transition-colors"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    {/* Iniciales del técnico */}
+                                                    <div
+                                                        className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${index === 0
+                                                            ? 'bg-yellow-500'
+                                                            : index === 1
+                                                                ? 'bg-gray-400'
+                                                                : index === 2
+                                                                    ? 'bg-orange-400'
+                                                                    : 'bg-primary/50'
+                                                            }`}
+                                                    >
+                                                        {iniciales}
+                                                    </div>
 
-                                            <span
-                                                className="w-3 h-3 rounded-full"
-                                                style={{
-                                                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][index % 5]
-                                                }}
-                                            />
+                                                    {/* Info técnico */}
+                                                    <div>
+                                                        <div className="font-semibold flex items-center gap-2">
+                                                            {tecnico.tecnico || 'Sin nombre'}
+                                                            {index === 0 && <FontAwesomeIcon icon={faMedal} className="text-yellow-500" />}
+                                                            {eficiencia >= 95 && (
+                                                                <FontAwesomeIcon icon={faStar} className="text-yellow-500 text-xs" />
+                                                            )}
+                                                        </div>
 
-                                            <span className="flex-1">{falla.falla}</span>
+                                                        <div className="flex items-center gap-3 text-xs">
+                                                            <span className="text-white-dark flex items-center gap-1">
+                                                                <FontAwesomeIcon icon={faTicket} /> {tickets} tickets
+                                                            </span>
+                                                            <span
+                                                                className={`flex items-center gap-1 ${eficiencia >= 90 ? 'text-success' : 'text-warning'}`}
+                                                            >
+                                                                <FontAwesomeIcon icon={faChartLine} /> {eficiencia}%
+                                                            </span>
+                                                            {reincidencias > 0 && (
+                                                                <span className="text-danger flex items-center gap-1">
+                                                                    <FontAwesomeIcon icon={faRotateRight} /> {reincidencias} re.
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
 
-                                            <span className="font-semibold">{porcentaje}%</span>
-
+                                                {/* Barra de progreso */}
+                                                <div className="w-24">
+                                                    <div className="w-full bg-white-dark/20 rounded-full h-2">
+                                                        <div
+                                                            className={`h-2 rounded-full ${eficiencia >= 90
+                                                                ? 'bg-success'
+                                                                : eficiencia >= 80
+                                                                    ? 'bg-warning'
+                                                                    : 'bg-danger'
+                                                                }`}
+                                                            style={{ width: `${Math.min(100, eficiencia)}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     );
-                                })}
-
-                            </div>
-
-                            <ResponsiveEChart
-                                option={ticketsFallaOption}
-                                style={{ height: '300px' }}
-                            />
-
-                            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-
-                                {/* Principal */}
-                                <div className="bg-primary/5 p-2 rounded">
-
-                                    <div className="text-xs text-white-dark">
-                                        Principal
-                                    </div>
-
-                                    <div className="font-semibold">
-                                        {ticketsFalla[0]?.falla ?? '-'}
-                                    </div>
-
-                                    <div className="text-primary text-sm">
-                                        {ticketsFalla[0]?.total ?? 0}
-                                    </div>
-
-                                </div>
-
-                                {/* Total fallas */}
-                                <div className="bg-success/5 p-2 rounded">
-
-                                    <div className="text-xs text-white-dark">
-                                        Tipos de falla
-                                    </div>
-
-                                    <div className="font-semibold">
-                                        {ticketsFalla.length}
-                                    </div>
-
-                                    <div className="text-success text-sm">
-                                        registradas
-                                    </div>
-
-                                </div>
-
-                                {/* Total tickets */}
-                                <div className="bg-danger/5 p-2 rounded">
-
-                                    <div className="text-xs text-white-dark">
-                                        Total tickets
-                                    </div>
-
-                                    <div className="font-semibold">
-                                        {ticketsFalla.reduce((acc, i) => acc + i.total, 0)}
-                                    </div>
-
-                                    <div className="text-danger text-sm">
-                                        analizados
-                                    </div>
-
-                                </div>
-
-                            </div>
-
+                                })
+                            ) : (
+                                <div className="text-center text-white-dark text-sm py-3">Sin datos</div>
+                            )}
                         </div>
 
-                        {/* Mini gráfico de comparativa */}
-                        {/* 👇 CAMBIADO a ResponsiveEChart */}
-                        <ResponsiveEChart option={ticketsTecnicoOption} style={{ height: '150px' }} />
+                        {/* Mini gráfico comparativo */}
+                        <ResponsiveEChart
+                            option={{
+                                ...ticketsTecnicoOption,
+                                xAxis: {
+                                    ...ticketsTecnicoOption.xAxis,
+                                    data: datosTecnicos.map((item: RendimientoTecnico) => item.tecnico?.split(' ')[0] ?? '')
+                                },
+                                series: [
+                                    {
+                                        ...ticketsTecnicoOption.series[0],
+                                        data: datosTecnicos.map((item: RendimientoTecnico) => item.total_tickets ?? 0)
+                                    }
+                                ]
+                            }}
+                            style={{ height: '150px' }}
+                        />
                     </div>
 
                     <div className="panel">
-
                         <div className="flex items-center gap-2 mb-5">
                             <FontAwesomeIcon icon={faUsers} className="text-primary text-xl" />
                             <h5 className="font-semibold text-lg">Rendimiento del Personal</h5>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4 mb-6">
+                        {(() => {
+                            // Datos seguros
+                            const personal = dashboardData?.rendimientoPersonal ?? {};
+                            const valores: number[] = [
+                                personal?.tickets?.dia ?? 0,
+                                personal?.tickets?.semana ?? 0,
+                                personal?.tickets?.mes ?? 0
+                            ];
 
-                            {['Diario', 'Semanal', 'Mensual'].map((periodo, index) => {
+                            const objetivos: number[] = [
+                                personal?.metas?.diaria ?? 1,
+                                personal?.metas?.semanal ?? 1,
+                                personal?.metas?.mensual ?? 1
+                            ];
 
-                                const valores = [
-                                    dashboardData?.ticketsPorPersonal?.diario ?? 0,
-                                    dashboardData?.ticketsPorPersonal?.semanal ?? 0,
-                                    dashboardData?.ticketsPorPersonal?.mensual ?? 0
-                                ]
+                            const tecnicos: Array<{
+                                tecnico: string;
+                                tickets: number;
+                                eficiencia?: number;
+                            }> = dashboardData?.rendimientoPorTecnico?.[periodoTecnicos] ?? [];
 
-                                const objetivos = [
-                                    dashboardData?.ticketsPorPersonal?.objetivos?.diario ?? 0,
-                                    dashboardData?.ticketsPorPersonal?.objetivos?.semanal ?? 0,
-                                    dashboardData?.ticketsPorPersonal?.objetivos?.mensual ?? 0
-                                ]
+                            return (
+                                <>
+                                    {/* 🔹 CARDS DE METAS */}
+                                    <div className="grid grid-cols-3 gap-4 mb-6">
+                                        {['Diario', 'Semanal', 'Mensual'].map((periodo, index) => {
+                                            const alcanzado = (valores[index] / objetivos[index]) * 100;
 
-                                const alcanzado =
-                                    objetivos[index] > 0
-                                        ? (valores[index] / objetivos[index]) * 100
-                                        : 0
-
-                                const iconos = [faCalendarDay, faCalendarWeek, faCalendarAlt]
-
-                                const coloresTexto = ["text-primary", "text-success", "text-warning"]
-                                const coloresBarra = ["bg-primary", "bg-success", "bg-warning"]
-
-                                return (
-
-                                    <div
-                                        key={index}
-                                        className="text-center p-4 bg-white-dark/5 rounded-lg hover:shadow-lg transition-all"
-                                    >
-
-                                        <FontAwesomeIcon
-                                            icon={iconos[index]}
-                                            className={`text-2xl mb-2 ${coloresTexto[index]}`}
-                                        />
-
-                                        <p className="text-white-dark text-sm">
-                                            {periodo}
-                                        </p>
-
-                                        <p className="text-2xl font-bold">
-                                            {valores[index]}
-                                        </p>
-
-                                        <div className="mt-2">
-
-                                            <div className="w-full bg-white-dark/20 rounded-full h-1.5">
-
+                                            return (
                                                 <div
-                                                    className={`h-1.5 rounded-full ${coloresBarra[index]}`}
-                                                    style={{
-                                                        width: `${Math.min(100, alcanzado)}%`
-                                                    }}
-                                                />
+                                                    key={index}
+                                                    className="text-center p-4 bg-white-dark/5 rounded-lg hover:shadow-lg transition-all"
+                                                >
+                                                    <FontAwesomeIcon
+                                                        icon={
+                                                            index === 0
+                                                                ? faCalendarDay
+                                                                : index === 1
+                                                                    ? faCalendarWeek
+                                                                    : faCalendarAlt
+                                                        }
+                                                        className={`text-2xl mb-2 ${index === 0 ? 'text-primary' : index === 1 ? 'text-success' : 'text-warning'
+                                                            }`}
+                                                    />
+                                                    <p className="text-white-dark text-sm">{periodo}</p>
+                                                    <p className="text-2xl font-bold">{valores[index]}</p>
 
-                                            </div>
-
-                                            <p className="text-xs text-white-dark mt-1">
-                                                {Math.round(alcanzado)}% de meta ({objetivos[index]})
-                                            </p>
-
-                                        </div>
-
+                                                    <div className="mt-2">
+                                                        <div className="w-full bg-white-dark/20 rounded-full h-1.5">
+                                                            <div
+                                                                className={`h-1.5 rounded-full ${index === 0 ? 'bg-primary' : index === 1 ? 'bg-success' : 'bg-warning'
+                                                                    }`}
+                                                                style={{ width: `${Math.min(100, alcanzado)}%` }}
+                                                            />
+                                                        </div>
+                                                        <p className="text-xs text-white-dark mt-1">
+                                                            {Math.round(alcanzado)}% de meta ({objetivos[index]})
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
 
-                                )
+                                    {/* 🔹 PODIO */}
+                                    <div className="bg-gradient-to-r from-primary/5 to-transparent rounded-lg p-4">
+                                        <h6 className="font-semibold mb-3 flex items-center gap-2">
+                                            <FontAwesomeIcon icon={faMedal} className="text-yellow-500" />
+                                            Podio de Honor - {periodoTecnicos}
+                                        </h6>
 
-                            })}
+                                        <div className="space-y-3">
+                                            {(() => {
+                                                // 🔹 Mapear el periodo del UI al key interno
+                                                const periodoMap: Record<string, keyof RendimientoPorPeriodo> = {
+                                                    diario: 'dia',
+                                                    semanal: 'semana',
+                                                    mensual: 'mes',
+                                                };
+                                                const periodoKey = periodoMap[periodoTecnicos] ?? 'dia';
+                                                const datosTecnicos = rendimientoTecnicos[periodoKey] ?? [];
 
-                        </div>
+                                                return datosTecnicos.length > 0 ? (
+                                                    [...datosTecnicos]
+                                                        .sort((a, b) => (b.total_tickets ?? 0) - (a.total_tickets ?? 0))
+                                                        .slice(0, 3)
+                                                        .map((tecnico, index) => {
+                                                            const eficiencia = tecnico.tasa_exito ?? 0;
+                                                            return (
+                                                                <div
+                                                                    key={index}
+                                                                    className="flex items-center justify-between p-2 bg-white/5 rounded-lg"
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div
+                                                                            className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${index === 0
+                                                                                ? 'bg-yellow-500'
+                                                                                : index === 1
+                                                                                    ? 'bg-gray-400'
+                                                                                    : 'bg-orange-400'
+                                                                                }`}
+                                                                        >
+                                                                            {index + 1}
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="font-semibold">{tecnico.tecnico || 'Sin nombre'}</span>
+                                                                            <div className="text-xs text-white-dark">
+                                                                                {tecnico.total_tickets ?? 0} tickets • {eficiencia}%
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
 
-                        {/* Podio técnicos */}
-
-                        <div className="bg-gradient-to-r from-primary/5 to-transparent rounded-lg p-4">
-
-                            <h6 className="font-semibold mb-3 flex items-center gap-2">
-                                <FontAwesomeIcon icon={faMedal} className="text-yellow-500" />
-                                Podio de Honor - {periodoTecnicos}
-                            </h6>
-
-                            <div className="space-y-3">
-
-                                {(dashboardData?.ticketsPorTecnico?.[periodoTecnicos] ?? [])
-                                    .slice(0, 3)
-                                    .map((tecnico: any, index: number) => (
-
-                                        <div
-                                            key={index}
-                                            className="flex items-center justify-between p-2 bg-white/5 rounded-lg"
-                                        >
-
-                                            <div className="flex items-center gap-3">
-
-                                                <div
-                                                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold
-                            ${index === 0
-                                                            ? "bg-yellow-500"
-                                                            : index === 1
-                                                                ? "bg-gray-400"
-                                                                : "bg-orange-400"
-                                                        }`}
-                                                >
-                                                    {index + 1}
-                                                </div>
-
-                                                <div>
-
-                                                    <span className="font-semibold">
-                                                        {tecnico.tecnico}
-                                                    </span>
-
-                                                    <div className="text-xs text-white-dark">
-                                                        {tecnico.tickets} tickets • {tecnico.eficiencia}% efectividad
-                                                    </div>
-
-                                                </div>
-
-                                            </div>
-
-                                            <div className="text-right">
-
-                                                <div className="font-bold text-lg">
-                                                    {tecnico.tickets}
-                                                </div>
-
-                                                <div className="text-xs text-success">
-                                                    +{Math.round(tecnico.tickets * 0.15)} vs promedio
-                                                </div>
-
-                                            </div>
-
+                                                                    <div className="text-right">
+                                                                        <div className="font-bold text-lg">{tecnico.total_tickets ?? 0}</div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })
+                                                ) : (
+                                                    <div className="text-center text-white-dark text-sm py-3">Sin datos</div>
+                                                );
+                                            })()}
                                         </div>
-
-                                    ))}
-
-                            </div>
-
-                        </div>
-
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
 
@@ -1537,7 +1610,7 @@ const Analytics = () => {
                                     </p>
 
                                     <p className="text-3xl font-bold text-danger">
-                                        {dashboardData?.reincidencias?.reincidentes ?? 0}
+                                        {dashboardData?.ticketsMas2Visitas ?? 0}
                                     </p>
 
                                     <p className="text-xs text-white-dark mt-1">
@@ -1547,65 +1620,56 @@ const Analytics = () => {
                                 </div>
 
                                 <div className="bg-white-dark/5 rounded-lg p-4">
-
-                                    <h6 className="font-semibold mb-2 text-sm">
+                                    <h6 className="font-semibold mb-3 text-sm text-white-dark/80">
                                         Técnicos con más reincidencias
                                     </h6>
 
-                                    {(dashboardData?.reincidencias?.porTecnico ?? []).map((item: any, index: number) => (
-
-                                        <div
-                                            key={index}
-                                            className="flex justify-between items-center text-sm py-1"
-                                        >
-
-                                            <span>{item.tecnico}</span>
-
-                                            <span className="font-semibold text-danger">
-                                                {item.reincidencias}
-                                            </span>
-
-                                        </div>
-
-                                    ))}
-
+                                    {(dashboardData?.tecnicosMasReincidencias ?? [])
+                                        .sort(
+                                            (a: { idUsuario: number; tecnico: string; reincidencias: number },
+                                                b: { idUsuario: number; tecnico: string; reincidencias: number }) => b.reincidencias - a.reincidencias
+                                        )
+                                        .map((item: { idUsuario: number; tecnico: string; reincidencias: number }, index: number) => (
+                                            <div
+                                                key={item.idUsuario}
+                                                className={`flex justify-between items-center text-sm py-1 px-2 rounded-md transition-colors ${index % 2 === 0 ? 'bg-white-dark/10' : 'bg-white-dark/5'
+                                                    } hover:bg-primary/10`}
+                                            >
+                                                <span className="font-medium text-white-dark">{item.tecnico}</span>
+                                                <span
+                                                    className={`font-bold ${index === 0
+                                                        ? 'text-yellow-400'
+                                                        : index === 1
+                                                            ? 'text-gray-300'
+                                                            : index === 2
+                                                                ? 'text-orange-400'
+                                                                : 'text-danger'
+                                                        }`}
+                                                >
+                                                    {item.reincidencias}
+                                                </span>
+                                            </div>
+                                        ))}
                                 </div>
 
                                 <div className="bg-success/5 rounded-lg p-4">
-
                                     <div className="flex items-center justify-between">
-
+                                        {/* 🔹 Tasa de éxito */}
                                         <div>
-
-                                            <p className="text-xs text-white-dark">
-                                                Tasa de éxito
-                                            </p>
-
+                                            <p className="text-xs text-white-dark">Tasa de éxito</p>
                                             <p className="text-xl font-bold text-success">
-
-                                                {100 - (dashboardData?.reincidencias?.porcentaje ?? 0)}%
-
+                                                {dashboardData?.tasaExito?.tasa_exito ?? 0}%
                                             </p>
-
                                         </div>
 
+                                        {/* 🔹 Tickets completados en 1 visita */}
                                         <div className="text-right">
-
-                                            <p className="text-xs text-white-dark">
-                                                1ra visita
-                                            </p>
-
+                                            <p className="text-xs text-white-dark">1ra visita</p>
                                             <p className="text-lg font-semibold">
-
-                                                {(dashboardData?.ticketsPorPeriodo?.mes ?? 0) -
-                                                    (dashboardData?.reincidencias?.total ?? 0)}
-
+                                                {dashboardData?.tasaExito?.tickets_completados ?? 0}
                                             </p>
-
                                         </div>
-
                                     </div>
-
                                 </div>
 
                             </div>
@@ -1615,43 +1679,6 @@ const Analytics = () => {
                     </div>
                 </div>
 
-                {/* Fila 7: Resumen Ejecutivo */}
-                <div className="grid grid-cols-1 gap-6 mt-6">
-                    <div className="panel bg-gradient-to-r from-primary to-secondary text-white">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h5 className="font-semibold text-lg mb-2">Resumen Ejecutivo</h5>
-                                <p className="text-white/80 text-sm">Última actualización: Hoy 10:30 AM</p>
-                            </div>
-                            <button className="bg-white/20 hover:bg-white/30 rounded-lg p-2 transition-colors">
-                                <FontAwesomeIcon icon={faRefresh} />
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                            <div>
-                                <p className="text-white/70 text-xs">SLAs cumplidos</p>
-                                <p className="text-2xl font-bold">94%</p>
-                                <p className="text-green-300 text-xs">+2.5% vs ayer</p>
-                            </div>
-                            <div>
-                                <p className="text-white/70 text-xs">Satisfacción cliente</p>
-                                <p className="text-2xl font-bold">4.8/5.0</p>
-                                <p className="text-green-300 text-xs">+0.3 puntos</p>
-                            </div>
-                            <div>
-                                <p className="text-white/70 text-xs">Tickets pendientes</p>
-                                <p className="text-2xl font-bold">368</p>
-                                <p className="text-yellow-300 text-xs">-12 vs ayer</p>
-                            </div>
-                            <div>
-                                <p className="text-white/70 text-xs">Productividad</p>
-                                <p className="text-2xl font-bold">87%</p>
-                                <p className="text-green-300 text-xs">Meta: 85%</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     );

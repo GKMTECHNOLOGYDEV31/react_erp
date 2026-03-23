@@ -39,31 +39,64 @@ class DashboardService
 
     public function getTicketsCerrados($idClienteGeneral)
     {
-        $inicioMesActual = Carbon::now()->startOfMonth();
-        $inicioMesAnterior = Carbon::now()->subMonth()->startOfMonth();
-        $finMesAnterior = Carbon::now()->subMonth()->endOfMonth();
+        $inicioMesActual = now()->startOfMonth();
+        $inicioMesAnterior = now()->subMonth()->startOfMonth();
+        $finMesAnterior = now()->subMonth()->endOfMonth();
 
+        /*
+    =====================================
+    BASE: ÚLTIMO FLUJO POR TICKET
+    =====================================
+    */
+        $base = DB::table('tickets as t')
+            ->joinSub(
+                DB::table('ticketflujo')
+                    ->select('idTicket', DB::raw('MAX(fecha_creacion) as ultima_fecha'))
+                    ->groupBy('idTicket'),
+                'ult',
+                function ($join) {
+                    $join->on('t.idTickets', '=', 'ult.idTicket');
+                }
+            )
+            ->join('ticketflujo as tf', function ($join) {
+                $join->on('tf.idTicket', '=', 'ult.idTicket')
+                    ->on('tf.fecha_creacion', '=', 'ult.ultima_fecha');
+            })
+            ->where('t.idClienteGeneral', $idClienteGeneral)
+            ->whereIn('tf.idEstadflujo', [4, 7]);
+
+        /*
+    =====================================
+    TOTAL TICKETS
+    =====================================
+    */
         $totalTickets = DB::table('tickets')
             ->where('idClienteGeneral', $idClienteGeneral)
             ->count();
 
         /*
     =====================================
-    TICKETS CERRADOS (ULTIMO FLUJO = 7)
+    TOTAL CERRADOS
     =====================================
     */
-        $cerrados = DB::table('tickets as t')
-            ->join(DB::raw('(
-            SELECT idTicket, MAX(fecha_creacion) as ultima_fecha
-            FROM ticketflujo
-            GROUP BY idTicket
-        ) ult'), 't.idTickets', '=', 'ult.idTicket') // <-- CORREGIDO
-            ->join('ticketflujo as tf', function ($join) {
-                $join->on('tf.idTicket', '=', 'ult.idTicket')
-                    ->on('tf.fecha_creacion', '=', 'ult.ultima_fecha');
-            })
-            ->where('t.idClienteGeneral', $idClienteGeneral)
-            ->where('tf.idEstadflujo', 7)
+        $cerrados = (clone $base)->count();
+
+        /*
+    =====================================
+    MES ACTUAL
+    =====================================
+    */
+        $cerradosMesActual = (clone $base)
+            ->where('t.fecha_creacion', '>=', $inicioMesActual)
+            ->count();
+
+        /*
+    =====================================
+    MES ANTERIOR
+    =====================================
+    */
+        $cerradosMesAnterior = (clone $base)
+            ->whereBetween('t.fecha_creacion', [$inicioMesAnterior, $finMesAnterior])
             ->count();
 
         /*
@@ -77,47 +110,7 @@ class DashboardService
 
         /*
     =====================================
-    MES ACTUAL
-    =====================================
-    */
-        $cerradosMesActual = DB::table('tickets as t')
-            ->join(DB::raw('(
-            SELECT idTicket, MAX(fecha_creacion) as ultima_fecha
-            FROM ticketflujo
-            GROUP BY idTicket
-        ) ult'), 't.idTickets', '=', 'ult.idTicket') // <-- CORREGIDO
-            ->join('ticketflujo as tf', function ($join) {
-                $join->on('tf.idTicket', '=', 'ult.idTicket')
-                    ->on('tf.fecha_creacion', '=', 'ult.ultima_fecha');
-            })
-            ->where('t.idClienteGeneral', $idClienteGeneral)
-            ->where('tf.idEstadflujo', 7)
-            ->where('t.fecha_creacion', '>=', $inicioMesActual)
-            ->count();
-
-        /*
-    =====================================
-    MES ANTERIOR
-    =====================================
-    */
-        $cerradosMesAnterior = DB::table('tickets as t')
-            ->join(DB::raw('(
-            SELECT idTicket, MAX(fecha_creacion) as ultima_fecha
-            FROM ticketflujo
-            GROUP BY idTicket
-        ) ult'), 't.idTickets', '=', 'ult.idTicket') // <-- CORREGIDO
-            ->join('ticketflujo as tf', function ($join) {
-                $join->on('tf.idTicket', '=', 'ult.idTicket')
-                    ->on('tf.fecha_creacion', '=', 'ult.ultima_fecha');
-            })
-            ->where('t.idClienteGeneral', $idClienteGeneral)
-            ->where('tf.idEstadflujo', 7)
-            ->whereBetween('t.fecha_creacion', [$inicioMesAnterior, $finMesAnterior])
-            ->count();
-
-        /*
-    =====================================
-    % VS MES ANTERIOR
+    VARIACIÓN MES
     =====================================
     */
         $variacionMes = $cerradosMesAnterior > 0
@@ -135,52 +128,176 @@ class DashboardService
      */
     public function getTiempoResolucion($idClienteGeneral)
     {
-        $promedio = DB::table('tickets as t')
+        $inicioMesActual = now()->startOfMonth();
+        $inicioMesAnterior = now()->subMonth()->startOfMonth();
+        $finMesAnterior = now()->subMonth()->endOfMonth();
 
-            // primer flujo
-            ->join(DB::raw('(
-            SELECT idTicket, MIN(fecha_creacion) as fecha_inicio
-            FROM ticketflujo
-            GROUP BY idTicket
-        ) inicio'), 't.idTickets', '=', 'inicio.idTicket') // <-- CORREGIDO
-
-            // ultimo flujo
-            ->join(DB::raw('(
-            SELECT idTicket, MAX(fecha_creacion) as fecha_fin
-            FROM ticketflujo
-            GROUP BY idTicket
-        ) fin'), 't.idTickets', '=', 'fin.idTicket') // <-- CORREGIDO
-
-            // obtener estado del ultimo flujo
+        /*
+    =====================================
+    BASE: INICIO + FIN + ESTADO FINAL
+    =====================================
+    */
+        $base = DB::table('tickets as t')
+            ->joinSub(
+                DB::table('ticketflujo')
+                    ->select('idTicket', DB::raw('MIN(fecha_creacion) as fecha_inicio'))
+                    ->groupBy('idTicket'),
+                'inicio',
+                fn($join) => $join->on('t.idTickets', '=', 'inicio.idTicket')
+            )
+            ->joinSub(
+                DB::table('ticketflujo')
+                    ->select('idTicket', DB::raw('MAX(fecha_creacion) as fecha_fin'))
+                    ->groupBy('idTicket'),
+                'fin',
+                fn($join) => $join->on('t.idTickets', '=', 'fin.idTicket')
+            )
             ->join('ticketflujo as tf', function ($join) {
                 $join->on('tf.idTicket', '=', 'fin.idTicket')
                     ->on('tf.fecha_creacion', '=', 'fin.fecha_fin');
             })
-
             ->where('t.idClienteGeneral', $idClienteGeneral)
-            ->where('tf.idEstadflujo', 7) // <-- cerrado
+            ->whereIn('tf.idEstadflujo', [4, 7]); // ✅ cerrado correcto
 
+        /*
+    =====================================
+    PROMEDIO MES ACTUAL
+    =====================================
+    */
+        $promedioActual = (clone $base)
+            ->where('t.fecha_creacion', '>=', $inicioMesActual)
             ->avg(DB::raw('TIMESTAMPDIFF(HOUR, inicio.fecha_inicio, fin.fecha_fin)'));
 
-        return round($promedio, 1);
+        /*
+    =====================================
+    PROMEDIO MES ANTERIOR
+    =====================================
+    */
+        $promedioAnterior = (clone $base)
+            ->whereBetween('t.fecha_creacion', [$inicioMesAnterior, $finMesAnterior])
+            ->avg(DB::raw('TIMESTAMPDIFF(HOUR, inicio.fecha_inicio, fin.fecha_fin)'));
+
+        /*
+    =====================================
+    VARIACIÓN EN HORAS
+    =====================================
+    */
+        $variacionHoras = 0;
+
+        if (!is_null($promedioAnterior)) {
+            $variacionHoras = round(($promedioActual ?? 0) - $promedioAnterior, 1);
+        }
+
+        return [
+            "promedio_horas" => round($promedioActual ?? 0, 1),
+            "variacion_horas" => $variacionHoras
+        ];
     }
     /**
      * REINCIDENCIAS
      */
     public function getReincidencias($idClienteGeneral)
     {
-        return DB::table('tickets')
+        $inicioMesActual = now()->startOfMonth();
+        $inicioMesAnterior = now()->subMonth()->startOfMonth();
+        $finMesAnterior = now()->subMonth()->endOfMonth();
+
+        /*
+    =====================================
+    BASE: SERIES CON TOTAL DE TICKETS
+    =====================================
+    */
+        $series = DB::table('tickets')
+            ->select('serie', DB::raw('COUNT(*) as total'))
             ->where('idClienteGeneral', $idClienteGeneral)
-            ->whereIn('serie', function ($query) use ($idClienteGeneral) {
-                $query->select('serie')
-                    ->from('tickets')
-                    ->where('idClienteGeneral', $idClienteGeneral)
-                    ->whereNotNull('serie')
-                    ->groupBy('serie')
-                    ->havingRaw('COUNT(*) >= 2');
-            })
-            ->count();
+            ->whereNotNull('serie')
+            ->where('serie', '<>', '')
+            ->groupBy('serie');
+
+        /*
+    =====================================
+    TOTALES (POR TICKETS)
+    =====================================
+    */
+        $totales = DB::query()
+            ->fromSub($series, 's')
+            ->selectRaw('
+            SUM(CASE WHEN total = 1 THEN total ELSE 0 END) as tickets_unicos,
+            SUM(CASE WHEN total >= 2 THEN total ELSE 0 END) as tickets_reincidencias
+        ')
+            ->first();
+
+        $ticketsUnicos = $totales->tickets_unicos ?? 0;
+        $ticketsReincidencias = $totales->tickets_reincidencias ?? 0;
+
+        /*
+    =====================================
+    % REINCIDENCIAS (VS TOTAL CON SERIE)
+    =====================================
+    */
+        $totalConSerie = $ticketsUnicos + $ticketsReincidencias;
+
+        $porcentajeReincidencias = $totalConSerie > 0
+            ? round(($ticketsReincidencias / $totalConSerie) * 100, 2)
+            : 0;
+
+        /*
+    =====================================
+    MES ACTUAL
+    =====================================
+    */
+        $seriesMesActual = DB::table('tickets')
+            ->select('serie', DB::raw('COUNT(*) as total'))
+            ->where('idClienteGeneral', $idClienteGeneral)
+            ->whereNotNull('serie')
+            ->where('serie', '<>', '')
+            ->where('fecha_creacion', '>=', $inicioMesActual)
+            ->groupBy('serie');
+
+        $mesActual = DB::query()
+            ->fromSub($seriesMesActual, 's')
+            ->selectRaw('SUM(CASE WHEN total >= 2 THEN total ELSE 0 END) as total')
+            ->first();
+
+        $reincidenciasMesActual = $mesActual->total ?? 0;
+
+        /*
+    =====================================
+    MES ANTERIOR
+    =====================================
+    */
+        $seriesMesAnterior = DB::table('tickets')
+            ->select('serie', DB::raw('COUNT(*) as total'))
+            ->where('idClienteGeneral', $idClienteGeneral)
+            ->whereNotNull('serie')
+            ->where('serie', '<>', '')
+            ->whereBetween('fecha_creacion', [$inicioMesAnterior, $finMesAnterior])
+            ->groupBy('serie');
+
+        $mesAnterior = DB::query()
+            ->fromSub($seriesMesAnterior, 's')
+            ->selectRaw('SUM(CASE WHEN total >= 2 THEN total ELSE 0 END) as total')
+            ->first();
+
+        $reincidenciasMesAnterior = $mesAnterior->total ?? 0;
+
+        /*
+    =====================================
+    VARIACIÓN %
+    =====================================
+    */
+        $variacion = $reincidenciasMesAnterior > 0
+            ? round((($reincidenciasMesActual - $reincidenciasMesAnterior) / $reincidenciasMesAnterior) * 100, 2)
+            : 0;
+
+        return [
+            "tickets_reincidencias" => $ticketsReincidencias,
+            "tickets_unicos" => $ticketsUnicos,
+            "porcentaje_reincidencias" => $porcentajeReincidencias,
+            "variacion_mes_anterior" => $variacion
+        ];
     }
+
     public function getTicketsPorDia($idClienteGeneral)
     {
         return DB::table('tickets')
@@ -231,12 +348,40 @@ class DashboardService
         ];
     }
 
+    private function mapUbigeo($tickets)
+    {
+        $distritosJson = json_decode(
+            file_get_contents(public_path('assets/ubigeos/distritos.json')),
+            true
+        );
+
+        return $tickets->map(function ($item) use ($distritosJson) {
+
+            $nombre = 'Desconocido';
+
+            foreach ($distritosJson as $provincia => $distritos) {
+                foreach ($distritos as $dist) {
+
+                    if ($dist['id_ubigeo'] == $item->distrito) {
+                        $nombre = $dist['nombre_ubigeo'];
+                        break 2; // salir de ambos foreach
+                    }
+                }
+            }
+
+            return [
+                'id_ubigeo' => $item->distrito,
+                'nombre_ubigeo' => $nombre,
+                'total' => $item->total
+            ];
+        });
+    }
     /**
      * TICKETS POR DISTRITO
      */
     public function getTicketsPorDistrito($idClienteGeneral)
     {
-        // 1️⃣ Obtener tickets agrupados por distrito, corrigiendo collation
+        // 1️⃣ PRIMERO: intentar con tickets_cliente_general
         $tickets = DB::table('tickets as t')
             ->join(
                 'tickets_cliente_general as tcg',
@@ -247,28 +392,61 @@ class DashboardService
             ->where('t.idClienteGeneral', $idClienteGeneral)
             ->whereNotNull('tcg.distrito')
             ->select(
-                'tcg.distrito as id_ubigeo',
+                'tcg.distrito as distrito',
                 DB::raw('COUNT(*) as total')
             )
             ->groupBy('tcg.distrito')
             ->orderByDesc('total')
             ->get();
 
-        // 2️⃣ Cargar JSON de distritos
-        $distritosJson = json_decode(file_get_contents(public_path('assets/ubigeos/distritos.json')), true);
+        // 🔥 SI HAY DATOS → devolver directo
+        if ($tickets->isNotEmpty()) {
+            return $this->mapUbigeo($tickets);
+        }
 
-        // 3️⃣ Mapear los nombres a los resultados
-        $result = $tickets->map(function ($item) use ($distritosJson) {
-            // Cada distrito en tu JSON está como array bajo la clave id_padre
-            $nombre = $distritosJson[$item->id_ubigeo][0]['nombre_ubigeo'] ?? 'Desconocido';
-            return [
-                'id_ubigeo' => $item->id_ubigeo,
-                'nombre_ubigeo' => $nombre,
-                'total' => $item->total
-            ];
-        });
+        // 2️⃣ VALIDAR SI CLIENTE ES TIENDA
+        $cliente = DB::table('cliente')
+            ->where('idCliente', $idClienteGeneral)
+            ->first();
 
-        return $result;
+        // ⚠️ Validación flexible (1, "1", true, etc.)
+        $esTienda = isset($cliente->esTienda) && (
+            $cliente->esTienda == 1 ||
+            $cliente->esTienda === '1' ||
+            strtolower($cliente->esTienda) === 'si'
+        );
+
+        // 3️⃣ SI ES TIENDA → usar cliente
+        if ($esTienda) {
+
+            $tickets = DB::table('tickets as t')
+                ->join('cliente as c', 'c.idCliente', '=', 't.idClienteGeneral')
+                ->where('t.idClienteGeneral', $idClienteGeneral)
+                ->whereNotNull('c.distrito')
+                ->select(
+                    'c.distrito as distrito',
+                    DB::raw('COUNT(*) as total')
+                )
+                ->groupBy('c.distrito')
+                ->orderByDesc('total')
+                ->get();
+        } else {
+
+            // 4️⃣ SI NO ES TIENDA → usar tienda
+            $tickets = DB::table('tickets as t')
+                ->join('tienda as td', 'td.idTienda', '=', 't.idTienda')
+                ->where('t.idClienteGeneral', $idClienteGeneral)
+                ->whereNotNull('td.distrito')
+                ->select(
+                    'td.distrito as distrito',
+                    DB::raw('COUNT(*) as total')
+                )
+                ->groupBy('td.distrito')
+                ->orderByDesc('total')
+                ->get();
+        }
+
+        return $this->mapUbigeo($tickets);
     }
 
     public function getFlujoTicketsPorEstado($idClienteGeneral)
@@ -307,14 +485,28 @@ class DashboardService
     }
     public function getRendimientoPorTecnico($idClienteGeneral)
     {
-        return DB::table('tickets as t')
-            ->join('visitas as v', 't.idTickets', '=', 'v.idTickets') // <-- CORREGIDO
-            ->join('usuarios as u', 'v.idUsuario', '=', 'u.idUsuario')
-            ->where('t.idClienteGeneral', $idClienteGeneral)
-            ->select(
+        // Fechas
+        $hoy = Carbon::today();
+        $inicioSemana = Carbon::now()->startOfWeek();
+        $inicioMes = Carbon::now()->startOfMonth();
+
+        // 🔹 Función helper para construir la query
+        $queryTecnicos = function ($start = null, $end = null) use ($idClienteGeneral) {
+            $query = DB::table('tickets as t')
+                ->join('visitas as v', 't.idTickets', '=', 'v.idTickets')
+                ->join('usuarios as u', 'v.idUsuario', '=', 'u.idUsuario')
+                ->where('t.idClienteGeneral', $idClienteGeneral);
+
+            if ($start && $end) {
+                $query->whereBetween('t.fecha_creacion', [$start, $end]);
+            } elseif ($start) {
+                $query->whereDate('t.fecha_creacion', $start);
+            }
+
+            return $query->select(
                 'u.idUsuario as idTecnico',
                 DB::raw("CONCAT(u.Nombre,' ',u.apellidoPaterno,' ',u.apellidoMaterno) as tecnico"),
-                DB::raw('COUNT(DISTINCT t.idTickets) as total_tickets'), // <-- CORREGIDO
+                DB::raw('COUNT(DISTINCT t.idTickets) as total_tickets'),
                 DB::raw('COUNT(DISTINCT DATE(t.fecha_creacion)) as dias_activos'),
                 DB::raw('COUNT(DISTINCT DATE_FORMAT(t.fecha_creacion,"%Y-%m")) as meses_activos'),
                 DB::raw('COUNT(DISTINCT YEAR(t.fecha_creacion)) as anios_activos'),
@@ -352,23 +544,34 @@ class DashboardService
                                 HAVING COUNT(*) = 1
                             )
                         THEN 1 ELSE 0 END
-                    ) / COUNT(DISTINCT t.idTickets)  -- <-- CORREGIDO
+                    ) / COUNT(DISTINCT t.idTickets)
                 ) * 100
             ,2) as tasa_exito')
             )
-            ->groupBy(
-                'u.idUsuario',
-                'u.Nombre',
-                'u.apellidoPaterno',
-                'u.apellidoMaterno'
-            )
-            ->orderByDesc('total_tickets')
-            ->get();
+                ->groupBy(
+                    'u.idUsuario',
+                    'u.Nombre',
+                    'u.apellidoPaterno',
+                    'u.apellidoMaterno'
+                )
+                ->orderByDesc('total_tickets')
+                ->get();
+        };
+
+        // 🔹 Ejecutar para cada periodo
+        $dia = $queryTecnicos($hoy);
+        $semana = $queryTecnicos($inicioSemana->startOfDay(), Carbon::now()->endOfDay());
+        $mes = $queryTecnicos($inicioMes->startOfDay(), Carbon::now()->endOfDay());
+
+        return [
+            'dia' => $dia,
+            'semana' => $semana,
+            'mes' => $mes
+        ];
     }
 
     public function getRendimientoPersonal($idClienteGeneral)
     {
-        // METAS (editables)
         $metaDiaria = 40;
         $metaSemanal = 200;
         $metaMensual = 800;
@@ -377,11 +580,9 @@ class DashboardService
         $inicioSemana = Carbon::now()->startOfWeek();
         $inicioMes = Carbon::now()->startOfMonth();
 
-        /*
-    ============================
-    CONTADORES DE TICKETS
-    ============================
-    */
+        // ============================
+        // CONTADORES DE TICKETS
+        // ============================
         $ticketsDia = DB::table('tickets')
             ->where('idClienteGeneral', $idClienteGeneral)
             ->whereDate('fecha_creacion', $hoy)
@@ -389,80 +590,87 @@ class DashboardService
 
         $ticketsSemana = DB::table('tickets')
             ->where('idClienteGeneral', $idClienteGeneral)
-            ->whereBetween('fecha_creacion', [$inicioSemana, Carbon::now()])
+            ->whereBetween('fecha_creacion', [$inicioSemana->startOfDay(), Carbon::now()->endOfDay()])
             ->count();
 
         $ticketsMes = DB::table('tickets')
             ->where('idClienteGeneral', $idClienteGeneral)
-            ->whereBetween('fecha_creacion', [$inicioMes, Carbon::now()])
+            ->whereBetween('fecha_creacion', [$inicioMes->startOfDay(), Carbon::now()->endOfDay()])
             ->count();
 
-        /*
-    ============================
-    PROMEDIO GENERAL POR TECNICO (HOY)
-    ============================
-    */
+        // ============================
+        // PROMEDIO GENERAL POR TECNICO (HOY)
+        // ============================
         $promedio = DB::table(function ($query) use ($idClienteGeneral, $hoy) {
             $query->from('tickets as t')
                 ->join('visitas as v', 't.idTickets', '=', 'v.idTickets')
-                ->select(
-                    'v.idUsuario',
-                    DB::raw('COUNT(DISTINCT t.idTickets) as total')
-                )
                 ->where('t.idClienteGeneral', $idClienteGeneral)
                 ->whereDate('t.fecha_creacion', $hoy)
+                ->select('v.idUsuario', DB::raw('COUNT(DISTINCT t.idTickets) as total'))
                 ->groupBy('v.idUsuario');
         }, 'sub')
             ->avg('total');
 
         $promedio = round($promedio ?? 0, 1);
 
-        /*
-    ============================
-    PODIO DIARIO
-    ============================
-    */
+        // ============================
+        // PODIO DIARIO
+        // ============================
         $podio = DB::table('tickets as t')
-            ->join('visitas as v', 't.idTickets', '=', 'v.idTickets') // <-- CORREGIDO
+            ->join('visitas as v', 't.idTickets', '=', 'v.idTickets')
             ->join('usuarios as u', 'v.idUsuario', '=', 'u.idUsuario')
             ->where('t.idClienteGeneral', $idClienteGeneral)
             ->whereDate('t.fecha_creacion', $hoy)
             ->select(
-                'u.idUsuario',
-                DB::raw("CONCAT(u.Nombre,' ',u.apellidoPaterno) as tecnico"),
-                DB::raw('COUNT(DISTINCT t.idTickets) as tickets'), // <-- CORREGIDO
+                'u.idUsuario as idTecnico',
+                DB::raw("CONCAT(u.Nombre,' ',u.apellidoPaterno,' ',u.apellidoMaterno) as tecnico"),
+                DB::raw('COUNT(DISTINCT t.idTickets) as tickets'),
                 DB::raw('SUM(
                 CASE 
                     WHEN t.serie IN (
-                        SELECT serie
+                        SELECT serie 
                         FROM tickets
                         WHERE idClienteGeneral = ' . $idClienteGeneral . '
+                        AND DATE(fecha_creacion) = CURDATE()
                         GROUP BY serie
                         HAVING COUNT(*) = 1
                     )
                 THEN 1 ELSE 0 END
-            ) as exitos')
+            ) as exitos'),
+                DB::raw('SUM(
+                CASE 
+                    WHEN t.serie IN (
+                        SELECT serie 
+                        FROM tickets
+                        WHERE idClienteGeneral = ' . $idClienteGeneral . '
+                        AND DATE(fecha_creacion) = CURDATE()
+                        GROUP BY serie
+                        HAVING COUNT(*) > 1
+                    )
+                THEN 1 ELSE 0 END
+            ) as reincidencias'),
+                DB::raw('ROUND(
+                (SUM(
+                    CASE 
+                        WHEN t.serie IN (
+                            SELECT serie 
+                            FROM tickets
+                            WHERE idClienteGeneral = ' . $idClienteGeneral . '
+                            AND DATE(fecha_creacion) = CURDATE()
+                            GROUP BY serie
+                            HAVING COUNT(*) = 1
+                        )
+                    THEN 1 ELSE 0 END
+                ) / COUNT(DISTINCT t.idTickets)) * 100
+            ,2) as tasa_exito')
             )
-            ->groupBy(
-                'u.idUsuario',
-                'u.Nombre',
-                'u.apellidoPaterno'
-            )
+            ->groupBy('u.idUsuario', 'u.Nombre', 'u.apellidoPaterno', 'u.apellidoMaterno')
             ->orderByDesc('tickets')
-            ->get()
-            ->map(function ($item) use ($promedio) {
-                $item->efectividad = $item->tickets > 0
-                    ? round(($item->exitos / $item->tickets) * 100, 1)
-                    : 0;
-                $item->vs_promedio = $item->tickets - $promedio;
-                return $item;
-            });
+            ->get();
 
-        /*
-    ============================
-    RESULTADO
-    ============================
-    */
+        // ============================
+        // RESULTADO FINAL
+        // ============================
         return [
             "metas" => [
                 "diaria" => $metaDiaria,
@@ -475,15 +683,14 @@ class DashboardService
                 "mes" => $ticketsMes
             ],
             "progreso" => [
-                "dia" => round(($ticketsDia / $metaDiaria) * 100, 1),
-                "semana" => round(($ticketsSemana / $metaSemanal) * 100, 1),
-                "mes" => round(($ticketsMes / $metaMensual) * 100, 1)
+                "dia" => $metaDiaria > 0 ? round(($ticketsDia / $metaDiaria) * 100, 1) : 0,
+                "semana" => $metaSemanal > 0 ? round(($ticketsSemana / $metaSemanal) * 100, 1) : 0,
+                "mes" => $metaMensual > 0 ? round(($ticketsMes / $metaMensual) * 100, 1) : 0
             ],
             "promedio_diario" => $promedio,
             "podio_diario" => $podio
         ];
     }
-
     /**
      * ANALISIS DE REINCIDENCIAS
      */
@@ -556,8 +763,8 @@ class DashboardService
             ->where('t.idClienteGeneral', $idClienteGeneral)
             ->count();
 
-        // Tickets cerrados (ultimo flujo = 7)
-        $cerrados = DB::table('tickets as t')
+        // Tickets completados en 1 visita (último flujo = 7)
+        $completados = DB::table('tickets as t')
             ->joinSub($ticketsUnaVisita, 'v', function ($join) {
                 $join->on('t.idTickets', '=', 'v.idTickets');
             })
@@ -571,13 +778,19 @@ class DashboardService
                     ->on('tf.fecha_creacion', '=', 'ult.ultima_fecha');
             })
             ->where('t.idClienteGeneral', $idClienteGeneral)
-            ->where('tf.idEstadflujo', 7) // <-- cerrado
+            ->where('tf.idEstadflujo', 7) // cerrado
             ->count();
 
         if ($total == 0) {
-            return 0;
+            return [
+                'tasa_exito' => 0,
+                'tickets_completados' => 0,
+            ];
         }
 
-        return round(($cerrados / $total) * 100, 2);
+        return [
+            'tasa_exito' => round(($completados / $total) * 100, 2),
+            'tickets_completados' => $completados,
+        ];
     }
 }
