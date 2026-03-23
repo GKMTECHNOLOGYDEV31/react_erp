@@ -483,7 +483,7 @@ const CrearTicket = () => {
         formik.setFieldValue('idCategoria', nuevaCategoria.idCategoria);
         // Opcional: recargar modelos para esta nueva categoría
         cargarModelosPorCategoria(nuevaCategoria.idCategoria);
-        toastr.success('Categoría creada exitosamente');
+
     };
 
     const handleModeloCreado = (nuevoModelo) => {
@@ -492,7 +492,6 @@ const CrearTicket = () => {
             setModelosFiltrados(prev => [...prev, nuevoModelo]);
         }
         formik.setFieldValue('idModelo', nuevoModelo.idModelo);
-        toastr.success('Modelo creado exitosamente');
     };
 
     const ImageModal = ({ image, onClose }) => {

@@ -367,7 +367,6 @@ const EditarTicket = () => {
         setCategorias((prev) => [...prev, nuevaCategoria]);
         formik.setFieldValue('idCategoria', nuevaCategoria.idCategoria);
         cargarModelosPorCategoria(nuevaCategoria.idCategoria);
-        toastr.success('Categoría creada exitosamente');
     };
 
     const handleModeloCreado = (nuevoModelo) => {
@@ -376,7 +375,6 @@ const EditarTicket = () => {
             setModelosFiltrados((prev) => [...prev, nuevoModelo]);
         }
         formik.setFieldValue('idModelo', nuevoModelo.idModelo);
-        toastr.success('Modelo creado exitosamente');
     };
 
     // Cargar datos iniciales

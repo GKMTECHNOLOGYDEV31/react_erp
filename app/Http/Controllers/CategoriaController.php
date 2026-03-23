@@ -51,7 +51,6 @@ class CategoriaController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Categoría creada exitosamente',
                 'data' => [
                     'idCategoria' => $categoria->idCategoria,
                     'nombre' => $categoria->nombre,

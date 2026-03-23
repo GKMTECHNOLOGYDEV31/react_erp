@@ -11,7 +11,7 @@ const ModalCategoria = ({ modal, setModal, onCategoriaCreada }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!nombre.trim()) {
             toastr.error('El nombre de la categoría es requerido');
             return;
@@ -20,7 +20,7 @@ const ModalCategoria = ({ modal, setModal, onCategoriaCreada }) => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.post(`${API_URL}/categorias`, 
+            const response = await axios.post(`${API_URL}/categorias`,
                 { nombre: nombre.trim() },
                 {
                     headers: {
