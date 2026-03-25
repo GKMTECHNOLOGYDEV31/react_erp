@@ -31,11 +31,17 @@ import {
     faSearch,
     faSearchLocation,
     faTools,
-    faMapPin, // Añadido para el icono de ubicación
+    faMapPin,
+    faFilePdf,
+    faFileWord,
+    faFile,
+    faDownload,
+    faExternalLinkAlt,
 } from '@fortawesome/free-solid-svg-icons';
 
 const ModalVerTicket = ({ modal, setModal, ticketData }) => {
-    const [modalImage, setModalImage] = useState(null);
+    const [modalFile, setModalFile] = useState(null);
+    const [modalFileType, setModalFileType] = useState(null);
     const [departamentos, setDepartamentos] = useState([]);
     const [provincias, setProvincias] = useState({});
     const [distritos, setDistritos] = useState({});
@@ -96,7 +102,6 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
     const getProvinciaNombre = (id) => {
         if (!id || !provincias || Object.keys(provincias).length === 0) return id || 'N/A';
 
-        // Buscar en el objeto de provincias
         for (const key in provincias) {
             const provincia = provincias[key].find((p) => p.id_ubigeo === id);
             if (provincia) return provincia.nombre_ubigeo;
@@ -108,7 +113,6 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
     const getDistritoNombre = (id) => {
         if (!id || !distritos || Object.keys(distritos).length === 0) return id || 'N/A';
 
-        // Buscar en el objeto de distritos
         for (const key in distritos) {
             const distrito = distritos[key].find((d) => d.id_ubigeo === id);
             if (distrito) return distrito.nombre_ubigeo;
@@ -116,7 +120,73 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
         return id;
     };
 
-    if (!ticketData) return null;
+    // ============================================
+    // FUNCIONES PARA MANEJO DE ARCHIVOS
+    // ============================================
+
+    // Función para obtener el icono según el tipo de archivo
+    const getFileIcon = (fileUrl) => {
+        if (!fileUrl) return faFile;
+        
+        const extension = fileUrl.split('.').pop()?.toLowerCase();
+        
+        if (extension === 'pdf') return faFilePdf;
+        if (extension === 'doc' || extension === 'docx') return faFileWord;
+        if (extension === 'jpg' || extension === 'jpeg' || extension === 'png' || extension === 'gif') return faImage;
+        return faFile;
+    };
+
+    // Función para obtener el color del icono según el tipo de archivo
+    const getFileIconColor = (fileUrl) => {
+        if (!fileUrl) return 'text-gray-500';
+        
+        const extension = fileUrl.split('.').pop()?.toLowerCase();
+        
+        if (extension === 'pdf') return 'text-red-500';
+        if (extension === 'doc' || extension === 'docx') return 'text-blue-500';
+        if (extension === 'jpg' || extension === 'jpeg' || extension === 'png' || extension === 'gif') return 'text-green-500';
+        return 'text-gray-500';
+    };
+
+    // Función para obtener el texto del tipo de archivo
+    const getFileTypeText = (fileUrl) => {
+        if (!fileUrl) return 'Archivo';
+        
+        const extension = fileUrl.split('.').pop()?.toUpperCase();
+        
+        if (extension === 'PDF') return 'Documento PDF';
+        if (extension === 'DOC' || extension === 'DOCX') return 'Documento Word';
+        if (extension === 'JPG' || extension === 'JPEG') return 'Imagen JPG';
+        if (extension === 'PNG') return 'Imagen PNG';
+        if (extension === 'GIF') return 'Imagen GIF';
+        return `Archivo ${extension}`;
+    };
+
+    // Función para obtener el nombre del archivo desde la URL
+    const getFileName = (fileUrl) => {
+        if (!fileUrl) return 'archivo';
+        return fileUrl.split('/').pop() || 'archivo';
+    };
+
+    // Función para determinar si es una imagen
+    const isImageFile = (fileUrl) => {
+        if (!fileUrl) return false;
+        const extension = fileUrl.split('.').pop()?.toLowerCase();
+        return ['jpg', 'jpeg', 'png', 'gif'].includes(extension);
+    };
+
+    // Función para manejar la visualización del archivo
+    const handleFilePreview = (fileUrl) => {
+        if (!fileUrl) return;
+        
+        if (isImageFile(fileUrl)) {
+            setModalFile(fileUrl);
+            setModalFileType('image');
+        } else {
+            // Para PDFs y documentos, abrir en nueva pestaña
+            window.open(fileUrl, '_blank');
+        }
+    };
 
     // Función para obtener el badge de estado
     const getStatusBadge = (estado) => {
@@ -148,9 +218,9 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
         );
     };
 
-    // Modal para ver imagen ampliada con Portal
-    const ImageModal = ({ image, onClose }) => {
-        if (!image) return null;
+    // Modal para ver archivo ampliado (imagen o documento)
+    const FileModal = ({ file, fileType, onClose }) => {
+        if (!file) return null;
 
         return ReactDOM.createPortal(
             <div 
@@ -167,34 +237,122 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                     >
                         <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
                     </button>
-                    <img
-                        src={image}
-                        alt="Vista ampliada"
-                        className="max-w-full max-h-[90vh] object-contain rounded-lg"
-                        onClick={(e) => e.stopPropagation()}
-                        onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = 'https://placehold.co/800x600/cccccc/000?text=Error+al+cargar+imagen';
-                        }}
-                    />
+                    {fileType === 'image' ? (
+                        <img
+                            src={file}
+                            alt="Vista ampliada"
+                            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                            onClick={(e) => e.stopPropagation()}
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://placehold.co/800x600/cccccc/000?text=Error+al+cargar+imagen';
+                            }}
+                        />
+                    ) : (
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full text-center">
+                            <FontAwesomeIcon icon={faFilePdf} className="w-24 h-24 text-red-500 mx-auto mb-4" />
+                            <p className="text-gray-800 dark:text-white mb-4">Este archivo no se puede previsualizar</p>
+                            <a
+                                href={file}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-primary inline-flex items-center gap-2"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <FontAwesomeIcon icon={faDownload} />
+                                Descargar Archivo
+                            </a>
+                        </div>
+                    )}
                 </div>
             </div>,
             document.body
         );
     };
 
+    // Componente para renderizar un archivo
+    const FileRenderer = ({ fileUrl, label, icon, emptyMessage = 'Sin archivo' }) => {
+        if (!fileUrl) {
+            return (
+                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
+                        <FontAwesomeIcon icon={icon} className="w-3 h-3" />
+                        <span className="text-xs font-medium">{label}</span>
+                    </div>
+                    <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                        <span className="text-xs text-gray-500">{emptyMessage}</span>
+                    </div>
+                </div>
+            );
+        }
+
+        const isImage = isImageFile(fileUrl);
+        const fileIcon = getFileIcon(fileUrl);
+        const iconColor = getFileIconColor(fileUrl);
+        const fileTypeText = getFileTypeText(fileUrl);
+        const fileName = getFileName(fileUrl);
+
+        return (
+            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
+                    <FontAwesomeIcon icon={icon} className="w-3 h-3" />
+                    <span className="text-xs font-medium">{label}</span>
+                </div>
+                {isImage ? (
+                    <div className="relative group">
+                        <img
+                            src={fileUrl}
+                            alt={label}
+                            className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-200 dark:border-gray-700"
+                            onClick={() => handleFilePreview(fileUrl)}
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Error+al+cargar';
+                            }}
+                        />
+                        <div
+                            className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center cursor-pointer"
+                            onClick={() => handleFilePreview(fileUrl)}
+                        >
+                            <div className="bg-white bg-opacity-90 rounded-full px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-gray-700 shadow-lg">
+                                <FontAwesomeIcon icon={faSearch} className="w-2 h-2 mr-1" />
+                                Ampliar
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div 
+                        className="relative group w-full h-24 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-700"
+                        onClick={() => handleFilePreview(fileUrl)}
+                    >
+                        <FontAwesomeIcon icon={fileIcon} className={`w-8 h-8 ${iconColor} mb-1`} />
+                        <p className="text-xs text-gray-600 dark:text-gray-300 text-center px-2 truncate max-w-full">{fileName}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{fileTypeText}</p>
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center">
+                            <div className="bg-white bg-opacity-90 rounded-full px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-gray-700 shadow-lg">
+                                <FontAwesomeIcon icon={faExternalLinkAlt} className="w-2 h-2 mr-1" />
+                                Abrir
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    if (!ticketData) return null;
+
     return (
         <>
-            {/* Modal de imagen ampliada - Renderizado con Portal */}
-            <ImageModal image={modalImage} onClose={() => setModalImage(null)} />
+            {/* Modal de archivo ampliado */}
+            <FileModal file={modalFile} fileType={modalFileType} onClose={() => setModalFile(null)} />
 
             <Transition appear show={modal} as={Fragment}>
                 <Dialog 
                     as="div" 
                     open={modal} 
                     onClose={() => {
-                        // Solo cerrar el modal principal si no hay imagen abierta
-                        if (!modalImage) {
+                        if (!modalFile) {
                             setModal(false);
                         }
                     }}
@@ -366,6 +524,14 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
 
                                             <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
                                                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
+                                                    <FontAwesomeIcon icon={faTag} className="w-3 h-3" />
+                                                    <span className="text-xs font-medium">Marca</span>
+                                                </div>
+                                                <p className="text-sm font-semibold text-gray-800 dark:text-white">{ticketData.marca}</p>
+                                            </div>
+
+                                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                                                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
                                                     <FontAwesomeIcon icon={faLaptop} className="w-3 h-3" />
                                                     <span className="text-xs font-medium">Modelo</span>
                                                 </div>
@@ -414,7 +580,7 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                             </div>
                                         </div>
 
-                                        {/* ARCHIVOS ADJUNTOS */}
+                                        {/* ARCHIVOS ADJUNTOS - MODIFICADO CON FileRenderer */}
                                         <div className="border-l-4 border-primary pl-4 mb-4">
                                             <h3 className="text-md font-semibold flex items-center gap-2">
                                                 <FontAwesomeIcon icon={faCamera} className="w-4 h-4 text-primary" />
@@ -423,112 +589,31 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                             {/* Foto/Video de la Falla */}
-                                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                                                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
-                                                    <FontAwesomeIcon icon={faVideo} className="w-3 h-3" />
-                                                    <span className="text-xs font-medium">Foto de la Falla</span>
-                                                </div>
-                                                {ticketData.fotoVideoFalla ? (
-                                                    <div className="relative group">
-                                                        <img
-                                                            src={ticketData.fotoVideoFalla}
-                                                            alt="Falla"
-                                                            className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-200 dark:border-gray-700"
-                                                            onClick={() => setModalImage(ticketData.fotoVideoFalla)}
-                                                            onError={(e) => {
-                                                                e.target.onerror = null;
-                                                                e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Error+al+cargar';
-                                                            }}
-                                                        />
-                                                        <div
-                                                            className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center cursor-pointer"
-                                                            onClick={() => setModalImage(ticketData.fotoVideoFalla)}
-                                                        >
-                                                            <div className="bg-white bg-opacity-90 rounded-full px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-gray-700 shadow-lg">
-                                                                <FontAwesomeIcon icon={faSearch} className="w-2 h-2 mr-1" />
-                                                                Ampliar
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                                                        <span className="text-xs text-gray-500">Sin imagen</span>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <FileRenderer
+                                                fileUrl={ticketData.fotoVideoFalla}
+                                                label="Evidencia de la Falla"
+                                                icon={faVideo}
+                                                emptyMessage="Sin evidencia"
+                                            />
 
                                             {/* Boleta/Factura */}
-                                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                                                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
-                                                    <FontAwesomeIcon icon={faFileInvoice} className="w-3 h-3" />
-                                                    <span className="text-xs font-medium">Boleta/Factura</span>
-                                                </div>
-                                                {ticketData.fotoBoletaFactura ? (
-                                                    <div className="relative group">
-                                                        <img
-                                                            src={ticketData.fotoBoletaFactura}
-                                                            alt="Boleta"
-                                                            className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-200 dark:border-gray-700"
-                                                            onClick={() => setModalImage(ticketData.fotoBoletaFactura)}
-                                                            onError={(e) => {
-                                                                e.target.onerror = null;
-                                                                e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Error+al+cargar';
-                                                            }}
-                                                        />
-                                                        <div
-                                                            className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center cursor-pointer"
-                                                            onClick={() => setModalImage(ticketData.fotoBoletaFactura)}
-                                                        >
-                                                            <div className="bg-white bg-opacity-90 rounded-full px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-gray-700 shadow-lg">
-                                                                <FontAwesomeIcon icon={faSearch} className="w-2 h-2 mr-1" />
-                                                                Ampliar
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                                                        <span className="text-xs text-gray-500">Sin imagen</span>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <FileRenderer
+                                                fileUrl={ticketData.fotoBoletaFactura}
+                                                label="Boleta/Factura"
+                                                icon={faFileInvoice}
+                                                emptyMessage="Sin comprobante"
+                                            />
 
                                             {/* N° de Serie */}
-                                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                                                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
-                                                    <FontAwesomeIcon icon={faImage} className="w-3 h-3" />
-                                                    <span className="text-xs font-medium">N° de Serie</span>
-                                                </div>
-                                                {ticketData.fotoNumeroSerie ? (
-                                                    <div className="relative group">
-                                                        <img
-                                                            src={ticketData.fotoNumeroSerie}
-                                                            alt="Serie"
-                                                            className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-200 dark:border-gray-700"
-                                                            onClick={() => setModalImage(ticketData.fotoNumeroSerie)}
-                                                            onError={(e) => {
-                                                                e.target.onerror = null;
-                                                                e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Error+al+cargar';
-                                                            }}
-                                                        />
-                                                        <div
-                                                            className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center cursor-pointer"
-                                                            onClick={() => setModalImage(ticketData.fotoNumeroSerie)}
-                                                        >
-                                                            <div className="bg-white bg-opacity-90 rounded-full px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-gray-700 shadow-lg">
-                                                                <FontAwesomeIcon icon={faSearch} className="w-2 h-2 mr-1" />
-                                                                Ampliar
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                                                        <span className="text-xs text-gray-500">Sin imagen</span>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <FileRenderer
+                                                fileUrl={ticketData.fotoNumeroSerie}
+                                                label="Número de Serie"
+                                                icon={faImage}
+                                                emptyMessage="Sin foto del serie"
+                                            />
                                         </div>
 
-                                        {/* UBICACIÓN GOOGLE MAPS - MODIFICADO AQUÍ */}
+                                        {/* UBICACIÓN GOOGLE MAPS */}
                                         {ticketData.ubicacionGoogleMaps && (
                                             <>
                                                 <div className="border-l-4 border-primary pl-4 mb-4">

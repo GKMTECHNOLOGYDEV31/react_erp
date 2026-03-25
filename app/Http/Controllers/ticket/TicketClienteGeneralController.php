@@ -20,59 +20,32 @@ use Illuminate\Support\Facades\Storage;
 
 class TicketClienteGeneralController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct()
+    {
+        try {
+            DB::statement("SET NAMES 'utf8mb4'");
+            DB::statement("SET CHARACTER SET utf8mb4");
+            DB::statement("SET SESSION collation_connection = 'utf8mb4_unicode_ci'");
+        } catch (\Exception $e) {
+            \Log::error('Error configurando BD: ' . $e->getMessage());
+        }
+    }
+
     public function index()
     {
         try {
             \Log::info('========== INICIO index tickets ==========');
-
             $user = auth()->user();
 
-            \Log::info('Usuario autenticado:', [
-                'idUsuario' => $user ? $user->idUsuario : null,
-                'nombre' => $user ? $user->Nombre : null,
-                'idClienteGeneral' => $user ? $user->idClienteGeneral : null
-            ]);
-
             if (!$user) {
-                \Log::error('Usuario no autenticado');
                 return response()->json([
                     'success' => false,
                     'message' => 'Usuario no autenticado'
                 ], 401);
             }
 
-            \Log::info('Consultando tickets para cliente general:', [
-                'idClienteGeneral' => $user->idClienteGeneral
-            ]);
-
-            // Primero, obtener los tickets sin relaciones para ver los IDs
-            $ticketsBase = TicketClienteGeneral::where('idClienteGeneral', $user->idClienteGeneral)
-                ->orderBy('idTicket', 'desc')
-                ->get();
-
-            \Log::info('Tickets base encontrados (sin relaciones):', [
-                'cantidad' => $ticketsBase->count(),
-                'ids' => $ticketsBase->pluck('idTicket')->toArray()
-            ]);
-
-            // Log de los idTipoDocumento de los tickets
-            if ($ticketsBase->isNotEmpty()) {
-                \Log::info('IDs de tipoDocumento en tickets:', [
-                    'tickets' => $ticketsBase->map(function ($t) {
-                        return [
-                            'idTicket' => $t->idTicket,
-                            'idTipoDocumento' => $t->idTipoDocumento
-                        ];
-                    })->toArray()
-                ]);
-            }
-
-            // Ahora obtener los tickets con todas las relaciones
             $tickets = TicketClienteGeneral::with([
-                'tipodocumento',
+                'tipoDocumento',
                 'categoria',
                 'modelo' => function ($query) {
                     $query->select('idModelo', 'nombre', 'idMarca', 'idCategoria', 'estado');
@@ -96,52 +69,15 @@ class TicketClienteGeneralController extends Controller
                 ->orderBy('idTicket', 'desc')
                 ->get();
 
-            \Log::info('Tickets con relaciones encontrados:', [
-                'cantidad' => $tickets->count()
-            ]);
-
-            // Verificar cada ticket individualmente
-            foreach ($tickets as $index => $ticket) {
-                \Log::info("Ticket #{$index} - ID: {$ticket->idTicket}");
-                \Log::info("  - idTipoDocumento: " . ($ticket->idTipoDocumento ?? 'null'));
-                \Log::info("  - tipoDocumento existe: " . ($ticket->tipoDocumento ? 'SÍ' : 'NO'));
-
-                if ($ticket->tipoDocumento) {
-                    \Log::info("  - tipoDocumento data: ", [
-                        'id' => $ticket->tipoDocumento->idTipoDocumento,
-                        'nombre' => $ticket->tipoDocumento->nombre
-                    ]);
-                } else {
-                    // Si no hay relación, verificar si el ID existe en la tabla tipodocumento
-                    if ($ticket->idTipoDocumento) {
-                        $existe = DB::table('tipodocumento')
-                            ->where('idTipoDocumento', $ticket->idTipoDocumento)
-                            ->exists();
-                        \Log::info("  - ¿Existe idTipoDocumento {$ticket->idTipoDocumento} en BD? " . ($existe ? 'SÍ' : 'NO'));
-                    }
-                }
-            }
-
-            // También verificar la tabla tipodocumento directamente
-            $tiposDocumento = DB::table('tipodocumento')->get();
-            \Log::info('Todos los tipos de documento en BD:', [
-                'cantidad' => $tiposDocumento->count(),
-                'datos' => $tiposDocumento->toArray()
-            ]);
-
-            \Log::info('========== FIN index tickets ==========');
+            $ticketsArray = $this->cleanUtf8Strings($tickets->toArray());
 
             return response()->json([
                 'success' => true,
-                'data' => $tickets
-            ], 200);
-        } catch (\Exception $e) {
-            \Log::error('========== ERROR en index tickets ==========');
-            \Log::error('Mensaje: ' . $e->getMessage());
-            \Log::error('Archivo: ' . $e->getFile() . ':' . $e->getLine());
-            \Log::error('Trace: ' . $e->getTraceAsString());
-            \Log::error('===========================================');
+                'data' => $ticketsArray
+            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
 
+        } catch (\Exception $e) {
+            \Log::error('Error en index: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener tickets',
@@ -149,13 +85,11 @@ class TicketClienteGeneralController extends Controller
             ], 500);
         }
     }
-    /**
-     * Store a newly created resource in storage.
-     */
+
     public function store(Request $request)
     {
         try {
-            // Validar los datos
+            // Validar los datos - MODIFICADO para aceptar PDF, DOC, DOCX
             $validator = Validator::make($request->all(), [
                 // Datos personales
                 'nombreCompleto' => 'required|string|max:255',
@@ -182,10 +116,10 @@ class TicketClienteGeneralController extends Controller
                 'fechaCompra' => 'required|date|before_or_equal:today',
                 'tiendaSedeCompra' => 'required|string|max:255',
 
-                // Evidencias (archivos)
-                'fotoVideoFalla' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
-                'fotoBoletaFactura' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
-                'fotoNumeroSerie' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+                // Evidencias (archivos) - MODIFICADO para aceptar más tipos
+                'fotoVideoFalla' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
+                'fotoBoletaFactura' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
+                'fotoNumeroSerie' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
 
                 // Ubicación
                 'ubicacionGoogleMaps' => 'nullable|url|max:500'
@@ -198,7 +132,6 @@ class TicketClienteGeneralController extends Controller
                 ], 422);
             }
 
-            // Obtener el usuario autenticado
             $user = auth()->user();
 
             if (!$user) {
@@ -208,7 +141,6 @@ class TicketClienteGeneralController extends Controller
                 ], 401);
             }
 
-            // Verificar que el usuario tenga idClienteGeneral
             if (!$user->idClienteGeneral) {
                 return response()->json([
                     'success' => false,
@@ -216,18 +148,14 @@ class TicketClienteGeneralController extends Controller
                 ], 400);
             }
 
-            // Obtener el id del usuario creador
             $idUsuarioCreador = $user->idUsuario;
-
-            // Generar número de ticket
             $numeroTicket = $this->generarNumeroTicket();
 
-            // Procesar imágenes si se subieron
-            $fotoVideoFalla = $this->subirImagen($request->file('fotoVideoFalla'), 'fallas');
-            $fotoBoletaFactura = $this->subirImagen($request->file('fotoBoletaFactura'), 'boletas');
-            $fotoNumeroSerie = $this->subirImagen($request->file('fotoNumeroSerie'), 'series');
+            // Procesar archivos - MODIFICADO para manejar cualquier tipo
+            $fotoVideoFalla = $this->subirArchivo($request->file('fotoVideoFalla'), 'fallas');
+            $fotoBoletaFactura = $this->subirArchivo($request->file('fotoBoletaFactura'), 'boletas');
+            $fotoNumeroSerie = $this->subirArchivo($request->file('fotoNumeroSerie'), 'series');
 
-            // Crear el ticket
             $ticket = TicketClienteGeneral::create([
                 'numero_ticket' => $numeroTicket,
                 'nombreCompleto' => $request->nombreCompleto,
@@ -257,9 +185,9 @@ class TicketClienteGeneralController extends Controller
                 'fechaCreacion' => now()
             ]);
 
-            // Cargar relaciones
             $ticket->load(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador']);
-            // ===== CREAR NOTIFICACION =====
+
+            // Crear notificación
             $notificacionId = \DB::table('notificaciones_ticket_general')->insertGetId([
                 'idTicketClienteGeneral' => $ticket->idTicketClienteGeneral,
                 'estado_web' => 0,
@@ -269,8 +197,8 @@ class TicketClienteGeneralController extends Controller
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
-            try {
 
+            try {
                 $payload = [
                     'type' => 'creacion_ticket_evento',
                     'idNotificacion' => (int) $notificacionId,
@@ -280,20 +208,19 @@ class TicketClienteGeneralController extends Controller
                     'nombreCliente' => $ticket->nombreCompleto,
                     'idUsuarioCreador' => (int) $ticket->idUsuarioCreador
                 ];
-
                 \App\Services\WsBridge::emitSolicitudEvento($payload);
             } catch (\Throwable $e) {
-
-                \Log::error('Error enviando WS ticket', [
-                    'error' => $e->getMessage()
-                ]);
+                \Log::error('Error enviando WS ticket: ' . $e->getMessage());
             }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Ticket creado exitosamente',
                 'data' => $ticket
             ], 201);
+
         } catch (\Exception $e) {
+            \Log::error('Error en store: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al crear el ticket',
@@ -302,14 +229,20 @@ class TicketClienteGeneralController extends Controller
         }
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show($id)
     {
         try {
-            $ticket = TicketClienteGeneral::with(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador'])
-                ->find($id);
+            $ticket = TicketClienteGeneral::with([
+                'tipoDocumento',
+                'categoria',
+                'modelo' => function ($query) {
+                    $query->select('idModelo', 'nombre', 'idMarca', 'idCategoria', 'estado');
+                },
+                'modelo.marca' => function ($query) {
+                    $query->select('idMarca', 'nombre', 'estado');
+                },
+                'usuarioCreador'
+            ])->find($id);
 
             if (!$ticket) {
                 return response()->json([
@@ -318,11 +251,15 @@ class TicketClienteGeneralController extends Controller
                 ], 404);
             }
 
+            $ticketArray = $this->cleanUtf8Strings($ticket->toArray());
+
             return response()->json([
                 'success' => true,
-                'data' => $ticket
-            ], 200);
+                'data' => $ticketArray
+            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
+
         } catch (\Exception $e) {
+            \Log::error('Error en show: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener el ticket',
@@ -331,9 +268,6 @@ class TicketClienteGeneralController extends Controller
         }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, $id)
     {
         try {
@@ -346,7 +280,6 @@ class TicketClienteGeneralController extends Controller
                 ], 404);
             }
 
-            // Validar los datos - CAMBIADO para aceptar archivos
             $validator = Validator::make($request->all(), [
                 'nombreCompleto' => 'sometimes|required|string|max:255',
                 'correoElectronico' => 'sometimes|required|email|max:255',
@@ -365,10 +298,9 @@ class TicketClienteGeneralController extends Controller
                 'detallesFalla' => 'sometimes|required|string',
                 'fechaCompra' => 'sometimes|required|date|before_or_equal:today',
                 'tiendaSedeCompra' => 'sometimes|required|string|max:255',
-                // CAMBIADO: aceptar archivos o URLs
-                'fotoVideoFalla' => 'nullable',
-                'fotoBoletaFactura' => 'nullable',
-                'fotoNumeroSerie' => 'nullable',
+                'fotoVideoFalla' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
+                'fotoBoletaFactura' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
+                'fotoNumeroSerie' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
                 'ubicacionGoogleMaps' => 'nullable|url|max:500',
                 'estado' => 'sometimes|integer'
             ]);
@@ -380,17 +312,14 @@ class TicketClienteGeneralController extends Controller
                 ], 422);
             }
 
-            // Preparar datos para actualizar
             $data = $request->except(['_method', 'fotoVideoFalla', 'fotoBoletaFactura', 'fotoNumeroSerie']);
 
-            // Procesar nuevas imágenes si se subieron
             if ($request->hasFile('fotoVideoFalla')) {
-                // Eliminar imagen anterior si existe
                 if ($ticket->fotoVideoFalla) {
                     $oldPath = str_replace(asset('storage'), 'public', $ticket->fotoVideoFalla);
                     Storage::delete($oldPath);
                 }
-                $data['fotoVideoFalla'] = $this->subirImagen($request->file('fotoVideoFalla'), 'fallas');
+                $data['fotoVideoFalla'] = $this->subirArchivo($request->file('fotoVideoFalla'), 'fallas');
             }
 
             if ($request->hasFile('fotoBoletaFactura')) {
@@ -398,7 +327,7 @@ class TicketClienteGeneralController extends Controller
                     $oldPath = str_replace(asset('storage'), 'public', $ticket->fotoBoletaFactura);
                     Storage::delete($oldPath);
                 }
-                $data['fotoBoletaFactura'] = $this->subirImagen($request->file('fotoBoletaFactura'), 'boletas');
+                $data['fotoBoletaFactura'] = $this->subirArchivo($request->file('fotoBoletaFactura'), 'boletas');
             }
 
             if ($request->hasFile('fotoNumeroSerie')) {
@@ -406,26 +335,21 @@ class TicketClienteGeneralController extends Controller
                     $oldPath = str_replace(asset('storage'), 'public', $ticket->fotoNumeroSerie);
                     Storage::delete($oldPath);
                 }
-                $data['fotoNumeroSerie'] = $this->subirImagen($request->file('fotoNumeroSerie'), 'series');
+                $data['fotoNumeroSerie'] = $this->subirArchivo($request->file('fotoNumeroSerie'), 'series');
             }
 
-            // Actualizar el ticket
             $ticket->update($data);
-
-            // Cargar relaciones para la respuesta
             $ticket->load(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador']);
+            $ticketArray = $this->cleanUtf8Strings($ticket->toArray());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Ticket actualizado exitosamente',
-                'data' => $ticket
-            ], 200);
-        } catch (\Exception $e) {
-            \Log::error('Error al actualizar ticket:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+                'data' => $ticketArray
+            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
 
+        } catch (\Exception $e) {
+            \Log::error('Error en update: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al actualizar el ticket',
@@ -434,9 +358,6 @@ class TicketClienteGeneralController extends Controller
         }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy($id)
     {
         try {
@@ -449,13 +370,13 @@ class TicketClienteGeneralController extends Controller
                 ], 404);
             }
 
-            // Soft delete o eliminación física
             $ticket->delete();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Ticket eliminado exitosamente'
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -470,96 +391,52 @@ class TicketClienteGeneralController extends Controller
         try {
             $user = auth()->user();
 
-            \Log::info('=== INICIO getFormData ===');
-            \Log::info('Usuario autenticado:', [
-                'idUsuario' => $user ? $user->idUsuario : null,
-                'nombre' => $user ? $user->Nombre : null,
-                'idClienteGeneral' => $user ? $user->idClienteGeneral : null
-            ]);
-
             if (!$user) {
-                \Log::error('Usuario no autenticado en getFormData');
                 return response()->json([
                     'success' => false,
                     'message' => 'Usuario no autenticado'
                 ], 401);
             }
 
-            // Verificar que el usuario tenga idClienteGeneral
             if (!$user->idClienteGeneral) {
-                \Log::error('Usuario sin idClienteGeneral:', [
-                    'idUsuario' => $user->idUsuario,
-                    'nombre' => $user->Nombre
-                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'El usuario no tiene un cliente general asignado'
                 ], 400);
             }
 
-            // Obtener todas las marcas asociadas al cliente general del usuario
-            \Log::info('Buscando marcas para cliente general:', [
-                'idClienteGeneral' => $user->idClienteGeneral
-            ]);
-
-            $marcasCliente = MarcaClienteGeneral::where('idClienteGeneral', $user->idClienteGeneral)
+            $marcasCliente = MarcaClientegeneral::where('idClienteGeneral', $user->idClienteGeneral)
                 ->pluck('idMarca')
                 ->toArray();
 
-            \Log::info('Marcas encontradas:', [
-                'cantidad' => count($marcasCliente),
-                'marcas' => $marcasCliente
-            ]);
-
-            // Obtener tipos de documento (seleccionando solo campos necesarios)
             $tiposDocumento = Tipodocumento::select('idTipoDocumento', 'nombre')->get();
-            \Log::info('Tipos de documento:', [
-                'cantidad' => $tiposDocumento->count()
-            ]);
+            $categorias = Categorium::where('estado', 1)->select('idCategoria', 'nombre', 'estado')->get();
 
-            // Obtener categorías (seleccionando solo campos necesarios)
-            $categorias = Categorium::where('estado', 1)
-                ->select('idCategoria', 'nombre', 'estado')
-                ->get();
-            \Log::info('Categorías activas:', [
-                'cantidad' => $categorias->count()
-            ]);
-
-            // Obtener los modelos que pertenecen a esas marcas, excluyendo campos BLOB
             if (!empty($marcasCliente)) {
                 $modelos = Modelo::with(['marca' => function ($query) {
-                    $query->select('idMarca', 'nombre', 'estado'); // Excluir 'foto'
+                    $query->select('idMarca', 'nombre', 'estado');
                 }])
                     ->whereIn('idMarca', $marcasCliente)
                     ->where('estado', 1)
                     ->select('idModelo', 'nombre', 'idMarca', 'idCategoria', 'estado')
                     ->get();
             } else {
-                $modelos = collect(); // Colección vacía
+                $modelos = collect();
             }
 
-            \Log::info('Modelos encontrados:', [
-                'cantidad' => $modelos->count()
-            ]);
-
             $data = [
-                'tiposDocumento' => $tiposDocumento,
-                'categorias' => $categorias,
-                'modelos' => $modelos
+                'tiposDocumento' => $this->cleanUtf8Strings($tiposDocumento->toArray()),
+                'categorias' => $this->cleanUtf8Strings($categorias->toArray()),
+                'modelos' => $this->cleanUtf8Strings($modelos->toArray())
             ];
-
-            \Log::info('=== FIN getFormData - ÉXITO ===');
 
             return response()->json([
                 'success' => true,
                 'data' => $data
-            ], 200);
-        } catch (\Exception $e) {
-            \Log::error('=== ERROR en getFormData ===');
-            \Log::error('Mensaje: ' . $e->getMessage());
-            \Log::error('Archivo: ' . $e->getFile() . ':' . $e->getLine());
-            \Log::error('Trace: ' . $e->getTraceAsString());
+            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
 
+        } catch (\Exception $e) {
+            \Log::error('Error en getFormData: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener datos del formulario',
@@ -573,70 +450,37 @@ class TicketClienteGeneralController extends Controller
         try {
             $user = auth()->user();
 
-            \Log::info('=== INICIO getModelosByCategoria ===');
-            \Log::info('Parámetros recibidos:', [
-                'idCategoria' => $idCategoria,
-                'usuario' => $user ? $user->idUsuario : null,
-                'idClienteGeneral' => $user ? $user->idClienteGeneral : null
-            ]);
-
             if (!$user) {
-                \Log::error('Usuario no autenticado en getModelosByCategoria');
                 return response()->json([
                     'success' => false,
                     'message' => 'Usuario no autenticado'
                 ], 401);
             }
 
-            // Verificar que el usuario tenga idClienteGeneral
             if (!$user->idClienteGeneral) {
-                \Log::error('Usuario sin idClienteGeneral:', [
-                    'idUsuario' => $user->idUsuario,
-                    'nombre' => $user->Nombre
-                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'El usuario no tiene un cliente general asignado'
                 ], 400);
             }
 
-            // Verificar que la categoría existe
             $categoria = Categorium::select('idCategoria', 'nombre')->find($idCategoria);
             if (!$categoria) {
-                \Log::error('Categoría no encontrada:', [
-                    'idCategoria' => $idCategoria
-                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Categoría no encontrada'
                 ], 404);
             }
 
-            \Log::info('Categoría encontrada:', [
-                'idCategoria' => $categoria->idCategoria,
-                'nombre' => $categoria->nombre
-            ]);
-
-            // Obtener todas las marcas asociadas al cliente general del usuario
-            \Log::info('Buscando marcas para cliente general:', [
-                'idClienteGeneral' => $user->idClienteGeneral
-            ]);
-
-            $marcasCliente = MarcaClienteGeneral::where('idClienteGeneral', $user->idClienteGeneral)
+            $marcasCliente = MarcaClientegeneral::where('idClienteGeneral', $user->idClienteGeneral)
                 ->pluck('idMarca')
                 ->toArray();
 
-            \Log::info('Marcas encontradas:', [
-                'cantidad' => count($marcasCliente),
-                'marcas' => $marcasCliente
-            ]);
-
-            // Obtener los modelos de esa categoría que pertenecen a las marcas del cliente
-            $modelos = collect(); // Colección vacía por defecto
+            $modelos = collect();
 
             if (!empty($marcasCliente)) {
                 $modelos = Modelo::with(['marca' => function ($query) {
-                    $query->select('idMarca', 'nombre', 'estado'); // Excluir 'foto'
+                    $query->select('idMarca', 'nombre', 'estado');
                 }])
                     ->where('idCategoria', $idCategoria)
                     ->whereIn('idMarca', $marcasCliente)
@@ -645,22 +489,15 @@ class TicketClienteGeneralController extends Controller
                     ->get();
             }
 
-            \Log::info('Modelos encontrados:', [
-                'cantidad' => $modelos->count()
-            ]);
-
-            \Log::info('=== FIN getModelosByCategoria - ÉXITO ===');
+            $modelosArray = $this->cleanUtf8Strings($modelos->toArray());
 
             return response()->json([
                 'success' => true,
-                'data' => $modelos
-            ], 200);
-        } catch (\Exception $e) {
-            \Log::error('=== ERROR en getModelosByCategoria ===');
-            \Log::error('Mensaje: ' . $e->getMessage());
-            \Log::error('Archivo: ' . $e->getFile() . ':' . $e->getLine());
-            \Log::error('Trace: ' . $e->getTraceAsString());
+                'data' => $modelosArray
+            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
 
+        } catch (\Exception $e) {
+            \Log::error('Error en getModelosByCategoria: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener modelos',
@@ -668,29 +505,30 @@ class TicketClienteGeneralController extends Controller
             ], 500);
         }
     }
-    /**
-     * Upload images endpoint
-     */
+
     public function upload(Request $request)
     {
         try {
             $request->validate([
-                'file' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120',
+                'file' => 'required|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
                 'tipo' => 'required|string|in:fallas,boletas,series'
             ]);
 
             $file = $request->file('file');
             $tipo = $request->tipo;
 
-            $nombre = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $extension = $file->getClientOriginalExtension();
+            $nombre = time() . '_' . uniqid() . '.' . $extension;
             $path = $file->storeAs("public/tickets/{$tipo}", $nombre);
-
             $url = asset(str_replace('public', 'storage', $path));
 
             return response()->json([
                 'success' => true,
-                'url' => $url
+                'url' => $url,
+                'extension' => $extension,
+                'nombre' => $nombre
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -701,128 +539,66 @@ class TicketClienteGeneralController extends Controller
     }
 
     /**
- * Generar número de ticket automático
- */
-private function generarNumeroTicket()
-{
-    \Log::info('========== INICIO generarNumeroTicket ==========');
-
-    // Obtener el usuario autenticado
-    $user = auth()->user();
-
-    \Log::info('Usuario autenticado:', [
-        'idUsuario' => $user ? $user->idUsuario : null,
-        'nombre' => $user ? $user->Nombre : null,
-        'idClienteGeneral' => $user ? $user->idClienteGeneral : null,
-        'tiene_usuario' => $user ? 'SÍ' : 'NO'
-    ]);
-
-    if (!$user || !$user->idClienteGeneral) {
-        \Log::warning('No hay usuario autenticado o no tiene idClienteGeneral, usando prefijo TKT');
-        $prefijo = 'TKT';
-    } else {
-        \Log::info('Buscando cliente general con ID: ' . $user->idClienteGeneral);
-
-        // Obtener el cliente general
-        $clienteGeneral = Clientegeneral::find($user->idClienteGeneral);
-
-        \Log::info('Cliente general encontrado:', [
-            'encontrado' => $clienteGeneral ? 'SÍ' : 'NO',
-            'id' => $clienteGeneral ? $clienteGeneral->idClienteGeneral : null,
-            'descripcion' => $clienteGeneral ? $clienteGeneral->descripcion : null
-        ]);
-
-        if ($clienteGeneral && $clienteGeneral->descripcion) {
-            // Obtener las primeras 3 letras de la descripción del cliente general
-            $descripcion = trim($clienteGeneral->descripcion);
-            \Log::info('Descripción original: "' . $descripcion . '"');
-
-            $prefijoSinLimpiar = strtoupper(substr($descripcion, 0, 3));
-            \Log::info('Prefijo sin limpiar (primeras 3 letras en mayúsculas): "' . $prefijoSinLimpiar . '"');
-
-            // Limpiar caracteres especiales (solo letras y números)
-            $prefijo = preg_replace('/[^A-Z0-9]/', '', $prefijoSinLimpiar);
-            \Log::info('Prefijo después de limpiar caracteres especiales: "' . $prefijo . '"');
-
-            // Si después de limpiar queda vacío, usar TKT
-            if (empty($prefijo)) {
-                \Log::warning('Prefijo vacío después de limpiar, usando TKT');
-                $prefijo = 'TKT';
-            }
-        } else {
-            \Log::warning('No se encontró cliente general o descripción vacía, usando TKT');
-            $prefijo = 'TKT';
-        }
-    }
-
-    \Log::info('Prefijo final seleccionado: "' . $prefijo . '"');
-
-    // Obtener el año actual
-    $anioActual = date('Y');
-    \Log::info('Año actual: "' . $anioActual . '"');
-
-    // Obtener el último ticket para el consecutivo
-    \Log::info('Buscando último ticket...');
-    
-    // Buscar el último ticket del año actual para mantener consecutivo por año
-    $ultimoTicket = TicketClienteGeneral::where('numero_ticket', 'like', '%-' . $anioActual)
-        ->orderBy('idTicket', 'desc')
-        ->first();
-
-    if ($ultimoTicket) {
-        \Log::info('Último ticket encontrado:', [
-            'idTicket' => $ultimoTicket->idTicket,
-            'numero_ticket' => $ultimoTicket->numero_ticket
-        ]);
-    } else {
-        \Log::info('No hay tickets previos en el año ' . $anioActual . ', será el primer ticket del año');
-    }
-
-    if ($ultimoTicket && $ultimoTicket->numero_ticket) {
-        // Extraer el número del último ticket (formato: PREF-000001-2026)
-        $partes = explode('-', $ultimoTicket->numero_ticket);
-        \Log::info('Partes del último ticket:', [
-            'partes' => $partes,
-            'cantidad_partes' => count($partes)
-        ]);
-
-        // El número está en la posición 1 (segundo elemento)
-        $ultimoNumero = isset($partes[1]) ? intval($partes[1]) : 0;
-        \Log::info('Número extraído del último ticket: ' . $ultimoNumero);
-
-        $nuevoNumero = $ultimoNumero + 1;
-        \Log::info('Nuevo número (incrementado): ' . $nuevoNumero);
-    } else {
-        $nuevoNumero = 1;
-        \Log::info('No se encontraron tickets del año ' . $anioActual . ', usando 1');
-    }
-
-    // Formatear el número con 6 dígitos
-    $numeroFormateado = str_pad($nuevoNumero, 6, '0', STR_PAD_LEFT);
-    \Log::info('Número formateado con 6 dígitos: "' . $numeroFormateado . '"');
-
-    // Retornar el ticket completo con el año
-    $ticketCompleto = $prefijo . '-' . $numeroFormateado . '-' . $anioActual;
-    \Log::info('Ticket generado: "' . $ticketCompleto . '"');
-
-    \Log::info('========== FIN generarNumeroTicket ==========');
-
-    return $ticketCompleto;
-}
-
-    /**
-     * Subir imagen al servidor
+     * Subir archivo al servidor - MODIFICADO para manejar cualquier tipo
      */
-    private function subirImagen($file, $carpeta)
+    private function subirArchivo($file, $carpeta)
     {
         if (!$file) {
             return null;
         }
 
-        $nombre = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+        $extension = $file->getClientOriginalExtension();
+        $nombre = time() . '_' . uniqid() . '.' . $extension;
         $ruta = $file->storeAs("public/tickets/{$carpeta}", $nombre);
 
         return asset(str_replace('public', 'storage', $ruta));
+    }
+
+    private function generarNumeroTicket()
+    {
+        \Log::info('========== INICIO generarNumeroTicket ==========');
+
+        $user = auth()->user();
+
+        if (!$user || !$user->idClienteGeneral) {
+            $prefijo = 'TKT';
+        } else {
+            $clienteGeneral = Clientegeneral::find($user->idClienteGeneral);
+
+            if ($clienteGeneral && $clienteGeneral->descripcion) {
+                $descripcion = trim($clienteGeneral->descripcion);
+                $prefijoSinLimpiar = strtoupper(substr($descripcion, 0, 3));
+                $prefijo = preg_replace('/[^A-Z0-9]/', '', $prefijoSinLimpiar);
+                
+                if (empty($prefijo)) {
+                    $prefijo = 'TKT';
+                }
+            } else {
+                $prefijo = 'TKT';
+            }
+        }
+
+        $anioActual = date('Y');
+        
+        $ultimoTicket = TicketClienteGeneral::where('numero_ticket', 'like', '%-' . $anioActual)
+            ->orderBy('idTicket', 'desc')
+            ->first();
+
+        if ($ultimoTicket && $ultimoTicket->numero_ticket) {
+            $partes = explode('-', $ultimoTicket->numero_ticket);
+            $ultimoNumero = isset($partes[1]) ? intval($partes[1]) : 0;
+            $nuevoNumero = $ultimoNumero + 1;
+        } else {
+            $nuevoNumero = 1;
+        }
+
+        $numeroFormateado = str_pad($nuevoNumero, 6, '0', STR_PAD_LEFT);
+        $ticketCompleto = $prefijo . '-' . $numeroFormateado . '-' . $anioActual;
+
+        \Log::info('Ticket generado: ' . $ticketCompleto);
+        \Log::info('========== FIN generarNumeroTicket ==========');
+
+        return $ticketCompleto;
     }
 
     public function getMarcas()
@@ -837,30 +613,9 @@ private function generarNumeroTicket()
                 ], 401);
             }
 
-            \Log::info('getMarcas - Usuario:', [
-                'idUsuario' => $user->idUsuario,
-                'idClienteGeneral' => $user->idClienteGeneral
-            ]);
-
-            // Verificar que el modelo MarcaClienteGeneral existe
-            if (!class_exists('App\\Models\\MarcaClienteGeneral')) {
-                \Log::error('Modelo MarcaClienteGeneral no encontrado');
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error de configuración del servidor'
-                ], 500);
-            }
-
-            // Obtener IDs de marcas desde la tabla pivote
-            $marcasIds = MarcaClienteGeneral::where('idClienteGeneral', $user->idClienteGeneral)
+            $marcasIds = MarcaClientegeneral::where('idClienteGeneral', $user->idClienteGeneral)
                 ->pluck('idMarca');
 
-            \Log::info('getMarcas - IDs encontrados:', [
-                'cantidad' => $marcasIds->count(),
-                'ids' => $marcasIds->toArray()
-            ]);
-
-            // Si no hay marcas, devolver array vacío
             if ($marcasIds->isEmpty()) {
                 return response()->json([
                     'success' => true,
@@ -868,25 +623,20 @@ private function generarNumeroTicket()
                 ], 200);
             }
 
-            // Obtener las marcas
             $marcas = Marca::whereIn('idMarca', $marcasIds)
                 ->where('estado', 1)
                 ->select('idMarca', 'nombre', 'estado')
                 ->get();
 
-            \Log::info('getMarcas - Marcas encontradas:', [
-                'cantidad' => $marcas->count()
-            ]);
+            $marcasArray = $this->cleanUtf8Strings($marcas->toArray());
 
             return response()->json([
                 'success' => true,
-                'data' => $marcas
-            ], 200);
+                'data' => $marcasArray
+            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
+
         } catch (\Exception $e) {
             \Log::error('Error en getMarcas: ' . $e->getMessage());
-            \Log::error('Archivo: ' . $e->getFile() . ':' . $e->getLine());
-            \Log::error('Trace: ' . $e->getTraceAsString());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener marcas',
@@ -895,9 +645,6 @@ private function generarNumeroTicket()
         }
     }
 
-    /**
-     * Get modelos by marca
-     */
     public function getModelosByMarca($idMarca)
     {
         try {
@@ -915,10 +662,13 @@ private function generarNumeroTicket()
                 ->select('idModelo', 'nombre', 'idMarca', 'idCategoria', 'estado')
                 ->get();
 
+            $modelosArray = $this->cleanUtf8Strings($modelos->toArray());
+
             return response()->json([
                 'success' => true,
-                'data' => $modelos
-            ], 200);
+                'data' => $modelosArray
+            ], 200, [], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -928,46 +678,32 @@ private function generarNumeroTicket()
         }
     }
 
-
-    /**
-     * Consultar ticket por número de ticket (información completa)
-     */
     public function consultarTicketCompleto($numeroTicket)
     {
         try {
-            \Log::info('========== INICIO consultarTicketCompleto ==========');
             \Log::info('Buscando ticket con número: ' . $numeroTicket);
-
-            // Buscar el ticket en tickets_cliente_general
+            
             $ticketBase = TicketClienteGeneral::with([
                 'tipoDocumento',
                 'categoria',
                 'modelo.marca',
                 'usuarioCreador'
             ])
-                ->where('numero_ticket', $numeroTicket)
-                ->first();
+            ->where('numero_ticket', $numeroTicket)
+            ->first();
 
             if (!$ticketBase) {
-                \Log::warning('Ticket no encontrado en tickets_cliente_general con número: ' . $numeroTicket);
                 return response()->json([
                     'success' => false,
                     'message' => 'Ticket no encontrado'
                 ], 404);
             }
 
-            \Log::info('Ticket base encontrado:', [
-                'idTicket' => $ticketBase->idTicket,
-                'numero_ticket' => $ticketBase->numero_ticket
-            ]);
-
-            // Obtener datos del cliente general por separado
             $clienteGeneral = null;
             if ($ticketBase->idClienteGeneral) {
                 $clienteGeneral = Clientegeneral::find($ticketBase->idClienteGeneral);
             }
 
-            // Buscar la orden de trabajo asociada en tabla tickets
             $ordenTrabajo = DB::table('tickets')
                 ->where('numero_ticket', $numeroTicket)
                 ->first();
@@ -981,38 +717,29 @@ private function generarNumeroTicket()
             $firmas = [];
 
             if ($ordenTrabajo) {
-                \Log::info('Orden de trabajo encontrada:', [
-                    'idTickets' => $ordenTrabajo->idTickets,
-                    'numero_ticket' => $ordenTrabajo->numero_ticket
-                ]);
-
-                // Obtener datos de la orden
                 $datosOrden = [
-                    'idTickets' => $ordenTrabajo->idTickets,
-                    'idCliente' => $ordenTrabajo->idCliente,
-                    'idTienda' => $ordenTrabajo->idTienda,
-                    'tipoServicio' => $ordenTrabajo->tipoServicio,
-                    'idTipotickets' => $ordenTrabajo->idTipotickets,
-                    'idEstadoots' => $ordenTrabajo->idEstadoots,
-                    'idTecnico' => $ordenTrabajo->idTecnico,
-                    'esRecojo' => $ordenTrabajo->esRecojo,
-                    'direccion' => $ordenTrabajo->direccion,
-                    'lat' => $ordenTrabajo->lat,
-                    'lng' => $ordenTrabajo->lng,
-                    'idTicketFlujo' => $ordenTrabajo->idTicketFlujo,
-                    'linkubicacion' => $ordenTrabajo->linkubicacion,
-                    'envio' => $ordenTrabajo->envio,
-                    'erma' => $ordenTrabajo->erma,
-                    'nrmcotizacion' => $ordenTrabajo->nrmcotizacion,
-                    'evaluaciontienda' => $ordenTrabajo->evaluaciontienda,
-                    'es_custodia' => $ordenTrabajo->es_custodia
+                    'idTickets' => $ordenTrabajo->idTickets ?? null,
+                    'idCliente' => $ordenTrabajo->idCliente ?? null,
+                    'idTienda' => $ordenTrabajo->idTienda ?? null,
+                    'tipoServicio' => $ordenTrabajo->tipoServicio ?? null,
+                    'idTipotickets' => $ordenTrabajo->idTipotickets ?? null,
+                    'idEstadoots' => $ordenTrabajo->idEstadoots ?? null,
+                    'idTecnico' => $ordenTrabajo->idTecnico ?? null,
+                    'esRecojo' => $ordenTrabajo->esRecojo ?? null,
+                    'direccion' => $ordenTrabajo->direccion ?? null,
+                    'lat' => $ordenTrabajo->lat ?? null,
+                    'lng' => $ordenTrabajo->lng ?? null,
+                    'idTicketFlujo' => $ordenTrabajo->idTicketFlujo ?? null,
+                    'linkubicacion' => $ordenTrabajo->linkubicacion ?? null,
+                    'envio' => $ordenTrabajo->envio ?? null,
+                    'erma' => $ordenTrabajo->erma ?? null,
+                    'nrmcotizacion' => $ordenTrabajo->nrmcotizacion ?? null,
+                    'evaluaciontienda' => $ordenTrabajo->evaluaciontienda ?? null,
+                    'es_custodia' => property_exists($ordenTrabajo, 'es_custodia') ? $ordenTrabajo->es_custodia : 0
                 ];
 
-                // Obtener el estado de la orden
                 if ($ordenTrabajo->idEstadoots) {
-                    $estadoOT = DB::table('estado_ots')
-                        ->where('idEstadoots', $ordenTrabajo->idEstadoots)
-                        ->first();
+                    $estadoOT = DB::table('estado_ots')->where('idEstadoots', $ordenTrabajo->idEstadoots)->first();
                     if ($estadoOT) {
                         $datosOrden['estado_ot'] = [
                             'id' => $estadoOT->idEstadoots,
@@ -1022,26 +749,19 @@ private function generarNumeroTicket()
                     }
                 }
 
-                // Obtener el tipo de ticket
                 if ($ordenTrabajo->idTipotickets) {
-                    $tipoTicket = DB::table('tipotickets')
-                        ->where('idTipotickets', $ordenTrabajo->idTipotickets)
-                        ->first();
+                    $tipoTicket = DB::table('tipotickets')->where('idTipotickets', $ordenTrabajo->idTipotickets)->first();
                     if ($tipoTicket) {
                         $datosOrden['tipo_ticket'] = $tipoTicket->nombre;
                     }
                 }
 
-                // Obtener todos los flujos del ticket
                 $flujos = DB::table('ticketflujo')
                     ->where('idTicket', $ordenTrabajo->idTickets)
                     ->orderBy('fecha_creacion', 'desc')
                     ->get()
-                    ->map(function ($flujo) {
-                        $estadoFlujo = DB::table('estado_flujo')
-                            ->where('idEstadflujo', $flujo->idEstadflujo)
-                            ->first();
-
+                    ->map(function($flujo) {
+                        $estadoFlujo = DB::table('estado_flujo')->where('idEstadflujo', $flujo->idEstadflujo)->first();
                         return [
                             'id' => $flujo->idTicketFlujo,
                             'idEstadflujo' => $flujo->idEstadflujo,
@@ -1054,18 +774,16 @@ private function generarNumeroTicket()
                         ];
                     });
 
-                // Obtener todas las visitas del ticket
                 $visitasData = DB::table('visitas')
                     ->where('idTickets', $ordenTrabajo->idTickets)
                     ->orderBy('fecha_programada', 'desc')
                     ->get();
 
                 foreach ($visitasData as $visita) {
-                    // Obtener anexos de la visita
                     $anexosVisita = DB::table('anexos_visitas')
                         ->where('idVisitas', $visita->idVisitas)
                         ->get()
-                        ->map(function ($anexo) {
+                        ->map(function($anexo) {
                             return [
                                 'id' => $anexo->idAnexoVisitas,
                                 'foto' => $anexo->foto ? 'data:image/jpeg;base64,' . base64_encode($anexo->foto) : null,
@@ -1077,16 +795,12 @@ private function generarNumeroTicket()
                             ];
                         });
 
-                    // Obtener tipo de visita
-                    $tipoVisita = DB::table('tipo_visita')
-                        ->where('idTipovisita', $visita->tipoServicio)
-                        ->first();
+                    $tipoVisita = DB::table('tipo_visita')->where('idTipovisita', $visita->tipoServicio)->first();
 
-                    // Obtener firmas de la visita
                     $firmasVisita = DB::table('firmas')
                         ->where('idVisitas', $visita->idVisitas)
                         ->get()
-                        ->map(function ($firma) {
+                        ->map(function($firma) {
                             return [
                                 'id' => $firma->idFirmas,
                                 'firma_tecnico' => $firma->firma_tecnico ? 'data:image/png;base64,' . base64_encode($firma->firma_tecnico) : null,
@@ -1122,19 +836,15 @@ private function generarNumeroTicket()
                         'firmas' => $firmasVisita
                     ];
 
-                    // Acumular anexos para la lista general
                     $anexos = array_merge($anexos, $anexosVisita->toArray());
-
-                    // Acumular firmas para la lista general
                     $firmas = array_merge($firmas, $firmasVisita->toArray());
                 }
 
-                // Obtener fotos del ticket (fotostickest)
                 $fotosTicket = DB::table('fotostickest')
                     ->where('idTickets', $ordenTrabajo->idTickets)
                     ->orderBy('idfotostickest', 'desc')
                     ->get()
-                    ->map(function ($foto) {
+                    ->map(function($foto) {
                         return [
                             'id' => $foto->idfotostickest,
                             'foto' => $foto->foto ? 'data:image/jpeg;base64,' . base64_encode($foto->foto) : null,
@@ -1143,16 +853,12 @@ private function generarNumeroTicket()
                         ];
                     });
 
-                // Obtener transiciones de estado (transicion_status_ticket)
                 $transiciones = DB::table('transicion_status_ticket')
                     ->where('idTickets', $ordenTrabajo->idTickets)
                     ->orderBy('fechaRegistro', 'desc')
                     ->get()
-                    ->map(function ($transicion) {
-                        $estadoOT = DB::table('estado_ots')
-                            ->where('idEstadoots', $transicion->idEstadoots)
-                            ->first();
-
+                    ->map(function($transicion) {
+                        $estadoOT = DB::table('estado_ots')->where('idEstadoots', $transicion->idEstadoots)->first();
                         return [
                             'id' => $transicion->idTransicionStatus,
                             'idEstadoots' => $transicion->idEstadoots,
@@ -1165,16 +871,14 @@ private function generarNumeroTicket()
                         ];
                     });
 
-                // Obtener firmas generales del ticket (sin visita específica)
                 $firmasGenerales = DB::table('firmas')
                     ->where('idTickets', $ordenTrabajo->idTickets)
-                    ->whereNull('idVisitas') // Firmas sin visita asociada
-                    ->orWhere(function ($query) use ($ordenTrabajo) {
-                        $query->where('idTickets', $ordenTrabajo->idTickets)
-                            ->where('idVisitas', 0); // Firmas con idVisitas = 0
+                    ->whereNull('idVisitas')
+                    ->orWhere(function($query) use ($ordenTrabajo) {
+                        $query->where('idTickets', $ordenTrabajo->idTickets)->where('idVisitas', 0);
                     })
                     ->get()
-                    ->map(function ($firma) {
+                    ->map(function($firma) {
                         return [
                             'id' => $firma->idFirmas,
                             'firma_tecnico' => $firma->firma_tecnico ? 'data:image/png;base64,' . base64_encode($firma->firma_tecnico) : null,
@@ -1188,107 +892,100 @@ private function generarNumeroTicket()
                         ];
                     });
 
-                // Combinar todas las firmas
                 $firmas = array_merge($firmas, $firmasGenerales->toArray());
             }
 
-            // Transformar los datos del ticket base
             $ticketTransformado = [
                 'id' => $ticketBase->idTicket,
                 'numeroTicket' => $ticketBase->numero_ticket,
-
-                // Datos del contacto
                 'nombreCompleto' => $ticketBase->nombreCompleto,
                 'correoElectronico' => $ticketBase->correoElectronico,
                 'telefonoCelular' => $ticketBase->telefonoCelular,
                 'telefonoFijo' => $ticketBase->telefonoFijo,
                 'tipoDocumento' => $ticketBase->tipoDocumento ? $ticketBase->tipoDocumento->nombre : 'N/A',
                 'dni_ruc_ce' => $ticketBase->dni_ruc_ce,
-
-                // Datos del cliente general
                 'clienteGeneral' => $clienteGeneral ? $clienteGeneral->descripcion : 'N/A',
-
-                // Dirección
                 'direccionCompleta' => $ticketBase->direccionCompleta,
                 'referenciaDomicilio' => $ticketBase->referenciaDomicilio,
                 'departamento' => $ticketBase->departamento,
                 'provincia' => $ticketBase->provincia,
                 'distrito' => $ticketBase->distrito,
                 'ubicacionGoogleMaps' => $ticketBase->ubicacionGoogleMaps,
-
-                // Datos del producto
                 'tipoProducto' => $ticketBase->categoria ? $ticketBase->categoria->nombre : 'N/A',
                 'marca' => $ticketBase->modelo && $ticketBase->modelo->marca ? $ticketBase->modelo->marca->nombre : 'N/A',
                 'modelo' => $ticketBase->modelo ? $ticketBase->modelo->nombre : 'N/A',
                 'serie' => $ticketBase->serieProducto,
-
-                // Falla
                 'detallesFalla' => $ticketBase->detallesFalla,
-
-                // Fechas
                 'fechaCompra' => $ticketBase->fechaCompra,
                 'fechaCreacion' => $ticketBase->fechaCreacion,
                 'tiendaSedeCompra' => $ticketBase->tiendaSedeCompra,
-
-                // Estado
                 'estado' => $ticketBase->estado === 1 ? 'evaluando' : ($ticketBase->estado === 2 ? 'gestionando' : 'finalizado'),
-
-                // Evidencias originales
                 'fotoVideoFalla' => $ticketBase->fotoVideoFalla,
                 'fotoBoletaFactura' => $ticketBase->fotoBoletaFactura,
                 'fotoNumeroSerie' => $ticketBase->fotoNumeroSerie,
-
-                // Usuario creador
-                'usuarioCreador' => $ticketBase->usuarioCreador ?
-                    $ticketBase->usuarioCreador->Nombre . ' ' . $ticketBase->usuarioCreador->apellidoPaterno : 'N/A',
-
-                // Datos de la orden de trabajo (si existe)
+                'usuarioCreador' => $ticketBase->usuarioCreador ? $ticketBase->usuarioCreador->Nombre . ' ' . $ticketBase->usuarioCreador->apellidoPaterno : 'N/A',
                 'ordenTrabajo' => $datosOrden,
-
-                // Datos relacionados
                 'flujos' => $flujos,
                 'visitas' => $visitas,
                 'transiciones' => $transiciones,
                 'anexos' => $anexos,
                 'fotosTicket' => $fotosTicket,
-                'firmas' => $firmas, // NUEVO: Firmas del ticket
-
-                // Estadísticas adicionales
+                'firmas' => $firmas,
                 'estadisticas' => [
                     'total_fotos' => count($fotosTicket),
                     'total_visitas' => count($visitas),
                     'total_firmas' => count($firmas),
                     'total_transiciones' => count($transiciones)
                 ],
-
-                // Indicador de si tiene orden de trabajo
                 'tieneOrdenTrabajo' => $ordenTrabajo ? true : false
             ];
-
-            \Log::info('========== FIN consultarTicketCompleto ==========');
-            \Log::info('Datos obtenidos:', [
-                'tiene_orden' => $ticketTransformado['tieneOrdenTrabajo'],
-                'total_fotos' => $ticketTransformado['estadisticas']['total_fotos'],
-                'total_visitas' => $ticketTransformado['estadisticas']['total_visitas'],
-                'total_firmas' => $ticketTransformado['estadisticas']['total_firmas']
-            ]);
 
             return response()->json([
                 'success' => true,
                 'data' => $ticketTransformado
             ], 200);
-        } catch (\Exception $e) {
-            \Log::error('========== ERROR en consultarTicketCompleto ==========');
-            \Log::error('Mensaje: ' . $e->getMessage());
-            \Log::error('Archivo: ' . $e->getFile() . ':' . $e->getLine());
-            \Log::error('Trace: ' . $e->getTraceAsString());
-            \Log::error('===================================================');
 
+        } catch (\Exception $e) {
+            \Log::error('Error en consultarTicketCompleto: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al consultar el ticket',
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    private function cleanUtf8String($string)
+    {
+        if (!is_string($string)) {
+            return $string;
+        }
+
+        $cleaned = mb_convert_encoding($string, 'UTF-8', 'UTF-8');
+        if (!mb_check_encoding($cleaned, 'UTF-8')) {
+            $cleaned = utf8_encode($string);
+        }
+        $cleaned = preg_replace('/[^\x{0009}\x{000A}\x{000D}\x{0020}-\x{D7FF}\x{E000}-\x{FFFD}]+/u', ' ', $cleaned);
+        return trim($cleaned);
+    }
+
+    private function cleanUtf8Strings($data)
+    {
+        if (is_string($data)) {
+            return $this->cleanUtf8String($data);
+        }
+        if (is_array($data)) {
+            foreach ($data as $key => $value) {
+                $data[$key] = $this->cleanUtf8Strings($value);
+            }
+            return $data;
+        }
+        if (is_object($data)) {
+            foreach ($data as $key => $value) {
+                $data->$key = $this->cleanUtf8Strings($value);
+            }
+            return $data;
+        }
+        return $data;
     }
 }

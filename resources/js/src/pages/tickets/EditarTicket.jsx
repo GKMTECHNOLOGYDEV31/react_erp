@@ -37,6 +37,10 @@ import {
     faSearch,
     faExternalLinkAlt,
     faPlus,
+    faFilePdf,
+    faFileWord,
+    faFile,
+    faDownload,
 } from '@fortawesome/free-solid-svg-icons';
 import toastr from 'toastr';
 import flatpickr from 'flatpickr';
@@ -81,29 +85,90 @@ const EditarTicket = () => {
     const [distritosFiltrados, setDistritosFiltrados] = useState([]);
     const [loadingUbigeo, setLoadingUbigeo] = useState(true);
 
-    // Estados para archivos
+    // Estados para archivos - MODIFICADO para manejar cualquier tipo
     const [fileFalla, setFileFalla] = useState(null);
     const [fileBoleta, setFileBoleta] = useState(null);
     const [fileSerie, setFileSerie] = useState(null);
     const [previewFalla, setPreviewFalla] = useState(null);
     const [previewBoleta, setPreviewBoleta] = useState(null);
     const [previewSerie, setPreviewSerie] = useState(null);
+    const [fileTypeFalla, setFileTypeFalla] = useState(null);
+    const [fileTypeBoleta, setFileTypeBoleta] = useState(null);
+    const [fileTypeSerie, setFileTypeSerie] = useState(null);
+    const [fileNameFalla, setFileNameFalla] = useState('');
+    const [fileNameBoleta, setFileNameBoleta] = useState('');
+    const [fileNameSerie, setFileNameSerie] = useState('');
 
-    // Estado para el modal de imagen ampliada
-    const [modalImage, setModalImage] = useState(null);
+    // Estado para el modal de archivo ampliado
+    const [modalFile, setModalFile] = useState(null);
+    const [modalFileType, setModalFileType] = useState(null);
 
     // URL base de la API
     const API_URL = 'http://127.0.0.1:8000/api';
 
     // ============================================
+    // FUNCIONES AUXILIARES PARA ARCHIVOS
+    // ============================================
+
+    // Función auxiliar para obtener el icono según el tipo de archivo
+    const getFileIcon = (fileName, fileType) => {
+        if (!fileName) return faFile;
+        
+        const extension = fileName.split('.').pop()?.toLowerCase();
+        
+        if (extension === 'pdf') return faFilePdf;
+        if (extension === 'doc' || extension === 'docx') return faFileWord;
+        if (fileType && fileType.startsWith('image/')) return faImage;
+        return faFile;
+    };
+
+    // Función auxiliar para obtener el color del icono según el tipo de archivo
+    const getFileIconColor = (fileName) => {
+        if (!fileName) return 'text-gray-500';
+        
+        const extension = fileName.split('.').pop()?.toLowerCase();
+        
+        if (extension === 'pdf') return 'text-red-500';
+        if (extension === 'doc' || extension === 'docx') return 'text-blue-500';
+        return 'text-gray-500';
+    };
+
+    // Función auxiliar para obtener el texto del tipo de archivo
+    const getFileTypeText = (fileName) => {
+        if (!fileName) return 'Archivo';
+        
+        const extension = fileName.split('.').pop()?.toUpperCase();
+        
+        if (extension === 'PDF') return 'PDF';
+        if (extension === 'DOC' || extension === 'DOCX') return 'Documento Word';
+        if (extension === 'JPG' || extension === 'JPEG') return 'Imagen JPG';
+        if (extension === 'PNG') return 'Imagen PNG';
+        if (extension === 'GIF') return 'Imagen GIF';
+        return `Archivo ${extension}`;
+    };
+
+    // Función para manejar la visualización del archivo
+    const handleFilePreview = (file, fileType, previewUrl, fileUrl) => {
+        if (!file) return;
+        
+        if (fileType && fileType.startsWith('image/')) {
+            setModalFile(previewUrl);
+            setModalFileType('image');
+        } else {
+            // Para PDFs y documentos, abrir en nueva pestaña
+            if (previewUrl || fileUrl) {
+                window.open(previewUrl || fileUrl, '_blank');
+            }
+        }
+    };
+
+    // ============================================
     // FUNCIONES PARA MANEJO DE FECHAS
     // ============================================
 
-    // Función para formatear fecha de YYYY-MM-DD a DD/MM/YYYY para mostrar
     const formatDateToDisplay = (dateString) => {
         if (!dateString) return '';
         try {
-            // Si viene en formato YYYY-MM-DD o con T
             if (dateString.includes('T')) {
                 const [datePart] = dateString.split('T');
                 const [year, month, day] = datePart.split('-');
@@ -119,11 +184,9 @@ const EditarTicket = () => {
         }
     };
 
-    // Función para formatear fecha de DD/MM/YYYY a YYYY-MM-DD para el backend
     const formatDateForBackend = (dateString) => {
         if (!dateString) return '';
         try {
-            // Si viene en formato DD/MM/YYYY
             if (dateString.includes('/')) {
                 const [day, month, year] = dateString.split('/');
                 return `${year}-${month}-${day}`;
@@ -135,70 +198,37 @@ const EditarTicket = () => {
         }
     };
 
-    // Esquema de validación - CON VALIDACIÓN PARA DD/MM/YYYY
+    // Esquema de validación - MODIFICADO para aceptar archivos
     const validationSchema = Yup.object({
         nombreCompleto: Yup.string().required('El nombre completo es requerido').min(3, 'Mínimo 3 caracteres').max(255, 'Máximo 255 caracteres'),
-
         correoElectronico: Yup.string().email('Correo electrónico inválido').required('El correo electrónico es requerido').max(255, 'Máximo 255 caracteres'),
-
         idTipoDocumento: Yup.number().required('El tipo de documento es requerido').positive('Seleccione un tipo de documento válido'),
-
-        dni_ruc_ce: Yup.string()
-            .required('El número de documento es requerido')
-            .min(8, 'Mínimo 8 caracteres')
-            .max(20, 'Máximo 20 caracteres')
-            .matches(/^[0-9]+$/, 'Solo se permiten números'),
-
-        telefonoCelular: Yup.string()
-            .required('El teléfono celular es requerido')
-            .min(9, 'Mínimo 9 dígitos')
-            .max(20, 'Máximo 20 dígitos')
-            .matches(/^[0-9]+$/, 'Solo se permiten números'),
-
-        telefonoFijo: Yup.string()
-            .nullable()
-            .matches(/^[0-9-]+$/, 'Formato inválido'),
-
+        dni_ruc_ce: Yup.string().required('El número de documento es requerido').min(8, 'Mínimo 8 caracteres').max(20, 'Máximo 20 caracteres').matches(/^[0-9]+$/, 'Solo se permiten números'),
+        telefonoCelular: Yup.string().required('El teléfono celular es requerido').min(9, 'Mínimo 9 dígitos').max(20, 'Máximo 20 dígitos').matches(/^[0-9]+$/, 'Solo se permiten números'),
+        telefonoFijo: Yup.string().nullable().matches(/^[0-9-]+$/, 'Formato inválido'),
         direccionCompleta: Yup.string().required('La dirección completa es requerida').max(500, 'Máximo 500 caracteres'),
-
         referenciaDomicilio: Yup.string().nullable().max(500, 'Máximo 500 caracteres'),
-
         departamento: Yup.string().required('El departamento es requerido'),
-
         provincia: Yup.string().required('La provincia es requerida'),
-
         distrito: Yup.string().required('El distrito es requerido'),
-
         idCategoria: Yup.number().required('La categoría del producto es requerida').positive('Seleccione una categoría válida'),
-
         idModelo: Yup.number().required('El modelo del producto es requerido').positive('Seleccione un modelo válido'),
-
         serieProducto: Yup.string().required('El número de serie es requerido').max(100, 'Máximo 100 caracteres'),
-
         detallesFalla: Yup.string().required('Los detalles de la falla son requeridos').min(10, 'Describe la falla con más detalle (mínimo 10 caracteres)').max(5000, 'Máximo 5000 caracteres'),
-
         fechaCompra: Yup.string()
             .required('La fecha de compra es requerida')
             .test('valid-date', 'Fecha inválida', function (value) {
                 if (!value) return false;
-                // Validar formato DD/MM/YYYY
                 const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
                 if (!regex.test(value)) return false;
-
                 const [day, month, year] = value.split('/').map(Number);
                 const date = new Date(year, month - 1, day);
-
                 return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year && date <= new Date();
             }),
-
         tiendaSedeCompra: Yup.string().required('La tienda y sede de compra es requerida').max(255, 'Máximo 255 caracteres'),
-
         fotoVideoFalla: Yup.string().nullable(),
-
         fotoBoletaFactura: Yup.string().nullable(),
-
         fotoNumeroSerie: Yup.string().nullable(),
-
         ubicacionGoogleMaps: Yup.string().nullable().url('Debe ser una URL válida de Google Maps'),
     });
 
@@ -239,11 +269,9 @@ const EditarTicket = () => {
                 const formData = new FormData();
                 formData.append('_method', 'PUT');
 
-                // Procesar cada valor
                 Object.keys(values).forEach((key) => {
                     if (values[key] !== null && values[key] !== undefined && values[key] !== '') {
                         if (key === 'fechaCompra') {
-                            // Convertir fecha de DD/MM/YYYY a YYYY-MM-DD para el backend
                             const fechaBackend = formatDateForBackend(values[key]);
                             formData.append(key, fechaBackend);
                         } else {
@@ -253,15 +281,9 @@ const EditarTicket = () => {
                 });
 
                 // Solo agregar archivos si se seleccionaron nuevos
-                if (fileFalla) {
-                    formData.append('fotoVideoFalla', fileFalla);
-                }
-                if (fileBoleta) {
-                    formData.append('fotoBoletaFactura', fileBoleta);
-                }
-                if (fileSerie) {
-                    formData.append('fotoNumeroSerie', fileSerie);
-                }
+                if (fileFalla) formData.append('fotoVideoFalla', fileFalla);
+                if (fileBoleta) formData.append('fotoBoletaFactura', fileBoleta);
+                if (fileSerie) formData.append('fotoNumeroSerie', fileSerie);
 
                 const response = await axios.post(`${API_URL}/tickets/${id}`, formData, {
                     headers: {
@@ -304,60 +326,70 @@ const EditarTicket = () => {
     });
 
     // ============================================
-    // CONFIGURACIÓN DE REACT-SELECT
+    // CONFIGURACIÓN DE REACT-SELECT CON MODO DARK
     // ============================================
-    const selectStyles = {
+
+    const getSelectStyles = (isDark) => ({
         control: (base, state) => ({
             ...base,
-            borderColor: state.isFocused ? '#4361ee' : '#e5e7eb',
+            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            borderColor: state.isFocused ? '#4361ee' : isDark ? '#4b5563' : '#e5e7eb',
             boxShadow: state.isFocused ? '0 0 0 1px #4361ee' : 'none',
-            '&:hover': {
-                borderColor: '#4361ee',
-            },
+            '&:hover': { borderColor: '#4361ee' },
             minHeight: '38px',
             borderRadius: '6px',
+            color: isDark ? '#e5e7eb' : '#1f2937',
         }),
         option: (base, { isFocused, isSelected }) => ({
             ...base,
-            backgroundColor: isSelected ? '#4361ee' : isFocused ? '#e0e7ff' : 'white',
-            color: isSelected ? 'white' : '#111827',
+            backgroundColor: isSelected ? '#4361ee' : isFocused ? (isDark ? '#374151' : '#f3f4f6') : (isDark ? '#1f2937' : '#ffffff'),
+            color: isSelected ? '#ffffff' : (isDark ? '#e5e7eb' : '#1f2937'),
             cursor: 'pointer',
-            '&:active': {
-                backgroundColor: '#4361ee',
-            },
+            '&:active': { backgroundColor: '#4361ee', color: '#ffffff' },
         }),
         menu: (base) => ({
             ...base,
-            zIndex: 50,
+            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            border: isDark ? '1px solid #4b5563' : '1px solid #e5e7eb',
+            boxShadow: isDark ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         }),
-        placeholder: (base) => ({
+        menuList: (base) => ({
             ...base,
-            color: '#9ca3af',
+            backgroundColor: isDark ? '#1f2937' : '#ffffff',
+            '&::-webkit-scrollbar': { width: '8px', height: '8px' },
+            '&::-webkit-scrollbar-track': { background: isDark ? '#374151' : '#f1f1f1' },
+            '&::-webkit-scrollbar-thumb': { background: isDark ? '#4b5563' : '#888', borderRadius: '4px' },
+            '&::-webkit-scrollbar-thumb:hover': { background: isDark ? '#6b7280' : '#555' },
         }),
-        singleValue: (base) => ({
-            ...base,
-            color: '#111827',
-        }),
-    };
+        placeholder: (base) => ({ ...base, color: isDark ? '#9ca3af' : '#6b7280' }),
+        singleValue: (base) => ({ ...base, color: isDark ? '#e5e7eb' : '#1f2937' }),
+        input: (base) => ({ ...base, color: isDark ? '#e5e7eb' : '#1f2937' }),
+        indicatorSeparator: (base) => ({ ...base, backgroundColor: isDark ? '#4b5563' : '#e5e7eb' }),
+        dropdownIndicator: (base) => ({ ...base, color: isDark ? '#9ca3af' : '#6b7280', '&:hover': { color: isDark ? '#d1d5db' : '#374151' } }),
+        clearIndicator: (base) => ({ ...base, color: isDark ? '#9ca3af' : '#6b7280', '&:hover': { color: isDark ? '#d1d5db' : '#374151' } }),
+        loadingMessage: (base) => ({ ...base, color: isDark ? '#e5e7eb' : '#1f2937', backgroundColor: isDark ? '#1f2937' : '#ffffff' }),
+        noOptionsMessage: (base) => ({ ...base, color: isDark ? '#e5e7eb' : '#1f2937', backgroundColor: isDark ? '#1f2937' : '#ffffff' }),
+    });
 
-    // Convertir categorías al formato que react-select entiende
-    const categoriaOptions = categorias.map((cat) => ({
-        value: cat.idCategoria,
-        label: cat.nombre,
-    }));
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
-    // Convertir modelos filtrados al formato que react-select entiende
-    const modeloOptions = modelosFiltrados.map((mod) => ({
-        value: mod.idModelo,
-        label: mod.nombre,
-    }));
+    useEffect(() => {
+        const checkDarkMode = () => {
+            setIsDarkMode(document.documentElement.classList.contains('dark'));
+        };
+        checkDarkMode();
+        const observer = new MutationObserver(checkDarkMode);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
 
-    // Manejar cambio de categoría
+    const categoriaOptions = categorias.map((cat) => ({ value: cat.idCategoria, label: cat.nombre }));
+    const modeloOptions = modelosFiltrados.map((mod) => ({ value: mod.idModelo, label: mod.nombre }));
+
     const handleCategoriaChange = (selectedOption) => {
         formik.setFieldValue('idCategoria', selectedOption ? selectedOption.value : '');
     };
 
-    // Manejar cambio de modelo
     const handleModeloChange = (selectedOption) => {
         formik.setFieldValue('idModelo', selectedOption ? selectedOption.value : '');
     };
@@ -367,7 +399,6 @@ const EditarTicket = () => {
         setCategorias((prev) => [...prev, nuevaCategoria]);
         formik.setFieldValue('idCategoria', nuevaCategoria.idCategoria);
         cargarModelosPorCategoria(nuevaCategoria.idCategoria);
-        toastr.success('Categoría creada exitosamente');
     };
 
     const handleModeloCreado = (nuevoModelo) => {
@@ -376,7 +407,6 @@ const EditarTicket = () => {
             setModelosFiltrados((prev) => [...prev, nuevoModelo]);
         }
         formik.setFieldValue('idModelo', nuevoModelo.idModelo);
-        toastr.success('Modelo creado exitosamente');
     };
 
     // Cargar datos iniciales
@@ -457,14 +487,10 @@ const EditarTicket = () => {
         }
     }, [formik.values.provincia, distritos]);
 
-    // ============================================
-    // INICIALIZACIÓN DE FLATPICKR PARA FECHA
-    // ============================================
+    // Inicialización de FLATPICKR
     useEffect(() => {
-        // Función para inicializar flatpickr
         const initFlatpickr = () => {
             if (fechaCompraRef.current && !loading) {
-                // Destruir instancia anterior si existe
                 if (flatpickrInstance.current) {
                     flatpickrInstance.current.destroy();
                 }
@@ -488,9 +514,7 @@ const EditarTicket = () => {
             }
         };
 
-        // Ejecutar después de un pequeño delay para asegurar que el DOM está listo
         const timeoutId = setTimeout(initFlatpickr, 100);
-
         return () => {
             clearTimeout(timeoutId);
             if (flatpickrInstance.current) {
@@ -499,7 +523,7 @@ const EditarTicket = () => {
         };
     }, [loading, formik.values.fechaCompra]);
 
-    // Efecto adicional para asegurar que flatpickr se inicialice cuando el ref esté disponible
+    // Efecto adicional para flatpickr
     useEffect(() => {
         if (!loading && fechaCompraRef.current && !flatpickrInstance.current) {
             try {
@@ -566,8 +590,6 @@ const EditarTicket = () => {
 
             if (ticketResponse.data.success) {
                 const ticket = ticketResponse.data.data;
-
-                // Formatear fecha para mostrar en DD/MM/YYYY
                 const fechaCompraDisplay = ticket.fechaCompra ? formatDateToDisplay(ticket.fechaCompra) : '';
 
                 formik.setValues({
@@ -630,28 +652,46 @@ const EditarTicket = () => {
         }
     };
 
-    const handleImageChange = (e, setFile, setPreview, fieldName) => {
+    // MODIFICADO: handleImageChange ahora maneja cualquier tipo de archivo
+    const handleFileChange = (e, setFile, setPreview, setFileType, setFileName, fieldName) => {
         const file = e.target.files[0];
         if (file) {
-            if (file.size > 5 * 1024 * 1024) {
-                toastr.error('La imagen no debe superar los 5MB', 'Error');
+            // Validar tamaño máximo (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                toastr.error('El archivo no debe superar los 10MB', 'Error');
                 e.target.value = '';
                 return;
             }
 
-            if (!file.type.startsWith('image/')) {
-                toastr.error('Solo se permiten imágenes', 'Error');
+            // Validar tipos de archivo permitidos
+            const allowedTypes = [
+                'image/jpeg', 'image/png', 'image/jpg', 'image/gif',
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            ];
+            
+            if (!allowedTypes.includes(file.type)) {
+                toastr.error('Solo se permiten imágenes (JPG, PNG, GIF), PDF o documentos de Word (DOC, DOCX)', 'Error');
                 e.target.value = '';
                 return;
             }
 
             setFile(file);
+            setFileType(file.type);
+            setFileName(file.name);
 
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPreview(reader.result);
-            };
-            reader.readAsDataURL(file);
+            // Si es imagen, crear preview
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setPreview(reader.result);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Para PDF y documentos, no mostrar preview
+                setPreview(null);
+            }
 
             if (fieldName) {
                 formik.setFieldValue(fieldName, '');
@@ -659,8 +699,8 @@ const EditarTicket = () => {
         }
     };
 
-    const ImageModal = ({ image, onClose }) => {
-        if (!image) return null;
+    const FileModal = ({ file, fileType, onClose }) => {
+        if (!file) return null;
 
         return (
             <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -671,16 +711,24 @@ const EditarTicket = () => {
                     >
                         <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
                     </button>
-                    <img
-                        src={image}
-                        alt="Vista ampliada"
-                        className="max-w-full max-h-[90vh] object-contain rounded-lg"
-                        onClick={(e) => e.stopPropagation()}
-                        onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Imagen+no+disponible';
-                        }}
-                    />
+                    {fileType === 'image' ? (
+                        <img src={file} alt="Vista ampliada" className="max-w-full max-h-[90vh] object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+                    ) : (
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full text-center">
+                            <FontAwesomeIcon icon={faFilePdf} className="w-24 h-24 text-red-500 mx-auto mb-4" />
+                            <p className="text-gray-800 dark:text-white mb-4">Este archivo no se puede previsualizar</p>
+                            <a
+                                href={file}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-primary inline-flex items-center gap-2"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <FontAwesomeIcon icon={faDownload} />
+                                Descargar Archivo
+                            </a>
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -711,7 +759,7 @@ const EditarTicket = () => {
                 </li>
             </ul>
 
-            <ImageModal image={modalImage} onClose={() => setModalImage(null)} />
+            <FileModal file={modalFile} fileType={modalFileType} onClose={() => setModalFile(null)} />
 
             <div className="pt-5">
                 <div className="panel">
@@ -982,7 +1030,7 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 3: DATOS DEL PRODUCTO - CON SELECT2 Y BOTONES */}
+                            {/* SECCIÓN 3: DATOS DEL PRODUCTO */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faLaptop} className="w-5 h-5 text-primary" />
@@ -1008,8 +1056,6 @@ const EditarTicket = () => {
                                         </button>
                                     </div>
                                     <Select
-                                        id="idCategoria"
-                                        name="idCategoria"
                                         options={categoriaOptions}
                                         value={categoriaOptions.find((option) => option.value === formik.values.idCategoria)}
                                         onChange={handleCategoriaChange}
@@ -1017,7 +1063,7 @@ const EditarTicket = () => {
                                         placeholder="Seleccione categoría"
                                         isClearable
                                         isSearchable
-                                        styles={selectStyles}
+                                        styles={getSelectStyles(isDarkMode)}
                                         className={formik.touched.idCategoria && formik.errors.idCategoria ? 'has-error' : ''}
                                         isDisabled={submitting}
                                     />
@@ -1041,8 +1087,6 @@ const EditarTicket = () => {
                                         </button>
                                     </div>
                                     <Select
-                                        id="idModelo"
-                                        name="idModelo"
                                         options={modeloOptions}
                                         value={modeloOptions.find((option) => option.value === formik.values.idModelo)}
                                         onChange={handleModeloChange}
@@ -1050,7 +1094,7 @@ const EditarTicket = () => {
                                         placeholder={loadingModelos ? 'Cargando...' : !formik.values.idCategoria ? 'Primero seleccione categoría' : 'Seleccione modelo'}
                                         isClearable
                                         isSearchable
-                                        styles={selectStyles}
+                                        styles={getSelectStyles(isDarkMode)}
                                         className={formik.touched.idModelo && formik.errors.idModelo ? 'has-error' : ''}
                                         isDisabled={!formik.values.idCategoria || submitting || loadingModelos}
                                         isLoading={loadingModelos}
@@ -1108,7 +1152,6 @@ const EditarTicket = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* CAMPO DE FECHA CON FLATPICKR - CON SOPORTE MODO OSCURO */}
                                     <div>
                                         <label htmlFor="fechaCompra" className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faCalendar} className="w-4 h-4 text-gray-500" />
@@ -1152,23 +1195,23 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS */}
+                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS - MODIFICADO */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faCamera} className="w-5 h-5 text-primary" />
                                     Archivos Adjuntos
                                 </h2>
-                                <p className="text-sm text-gray-500 mt-1">Sube nuevas imágenes para reemplazar las existentes (máx. 5MB por imagen)</p>
+                                <p className="text-sm text-gray-500 mt-1">Sube nuevas imágenes (JPG, PNG, GIF) o documentos (PDF, DOC, DOCX). Máx. 10MB por archivo</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Foto Falla */}
                                 <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
                                     <label className="flex items-center gap-2 mb-3 font-medium">
-                                        <div className="bg-blue-100 p-2 rounded-full">
-                                            <FontAwesomeIcon icon={faVideo} className="w-4 h-4 text-blue-600" />
+                                        <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full">
+                                            <FontAwesomeIcon icon={faVideo} className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                         </div>
-                                        Foto/Video de la Falla
+                                        Evidencia de la Falla
                                     </label>
 
                                     <div className="flex flex-col items-center gap-3">
@@ -1178,7 +1221,7 @@ const EditarTicket = () => {
                                                     src={previewFalla}
                                                     alt="Preview nueva falla"
                                                     className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-blue-400"
-                                                    onClick={() => setModalImage(previewFalla)}
+                                                    onClick={() => setModalFile(previewFalla, 'image')}
                                                 />
                                                 <button
                                                     type="button"
@@ -1186,25 +1229,65 @@ const EditarTicket = () => {
                                                     onClick={() => {
                                                         setFileFalla(null);
                                                         setPreviewFalla(null);
+                                                        setFileTypeFalla(null);
+                                                        setFileNameFalla('');
                                                         if (fileInputFallaRef.current) fileInputFallaRef.current.value = '';
                                                     }}
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">Nueva imagen</div>
+                                                <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">Nuevo archivo</div>
+                                            </div>
+                                        ) : fileFalla ? (
+                                            <div className="relative w-full">
+                                                <div 
+                                                    className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border-2 border-blue-400"
+                                                    onClick={() => handleFilePreview(fileFalla, fileTypeFalla, null, URL.createObjectURL(fileFalla))}
+                                                >
+                                                    <FontAwesomeIcon icon={getFileIcon(fileNameFalla, fileTypeFalla)} className={`w-16 h-16 ${getFileIconColor(fileNameFalla)} mb-2`} />
+                                                    <p className="text-sm text-gray-600 dark:text-gray-300 text-center px-2 break-all">{fileNameFalla}</p>
+                                                    <p className="text-xs text-gray-400 mt-1">{getFileTypeText(fileNameFalla)}</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 hover:bg-red-600 transition-colors shadow-lg"
+                                                    onClick={() => {
+                                                        setFileFalla(null);
+                                                        setPreviewFalla(null);
+                                                        setFileTypeFalla(null);
+                                                        setFileNameFalla('');
+                                                        if (fileInputFallaRef.current) fileInputFallaRef.current.value = '';
+                                                    }}
+                                                >
+                                                    <FontAwesomeIcon icon={faTimes} />
+                                                </button>
+                                                <div className="absolute bottom-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">Nuevo archivo</div>
                                             </div>
                                         ) : formik.values.fotoVideoFalla ? (
                                             <div className="relative w-full">
-                                                <img
-                                                    src={formik.values.fotoVideoFalla}
-                                                    alt="Foto falla actual"
-                                                    className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-gray-300"
-                                                    onClick={() => setModalImage(formik.values.fotoVideoFalla)}
-                                                    onError={(e) => {
-                                                        e.target.onerror = null;
-                                                        e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Imagen+no+disponible';
-                                                    }}
-                                                />
+                                                {formik.values.fotoVideoFalla.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                                                    <img
+                                                        src={formik.values.fotoVideoFalla}
+                                                        alt="Foto falla actual"
+                                                        className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-gray-300"
+                                                        onClick={() => setModalFile(formik.values.fotoVideoFalla, 'image')}
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Archivo+no+disponible';
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div 
+                                                        className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 border-gray-300"
+                                                        onClick={() => window.open(formik.values.fotoVideoFalla, '_blank')}
+                                                    >
+                                                        <FontAwesomeIcon icon={getFileIcon(formik.values.fotoVideoFalla, '')} className={`w-16 h-16 ${getFileIconColor(formik.values.fotoVideoFalla)} mb-2`} />
+                                                        <p className="text-sm text-gray-600 dark:text-gray-300 text-center px-2 break-all">
+                                                            {formik.values.fotoVideoFalla.split('/').pop()}
+                                                        </p>
+                                                        <p className="text-xs text-gray-400 mt-1">{getFileTypeText(formik.values.fotoVideoFalla)}</p>
+                                                    </div>
+                                                )}
                                                 <button
                                                     type="button"
                                                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 hover:bg-red-600 transition-colors shadow-lg"
@@ -1215,26 +1298,26 @@ const EditarTicket = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Imagen actual</div>
+                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Archivo actual</div>
                                             </div>
                                         ) : (
                                             <div className="w-full">
                                                 <input
                                                     ref={fileInputFallaRef}
                                                     type="file"
-                                                    accept="image/*"
-                                                    onChange={(e) => handleImageChange(e, setFileFalla, setPreviewFalla, 'fotoVideoFalla')}
+                                                    accept="image/jpeg,image/png,image/jpg,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                                    onChange={(e) => handleFileChange(e, setFileFalla, setPreviewFalla, setFileTypeFalla, setFileNameFalla, 'fotoVideoFalla')}
                                                     className="hidden"
                                                     id="upload-falla"
                                                     disabled={submitting}
                                                 />
                                                 <label
                                                     htmlFor="upload-falla"
-                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-100"
+                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                                 >
                                                     <FontAwesomeIcon icon={faCamera} className="w-8 h-8 text-gray-400 mb-2" />
                                                     <span className="text-sm text-gray-500">Seleccionar archivo</span>
-                                                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, GIF hasta 5MB</span>
+                                                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, GIF, PDF, DOC, DOCX (10MB max)</span>
                                                 </label>
                                             </div>
                                         )}
@@ -1244,10 +1327,10 @@ const EditarTicket = () => {
                                 {/* Foto Boleta */}
                                 <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
                                     <label className="flex items-center gap-2 mb-3 font-medium">
-                                        <div className="bg-green-100 p-2 rounded-full">
-                                            <FontAwesomeIcon icon={faFileInvoice} className="w-4 h-4 text-green-600" />
+                                        <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full">
+                                            <FontAwesomeIcon icon={faFileInvoice} className="w-4 h-4 text-green-600 dark:text-green-400" />
                                         </div>
-                                        Foto de Boleta/Factura
+                                        Boleta/Factura de Compra
                                     </label>
 
                                     <div className="flex flex-col items-center gap-3">
@@ -1257,7 +1340,7 @@ const EditarTicket = () => {
                                                     src={previewBoleta}
                                                     alt="Preview nueva boleta"
                                                     className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-green-400"
-                                                    onClick={() => setModalImage(previewBoleta)}
+                                                    onClick={() => setModalFile(previewBoleta, 'image')}
                                                 />
                                                 <button
                                                     type="button"
@@ -1265,25 +1348,65 @@ const EditarTicket = () => {
                                                     onClick={() => {
                                                         setFileBoleta(null);
                                                         setPreviewBoleta(null);
+                                                        setFileTypeBoleta(null);
+                                                        setFileNameBoleta('');
                                                         if (fileInputBoletaRef.current) fileInputBoletaRef.current.value = '';
                                                     }}
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded-full">Nueva imagen</div>
+                                                <div className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded-full">Nuevo archivo</div>
+                                            </div>
+                                        ) : fileBoleta ? (
+                                            <div className="relative w-full">
+                                                <div 
+                                                    className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border-2 border-green-400"
+                                                    onClick={() => handleFilePreview(fileBoleta, fileTypeBoleta, null, URL.createObjectURL(fileBoleta))}
+                                                >
+                                                    <FontAwesomeIcon icon={getFileIcon(fileNameBoleta, fileTypeBoleta)} className={`w-16 h-16 ${getFileIconColor(fileNameBoleta)} mb-2`} />
+                                                    <p className="text-sm text-gray-600 dark:text-gray-300 text-center px-2 break-all">{fileNameBoleta}</p>
+                                                    <p className="text-xs text-gray-400 mt-1">{getFileTypeText(fileNameBoleta)}</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 hover:bg-red-600 transition-colors shadow-lg"
+                                                    onClick={() => {
+                                                        setFileBoleta(null);
+                                                        setPreviewBoleta(null);
+                                                        setFileTypeBoleta(null);
+                                                        setFileNameBoleta('');
+                                                        if (fileInputBoletaRef.current) fileInputBoletaRef.current.value = '';
+                                                    }}
+                                                >
+                                                    <FontAwesomeIcon icon={faTimes} />
+                                                </button>
+                                                <div className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded-full">Nuevo archivo</div>
                                             </div>
                                         ) : formik.values.fotoBoletaFactura ? (
                                             <div className="relative w-full">
-                                                <img
-                                                    src={formik.values.fotoBoletaFactura}
-                                                    alt="Foto boleta actual"
-                                                    className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-gray-300"
-                                                    onClick={() => setModalImage(formik.values.fotoBoletaFactura)}
-                                                    onError={(e) => {
-                                                        e.target.onerror = null;
-                                                        e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Imagen+no+disponible';
-                                                    }}
-                                                />
+                                                {formik.values.fotoBoletaFactura.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                                                    <img
+                                                        src={formik.values.fotoBoletaFactura}
+                                                        alt="Foto boleta actual"
+                                                        className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-gray-300"
+                                                        onClick={() => setModalFile(formik.values.fotoBoletaFactura, 'image')}
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Archivo+no+disponible';
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div 
+                                                        className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 border-gray-300"
+                                                        onClick={() => window.open(formik.values.fotoBoletaFactura, '_blank')}
+                                                    >
+                                                        <FontAwesomeIcon icon={getFileIcon(formik.values.fotoBoletaFactura, '')} className={`w-16 h-16 ${getFileIconColor(formik.values.fotoBoletaFactura)} mb-2`} />
+                                                        <p className="text-sm text-gray-600 dark:text-gray-300 text-center px-2 break-all">
+                                                            {formik.values.fotoBoletaFactura.split('/').pop()}
+                                                        </p>
+                                                        <p className="text-xs text-gray-400 mt-1">{getFileTypeText(formik.values.fotoBoletaFactura)}</p>
+                                                    </div>
+                                                )}
                                                 <button
                                                     type="button"
                                                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 hover:bg-red-600 transition-colors shadow-lg"
@@ -1294,26 +1417,26 @@ const EditarTicket = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Imagen actual</div>
+                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Archivo actual</div>
                                             </div>
                                         ) : (
                                             <div className="w-full">
                                                 <input
                                                     ref={fileInputBoletaRef}
                                                     type="file"
-                                                    accept="image/*"
-                                                    onChange={(e) => handleImageChange(e, setFileBoleta, setPreviewBoleta, 'fotoBoletaFactura')}
+                                                    accept="image/jpeg,image/png,image/jpg,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                                    onChange={(e) => handleFileChange(e, setFileBoleta, setPreviewBoleta, setFileTypeBoleta, setFileNameBoleta, 'fotoBoletaFactura')}
                                                     className="hidden"
                                                     id="upload-boleta"
                                                     disabled={submitting}
                                                 />
                                                 <label
                                                     htmlFor="upload-boleta"
-                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-100"
+                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                                 >
                                                     <FontAwesomeIcon icon={faFileInvoice} className="w-8 h-8 text-gray-400 mb-2" />
                                                     <span className="text-sm text-gray-500">Seleccionar archivo</span>
-                                                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, PDF hasta 5MB</span>
+                                                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, GIF, PDF, DOC, DOCX (10MB max)</span>
                                                 </label>
                                             </div>
                                         )}
@@ -1323,10 +1446,10 @@ const EditarTicket = () => {
                                 {/* Foto Serie */}
                                 <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
                                     <label className="flex items-center gap-2 mb-3 font-medium">
-                                        <div className="bg-purple-100 p-2 rounded-full">
-                                            <FontAwesomeIcon icon={faImage} className="w-4 h-4 text-purple-600" />
+                                        <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full">
+                                            <FontAwesomeIcon icon={faImage} className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                                         </div>
-                                        Foto del Número de Serie
+                                        Número de Serie
                                     </label>
 
                                     <div className="flex flex-col items-center gap-3">
@@ -1336,7 +1459,7 @@ const EditarTicket = () => {
                                                     src={previewSerie}
                                                     alt="Preview nueva serie"
                                                     className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-purple-400"
-                                                    onClick={() => setModalImage(previewSerie)}
+                                                    onClick={() => setModalFile(previewSerie, 'image')}
                                                 />
                                                 <button
                                                     type="button"
@@ -1344,25 +1467,65 @@ const EditarTicket = () => {
                                                     onClick={() => {
                                                         setFileSerie(null);
                                                         setPreviewSerie(null);
+                                                        setFileTypeSerie(null);
+                                                        setFileNameSerie('');
                                                         if (fileInputSerieRef.current) fileInputSerieRef.current.value = '';
                                                     }}
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-full">Nueva imagen</div>
+                                                <div className="absolute bottom-2 left-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-full">Nuevo archivo</div>
+                                            </div>
+                                        ) : fileSerie ? (
+                                            <div className="relative w-full">
+                                                <div 
+                                                    className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border-2 border-purple-400"
+                                                    onClick={() => handleFilePreview(fileSerie, fileTypeSerie, null, URL.createObjectURL(fileSerie))}
+                                                >
+                                                    <FontAwesomeIcon icon={getFileIcon(fileNameSerie, fileTypeSerie)} className={`w-16 h-16 ${getFileIconColor(fileNameSerie)} mb-2`} />
+                                                    <p className="text-sm text-gray-600 dark:text-gray-300 text-center px-2 break-all">{fileNameSerie}</p>
+                                                    <p className="text-xs text-gray-400 mt-1">{getFileTypeText(fileNameSerie)}</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 hover:bg-red-600 transition-colors shadow-lg"
+                                                    onClick={() => {
+                                                        setFileSerie(null);
+                                                        setPreviewSerie(null);
+                                                        setFileTypeSerie(null);
+                                                        setFileNameSerie('');
+                                                        if (fileInputSerieRef.current) fileInputSerieRef.current.value = '';
+                                                    }}
+                                                >
+                                                    <FontAwesomeIcon icon={faTimes} />
+                                                </button>
+                                                <div className="absolute bottom-2 left-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-full">Nuevo archivo</div>
                                             </div>
                                         ) : formik.values.fotoNumeroSerie ? (
                                             <div className="relative w-full">
-                                                <img
-                                                    src={formik.values.fotoNumeroSerie}
-                                                    alt="Foto serie actual"
-                                                    className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-gray-300"
-                                                    onClick={() => setModalImage(formik.values.fotoNumeroSerie)}
-                                                    onError={(e) => {
-                                                        e.target.onerror = null;
-                                                        e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Imagen+no+disponible';
-                                                    }}
-                                                />
+                                                {formik.values.fotoNumeroSerie.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                                                    <img
+                                                        src={formik.values.fotoNumeroSerie}
+                                                        alt="Foto serie actual"
+                                                        className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-gray-300"
+                                                        onClick={() => setModalFile(formik.values.fotoNumeroSerie, 'image')}
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Archivo+no+disponible';
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div 
+                                                        className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 border-gray-300"
+                                                        onClick={() => window.open(formik.values.fotoNumeroSerie, '_blank')}
+                                                    >
+                                                        <FontAwesomeIcon icon={getFileIcon(formik.values.fotoNumeroSerie, '')} className={`w-16 h-16 ${getFileIconColor(formik.values.fotoNumeroSerie)} mb-2`} />
+                                                        <p className="text-sm text-gray-600 dark:text-gray-300 text-center px-2 break-all">
+                                                            {formik.values.fotoNumeroSerie.split('/').pop()}
+                                                        </p>
+                                                        <p className="text-xs text-gray-400 mt-1">{getFileTypeText(formik.values.fotoNumeroSerie)}</p>
+                                                    </div>
+                                                )}
                                                 <button
                                                     type="button"
                                                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 hover:bg-red-600 transition-colors shadow-lg"
@@ -1373,26 +1536,26 @@ const EditarTicket = () => {
                                                 >
                                                     <FontAwesomeIcon icon={faTimes} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Imagen actual</div>
+                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Archivo actual</div>
                                             </div>
                                         ) : (
                                             <div className="w-full">
                                                 <input
                                                     ref={fileInputSerieRef}
                                                     type="file"
-                                                    accept="image/*"
-                                                    onChange={(e) => handleImageChange(e, setFileSerie, setPreviewSerie, 'fotoNumeroSerie')}
+                                                    accept="image/jpeg,image/png,image/jpg,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                                    onChange={(e) => handleFileChange(e, setFileSerie, setPreviewSerie, setFileTypeSerie, setFileNameSerie, 'fotoNumeroSerie')}
                                                     className="hidden"
                                                     id="upload-serie"
                                                     disabled={submitting}
                                                 />
                                                 <label
                                                     htmlFor="upload-serie"
-                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-100"
+                                                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                                 >
                                                     <FontAwesomeIcon icon={faImage} className="w-8 h-8 text-gray-400 mb-2" />
                                                     <span className="text-sm text-gray-500">Seleccionar archivo</span>
-                                                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, GIF hasta 5MB</span>
+                                                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, GIF, PDF, DOC, DOCX (10MB max)</span>
                                                 </label>
                                             </div>
                                         )}
