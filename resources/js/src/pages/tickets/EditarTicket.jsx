@@ -85,7 +85,7 @@ const EditarTicket = () => {
     const [distritosFiltrados, setDistritosFiltrados] = useState([]);
     const [loadingUbigeo, setLoadingUbigeo] = useState(true);
 
-    // Estados para archivos - MODIFICADO para manejar cualquier tipo
+    // Estados para archivos
     const [fileFalla, setFileFalla] = useState(null);
     const [fileBoleta, setFileBoleta] = useState(null);
     const [fileSerie, setFileSerie] = useState(null);
@@ -107,10 +107,79 @@ const EditarTicket = () => {
     const API_URL = 'http://127.0.0.1:8000/api';
 
     // ============================================
-    // FUNCIONES AUXILIARES PARA ARCHIVOS
+    // FUNCIONES AUXILIARES PARA ARCHIVOS (CORREGIDAS)
     // ============================================
 
-    // Función auxiliar para obtener el icono según el tipo de archivo
+    // Función para determinar si una URL es una imagen
+    const isImageUrl = (url) => {
+        if (!url) return false;
+        const urlWithoutParams = url.split('?')[0];
+        const extension = urlWithoutParams.split('.').pop()?.toLowerCase();
+        return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension);
+    };
+
+    // Función para obtener el icono según el tipo de archivo (por URL)
+    const getFileIconFromUrl = (url) => {
+        if (!url) return faFile;
+        
+        if (isImageUrl(url)) return faImage;
+        
+        const urlWithoutParams = url.split('?')[0];
+        const extension = urlWithoutParams.split('.').pop()?.toLowerCase();
+        
+        if (extension === 'pdf') return faFilePdf;
+        if (extension === 'doc' || extension === 'docx') return faFileWord;
+        return faFile;
+    };
+
+    // Función para obtener el color del icono según el tipo de archivo (por URL)
+    const getFileIconColorFromUrl = (url) => {
+        if (!url) return 'text-gray-500';
+        
+        if (isImageUrl(url)) return 'text-green-500';
+        
+        const urlWithoutParams = url.split('?')[0];
+        const extension = urlWithoutParams.split('.').pop()?.toLowerCase();
+        
+        if (extension === 'pdf') return 'text-red-500';
+        if (extension === 'doc' || extension === 'docx') return 'text-blue-500';
+        return 'text-gray-500';
+    };
+
+    // Función para obtener el texto del tipo de archivo (por URL)
+    const getFileTypeTextFromUrl = (url) => {
+        if (!url) return 'Archivo';
+        
+        if (isImageUrl(url)) return 'Imagen';
+        
+        const urlWithoutParams = url.split('?')[0];
+        const extension = urlWithoutParams.split('.').pop()?.toUpperCase();
+        
+        if (extension === 'PDF') return 'Documento PDF';
+        if (extension === 'DOC' || extension === 'DOCX') return 'Documento Word';
+        return `Archivo ${extension}`;
+    };
+
+    // Función para obtener el nombre del archivo desde la URL
+    const getFileNameFromUrl = (url) => {
+        if (!url) return 'archivo';
+        const urlWithoutParams = url.split('?')[0];
+        return urlWithoutParams.split('/').pop() || 'archivo';
+    };
+
+    // Función para manejar la visualización del archivo existente
+    const handleExistingFilePreview = (fileUrl) => {
+        if (!fileUrl) return;
+        
+        if (isImageUrl(fileUrl)) {
+            setModalFile(fileUrl);
+            setModalFileType('image');
+        } else {
+            window.open(fileUrl, '_blank');
+        }
+    };
+
+    // Función para obtener el icono según el archivo nuevo (por nombre y tipo)
     const getFileIcon = (fileName, fileType) => {
         if (!fileName) return faFile;
         
@@ -122,7 +191,7 @@ const EditarTicket = () => {
         return faFile;
     };
 
-    // Función auxiliar para obtener el color del icono según el tipo de archivo
+    // Función para obtener el color del icono según el archivo nuevo
     const getFileIconColor = (fileName) => {
         if (!fileName) return 'text-gray-500';
         
@@ -133,7 +202,7 @@ const EditarTicket = () => {
         return 'text-gray-500';
     };
 
-    // Función auxiliar para obtener el texto del tipo de archivo
+    // Función para obtener el texto del tipo de archivo (por nombre)
     const getFileTypeText = (fileName) => {
         if (!fileName) return 'Archivo';
         
@@ -147,7 +216,7 @@ const EditarTicket = () => {
         return `Archivo ${extension}`;
     };
 
-    // Función para manejar la visualización del archivo
+    // Función para manejar la visualización del archivo nuevo
     const handleFilePreview = (file, fileType, previewUrl, fileUrl) => {
         if (!file) return;
         
@@ -155,7 +224,6 @@ const EditarTicket = () => {
             setModalFile(previewUrl);
             setModalFileType('image');
         } else {
-            // Para PDFs y documentos, abrir en nueva pestaña
             if (previewUrl || fileUrl) {
                 window.open(previewUrl || fileUrl, '_blank');
             }
@@ -198,7 +266,7 @@ const EditarTicket = () => {
         }
     };
 
-    // Esquema de validación - MODIFICADO para aceptar archivos
+    // Esquema de validación
     const validationSchema = Yup.object({
         nombreCompleto: Yup.string().required('El nombre completo es requerido').min(3, 'Mínimo 3 caracteres').max(255, 'Máximo 255 caracteres'),
         correoElectronico: Yup.string().email('Correo electrónico inválido').required('El correo electrónico es requerido').max(255, 'Máximo 255 caracteres'),
@@ -280,7 +348,6 @@ const EditarTicket = () => {
                     }
                 });
 
-                // Solo agregar archivos si se seleccionaron nuevos
                 if (fileFalla) formData.append('fotoVideoFalla', fileFalla);
                 if (fileBoleta) formData.append('fotoBoletaFactura', fileBoleta);
                 if (fileSerie) formData.append('fotoNumeroSerie', fileSerie);
@@ -394,7 +461,6 @@ const EditarTicket = () => {
         formik.setFieldValue('idModelo', selectedOption ? selectedOption.value : '');
     };
 
-    // Handlers para modales
     const handleCategoriaCreada = (nuevaCategoria) => {
         setCategorias((prev) => [...prev, nuevaCategoria]);
         formik.setFieldValue('idCategoria', nuevaCategoria.idCategoria);
@@ -409,7 +475,6 @@ const EditarTicket = () => {
         formik.setFieldValue('idModelo', nuevoModelo.idModelo);
     };
 
-    // Cargar datos iniciales
     useEffect(() => {
         dispatch(setPageTitle(`Editar Ticket #${id}`));
         cargarDatosIniciales();
@@ -425,7 +490,6 @@ const EditarTicket = () => {
         };
     }, [dispatch, id]);
 
-    // Cargar ubigeos
     useEffect(() => {
         const cargarUbigeos = async () => {
             setLoadingUbigeo(true);
@@ -452,7 +516,6 @@ const EditarTicket = () => {
         cargarUbigeos();
     }, []);
 
-    // Cargar modelos cuando cambia la categoría
     useEffect(() => {
         if (formik.values.idCategoria) {
             cargarModelosPorCategoria(formik.values.idCategoria);
@@ -461,7 +524,6 @@ const EditarTicket = () => {
         }
     }, [formik.values.idCategoria]);
 
-    // Filtrar provincias
     useEffect(() => {
         if (formik.values.departamento && provincias[formik.values.departamento]) {
             setProvinciasFiltradas(provincias[formik.values.departamento]);
@@ -475,7 +537,6 @@ const EditarTicket = () => {
         }
     }, [formik.values.departamento, provincias]);
 
-    // Filtrar distritos
     useEffect(() => {
         if (formik.values.provincia && distritos[formik.values.provincia]) {
             setDistritosFiltrados(distritos[formik.values.provincia]);
@@ -487,7 +548,6 @@ const EditarTicket = () => {
         }
     }, [formik.values.provincia, distritos]);
 
-    // Inicialización de FLATPICKR
     useEffect(() => {
         const initFlatpickr = () => {
             if (fechaCompraRef.current && !loading) {
@@ -523,7 +583,6 @@ const EditarTicket = () => {
         };
     }, [loading, formik.values.fechaCompra]);
 
-    // Efecto adicional para flatpickr
     useEffect(() => {
         if (!loading && fechaCompraRef.current && !flatpickrInstance.current) {
             try {
@@ -545,7 +604,6 @@ const EditarTicket = () => {
         }
     }, [loading, fechaCompraRef.current]);
 
-    // Funciones auxiliares
     const cargarMarcas = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -652,18 +710,15 @@ const EditarTicket = () => {
         }
     };
 
-    // MODIFICADO: handleImageChange ahora maneja cualquier tipo de archivo
     const handleFileChange = (e, setFile, setPreview, setFileType, setFileName, fieldName) => {
         const file = e.target.files[0];
         if (file) {
-            // Validar tamaño máximo (10MB)
             if (file.size > 10 * 1024 * 1024) {
                 toastr.error('El archivo no debe superar los 10MB', 'Error');
                 e.target.value = '';
                 return;
             }
 
-            // Validar tipos de archivo permitidos
             const allowedTypes = [
                 'image/jpeg', 'image/png', 'image/jpg', 'image/gif',
                 'application/pdf',
@@ -681,7 +736,6 @@ const EditarTicket = () => {
             setFileType(file.type);
             setFileName(file.name);
 
-            // Si es imagen, crear preview
             if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onloadend = () => {
@@ -689,7 +743,6 @@ const EditarTicket = () => {
                 };
                 reader.readAsDataURL(file);
             } else {
-                // Para PDF y documentos, no mostrar preview
                 setPreview(null);
             }
 
@@ -745,7 +798,6 @@ const EditarTicket = () => {
 
     return (
         <div>
-            {/* Breadcrumb */}
             <ul className="flex space-x-2 rtl:space-x-reverse items-center">
                 <li>
                     <Link to="/tickets" className="text-primary hover:underline flex items-center gap-1">
@@ -763,7 +815,6 @@ const EditarTicket = () => {
 
             <div className="pt-5">
                 <div className="panel">
-                    {/* Header */}
                     <div className="mb-6 border-b border-gray-200 dark:border-gray-700 pb-5">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-full">
@@ -789,12 +840,11 @@ const EditarTicket = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-1">
-                                    <label htmlFor="nombreCompleto" className="flex items-center gap-1 font-medium">
+                                    <label className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-500" />
                                         Nombre Completo <span className="text-red-500">*</span>
                                     </label>
                                     <input
-                                        id="nombreCompleto"
                                         name="nombreCompleto"
                                         type="text"
                                         placeholder="Ej: Juan Carlos Pérez Rodríguez"
@@ -808,12 +858,11 @@ const EditarTicket = () => {
                                 </div>
 
                                 <div className="md:col-span-1">
-                                    <label htmlFor="correoElectronico" className="flex items-center gap-1 font-medium">
+                                    <label className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 text-gray-500" />
                                         Correo Electrónico <span className="text-red-500">*</span>
                                     </label>
                                     <input
-                                        id="correoElectronico"
                                         name="correoElectronico"
                                         type="email"
                                         placeholder="ejemplo@correo.com"
@@ -827,12 +876,11 @@ const EditarTicket = () => {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="idTipoDocumento" className="flex items-center gap-1 font-medium">
+                                    <label className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faIdCard} className="w-4 h-4 text-gray-500" />
                                         Tipo de Documento <span className="text-red-500">*</span>
                                     </label>
                                     <select
-                                        id="idTipoDocumento"
                                         name="idTipoDocumento"
                                         className={`form-select ${formik.touched.idTipoDocumento && formik.errors.idTipoDocumento ? 'has-error' : ''}`}
                                         value={formik.values.idTipoDocumento}
@@ -851,12 +899,11 @@ const EditarTicket = () => {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="dni_ruc_ce" className="flex items-center gap-1 font-medium">
+                                    <label className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faHashtag} className="w-4 h-4 text-gray-500" />
                                         Número de Documento <span className="text-red-500">*</span>
                                     </label>
                                     <input
-                                        id="dni_ruc_ce"
                                         name="dni_ruc_ce"
                                         type="text"
                                         placeholder="Ej: 12345678"
@@ -870,12 +917,11 @@ const EditarTicket = () => {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="telefonoFijo" className="flex items-center gap-1 font-medium">
+                                    <label className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faPhone} className="w-4 h-4 text-gray-500" />
                                         Teléfono Fijo
                                     </label>
                                     <input
-                                        id="telefonoFijo"
                                         name="telefonoFijo"
                                         type="tel"
                                         placeholder="Ej: 01-1234567"
@@ -888,12 +934,11 @@ const EditarTicket = () => {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="telefonoCelular" className="flex items-center gap-1 font-medium">
+                                    <label className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faMobile} className="w-4 h-4 text-gray-500" />
                                         Teléfono Celular <span className="text-red-500">*</span>
                                     </label>
                                     <input
-                                        id="telefonoCelular"
                                         name="telefonoCelular"
                                         type="tel"
                                         placeholder="Ej: 987654321"
@@ -918,12 +963,11 @@ const EditarTicket = () => {
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label htmlFor="direccionCompleta" className="flex items-center gap-1 font-medium">
+                                        <label className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faHome} className="w-4 h-4 text-gray-500" />
                                             Dirección Completa <span className="text-red-500">*</span>
                                         </label>
                                         <input
-                                            id="direccionCompleta"
                                             name="direccionCompleta"
                                             type="text"
                                             placeholder="Ej: Av. Principal 123, Urbanización Las Flores"
@@ -937,12 +981,11 @@ const EditarTicket = () => {
                                     </div>
 
                                     <div>
-                                        <label htmlFor="referenciaDomicilio" className="flex items-center gap-1 font-medium">
+                                        <label className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faRoad} className="w-4 h-4 text-gray-500" />
                                             Referencia
                                         </label>
                                         <input
-                                            id="referenciaDomicilio"
                                             name="referenciaDomicilio"
                                             type="text"
                                             placeholder="Ej: Frente al parque"
@@ -957,12 +1000,11 @@ const EditarTicket = () => {
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <label htmlFor="departamento" className="flex items-center gap-1 font-medium">
+                                        <label className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faGlobe} className="w-4 h-4 text-gray-500" />
                                             Departamento <span className="text-red-500">*</span>
                                         </label>
                                         <select
-                                            id="departamento"
                                             name="departamento"
                                             className={`form-select ${formik.touched.departamento && formik.errors.departamento ? 'has-error' : ''}`}
                                             value={formik.values.departamento}
@@ -981,12 +1023,11 @@ const EditarTicket = () => {
                                     </div>
 
                                     <div>
-                                        <label htmlFor="provincia" className="flex items-center gap-1 font-medium">
+                                        <label className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faBuilding} className="w-4 h-4 text-gray-500" />
                                             Provincia <span className="text-red-500">*</span>
                                         </label>
                                         <select
-                                            id="provincia"
                                             name="provincia"
                                             className={`form-select ${formik.touched.provincia && formik.errors.provincia ? 'has-error' : ''}`}
                                             value={formik.values.provincia}
@@ -1005,12 +1046,11 @@ const EditarTicket = () => {
                                     </div>
 
                                     <div>
-                                        <label htmlFor="distrito" className="flex items-center gap-1 font-medium">
+                                        <label className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faCity} className="w-4 h-4 text-gray-500" />
                                             Distrito <span className="text-red-500">*</span>
                                         </label>
                                         <select
-                                            id="distrito"
                                             name="distrito"
                                             className={`form-select ${formik.touched.distrito && formik.errors.distrito ? 'has-error' : ''}`}
                                             value={formik.values.distrito}
@@ -1039,10 +1079,9 @@ const EditarTicket = () => {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Categoría con SELECT2 */}
                                 <div>
                                     <div className="flex items-center justify-between mb-2">
-                                        <label htmlFor="idCategoria" className="flex items-center gap-1 font-medium">
+                                        <label className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faLaptop} className="w-4 h-4 text-gray-500" />
                                             Categoría <span className="text-red-500">*</span>
                                         </label>
@@ -1070,10 +1109,9 @@ const EditarTicket = () => {
                                     {formik.touched.idCategoria && formik.errors.idCategoria && <div className="text-danger text-sm mt-1">{formik.errors.idCategoria}</div>}
                                 </div>
 
-                                {/* Modelo con SELECT2 */}
                                 <div>
                                     <div className="flex items-center justify-between mb-2">
-                                        <label htmlFor="idModelo" className="flex items-center gap-1 font-medium">
+                                        <label className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faTag} className="w-4 h-4 text-gray-500" />
                                             Modelo <span className="text-red-500">*</span>
                                         </label>
@@ -1103,12 +1141,11 @@ const EditarTicket = () => {
                                 </div>
 
                                 <div className="md:col-span-2">
-                                    <label htmlFor="serieProducto" className="flex items-center gap-1 font-medium">
+                                    <label className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faHashtag} className="w-4 h-4 text-gray-500" />
                                         Número de Serie <span className="text-red-500">*</span>
                                     </label>
                                     <input
-                                        id="serieProducto"
                                         name="serieProducto"
                                         type="text"
                                         placeholder="Número de serie del equipo"
@@ -1132,12 +1169,11 @@ const EditarTicket = () => {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label htmlFor="detallesFalla" className="flex items-center gap-1 font-medium">
+                                    <label className="flex items-center gap-1 font-medium">
                                         <FontAwesomeIcon icon={faComment} className="w-4 h-4 text-gray-500" />
                                         Detalles de la Falla <span className="text-red-500">*</span>
                                     </label>
                                     <textarea
-                                        id="detallesFalla"
                                         name="detallesFalla"
                                         rows={4}
                                         className={`form-textarea ${formik.touched.detallesFalla && formik.errors.detallesFalla ? 'has-error' : ''}`}
@@ -1153,34 +1189,27 @@ const EditarTicket = () => {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label htmlFor="fechaCompra" className="flex items-center gap-1 font-medium">
+                                        <label className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faCalendar} className="w-4 h-4 text-gray-500" />
                                             Fecha de Compra <span className="text-red-500">*</span>
                                         </label>
                                         <input
                                             ref={fechaCompraRef}
-                                            id="fechaCompra"
-                                            name="fechaCompra"
                                             type="text"
                                             className={`form-input ${formik.touched.fechaCompra && formik.errors.fechaCompra ? 'has-error' : ''} dark:bg-gray-700 dark:border-gray-600 dark:text-white-dark`}
                                             placeholder="DD/MM/AAAA"
                                             autoComplete="off"
                                             disabled={submitting}
-                                            style={{
-                                                cursor: 'pointer',
-                                                position: 'relative',
-                                                zIndex: 1,
-                                            }}
+                                            style={{ cursor: 'pointer', position: 'relative', zIndex: 1 }}
                                         />
                                         {formik.touched.fechaCompra && formik.errors.fechaCompra && <div className="text-danger text-sm mt-1">{formik.errors.fechaCompra}</div>}
                                     </div>
                                     <div>
-                                        <label htmlFor="tiendaSedeCompra" className="flex items-center gap-1 font-medium">
+                                        <label className="flex items-center gap-1 font-medium">
                                             <FontAwesomeIcon icon={faStore} className="w-4 h-4 text-gray-500" />
                                             Tienda de Compra <span className="text-red-500">*</span>
                                         </label>
                                         <input
-                                            id="tiendaSedeCompra"
                                             name="tiendaSedeCompra"
                                             type="text"
                                             placeholder="Ej: Tienda Principal - Miraflores"
@@ -1195,7 +1224,7 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS - MODIFICADO */}
+                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS - CORREGIDO */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faCamera} className="w-5 h-5 text-primary" />
@@ -1265,27 +1294,27 @@ const EditarTicket = () => {
                                             </div>
                                         ) : formik.values.fotoVideoFalla ? (
                                             <div className="relative w-full">
-                                                {formik.values.fotoVideoFalla.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                                                {isImageUrl(formik.values.fotoVideoFalla) ? (
                                                     <img
                                                         src={formik.values.fotoVideoFalla}
                                                         alt="Foto falla actual"
                                                         className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-gray-300"
-                                                        onClick={() => setModalFile(formik.values.fotoVideoFalla, 'image')}
+                                                        onClick={() => handleExistingFilePreview(formik.values.fotoVideoFalla)}
                                                         onError={(e) => {
                                                             e.target.onerror = null;
-                                                            e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Archivo+no+disponible';
+                                                            e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Error+al+cargar';
                                                         }}
                                                     />
                                                 ) : (
                                                     <div 
-                                                        className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 border-gray-300"
-                                                        onClick={() => window.open(formik.values.fotoVideoFalla, '_blank')}
+                                                        className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 border-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                                        onClick={() => handleExistingFilePreview(formik.values.fotoVideoFalla)}
                                                     >
-                                                        <FontAwesomeIcon icon={getFileIcon(formik.values.fotoVideoFalla, '')} className={`w-16 h-16 ${getFileIconColor(formik.values.fotoVideoFalla)} mb-2`} />
+                                                        <FontAwesomeIcon icon={getFileIconFromUrl(formik.values.fotoVideoFalla)} className={`w-16 h-16 ${getFileIconColorFromUrl(formik.values.fotoVideoFalla)} mb-2`} />
                                                         <p className="text-sm text-gray-600 dark:text-gray-300 text-center px-2 break-all">
-                                                            {formik.values.fotoVideoFalla.split('/').pop()}
+                                                            {getFileNameFromUrl(formik.values.fotoVideoFalla)}
                                                         </p>
-                                                        <p className="text-xs text-gray-400 mt-1">{getFileTypeText(formik.values.fotoVideoFalla)}</p>
+                                                        <p className="text-xs text-gray-400 mt-1">{getFileTypeTextFromUrl(formik.values.fotoVideoFalla)}</p>
                                                     </div>
                                                 )}
                                                 <button
@@ -1324,7 +1353,7 @@ const EditarTicket = () => {
                                     </div>
                                 </div>
 
-                                {/* Foto Boleta */}
+                                {/* Foto Boleta - Mismo patrón corregido */}
                                 <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
                                     <label className="flex items-center gap-2 mb-3 font-medium">
                                         <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full">
@@ -1384,27 +1413,27 @@ const EditarTicket = () => {
                                             </div>
                                         ) : formik.values.fotoBoletaFactura ? (
                                             <div className="relative w-full">
-                                                {formik.values.fotoBoletaFactura.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                                                {isImageUrl(formik.values.fotoBoletaFactura) ? (
                                                     <img
                                                         src={formik.values.fotoBoletaFactura}
                                                         alt="Foto boleta actual"
                                                         className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-gray-300"
-                                                        onClick={() => setModalFile(formik.values.fotoBoletaFactura, 'image')}
+                                                        onClick={() => handleExistingFilePreview(formik.values.fotoBoletaFactura)}
                                                         onError={(e) => {
                                                             e.target.onerror = null;
-                                                            e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Archivo+no+disponible';
+                                                            e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Error+al+cargar';
                                                         }}
                                                     />
                                                 ) : (
                                                     <div 
-                                                        className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 border-gray-300"
-                                                        onClick={() => window.open(formik.values.fotoBoletaFactura, '_blank')}
+                                                        className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 border-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                                        onClick={() => handleExistingFilePreview(formik.values.fotoBoletaFactura)}
                                                     >
-                                                        <FontAwesomeIcon icon={getFileIcon(formik.values.fotoBoletaFactura, '')} className={`w-16 h-16 ${getFileIconColor(formik.values.fotoBoletaFactura)} mb-2`} />
+                                                        <FontAwesomeIcon icon={getFileIconFromUrl(formik.values.fotoBoletaFactura)} className={`w-16 h-16 ${getFileIconColorFromUrl(formik.values.fotoBoletaFactura)} mb-2`} />
                                                         <p className="text-sm text-gray-600 dark:text-gray-300 text-center px-2 break-all">
-                                                            {formik.values.fotoBoletaFactura.split('/').pop()}
+                                                            {getFileNameFromUrl(formik.values.fotoBoletaFactura)}
                                                         </p>
-                                                        <p className="text-xs text-gray-400 mt-1">{getFileTypeText(formik.values.fotoBoletaFactura)}</p>
+                                                        <p className="text-xs text-gray-400 mt-1">{getFileTypeTextFromUrl(formik.values.fotoBoletaFactura)}</p>
                                                     </div>
                                                 )}
                                                 <button
@@ -1443,7 +1472,7 @@ const EditarTicket = () => {
                                     </div>
                                 </div>
 
-                                {/* Foto Serie */}
+                                {/* Foto Serie - Mismo patrón corregido */}
                                 <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
                                     <label className="flex items-center gap-2 mb-3 font-medium">
                                         <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full">
@@ -1503,27 +1532,27 @@ const EditarTicket = () => {
                                             </div>
                                         ) : formik.values.fotoNumeroSerie ? (
                                             <div className="relative w-full">
-                                                {formik.values.fotoNumeroSerie.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                                                {isImageUrl(formik.values.fotoNumeroSerie) ? (
                                                     <img
                                                         src={formik.values.fotoNumeroSerie}
                                                         alt="Foto serie actual"
                                                         className="w-full h-48 object-cover rounded-lg cursor-pointer border-2 border-gray-300"
-                                                        onClick={() => setModalFile(formik.values.fotoNumeroSerie, 'image')}
+                                                        onClick={() => handleExistingFilePreview(formik.values.fotoNumeroSerie)}
                                                         onError={(e) => {
                                                             e.target.onerror = null;
-                                                            e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Archivo+no+disponible';
+                                                            e.target.src = 'https://placehold.co/300x200/cccccc/000?text=Error+al+cargar';
                                                         }}
                                                     />
                                                 ) : (
                                                     <div 
-                                                        className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 border-gray-300"
-                                                        onClick={() => window.open(formik.values.fotoNumeroSerie, '_blank')}
+                                                        className="w-full h-48 bg-gray-100 dark:bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 border-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                                        onClick={() => handleExistingFilePreview(formik.values.fotoNumeroSerie)}
                                                     >
-                                                        <FontAwesomeIcon icon={getFileIcon(formik.values.fotoNumeroSerie, '')} className={`w-16 h-16 ${getFileIconColor(formik.values.fotoNumeroSerie)} mb-2`} />
+                                                        <FontAwesomeIcon icon={getFileIconFromUrl(formik.values.fotoNumeroSerie)} className={`w-16 h-16 ${getFileIconColorFromUrl(formik.values.fotoNumeroSerie)} mb-2`} />
                                                         <p className="text-sm text-gray-600 dark:text-gray-300 text-center px-2 break-all">
-                                                            {formik.values.fotoNumeroSerie.split('/').pop()}
+                                                            {getFileNameFromUrl(formik.values.fotoNumeroSerie)}
                                                         </p>
-                                                        <p className="text-xs text-gray-400 mt-1">{getFileTypeText(formik.values.fotoNumeroSerie)}</p>
+                                                        <p className="text-xs text-gray-400 mt-1">{getFileTypeTextFromUrl(formik.values.fotoNumeroSerie)}</p>
                                                     </div>
                                                 )}
                                                 <button
@@ -1623,7 +1652,6 @@ const EditarTicket = () => {
 
             {/* Modales */}
             <ModalCategoria modal={modalCategoria} setModal={setModalCategoria} onCategoriaCreada={handleCategoriaCreada} API_URL={API_URL} />
-
             <ModalModelo modal={modalModelo} setModal={setModalModelo} onModeloCreado={handleModeloCreado} categorias={categorias} marcas={marcas} API_URL={API_URL} />
         </div>
     );

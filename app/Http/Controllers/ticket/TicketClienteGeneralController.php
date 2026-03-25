@@ -89,7 +89,6 @@ class TicketClienteGeneralController extends Controller
     public function store(Request $request)
     {
         try {
-            // Validar los datos - MODIFICADO para aceptar PDF, DOC, DOCX
             $validator = Validator::make($request->all(), [
                 // Datos personales
                 'nombreCompleto' => 'required|string|max:255',
@@ -116,7 +115,7 @@ class TicketClienteGeneralController extends Controller
                 'fechaCompra' => 'required|date|before_or_equal:today',
                 'tiendaSedeCompra' => 'required|string|max:255',
 
-                // Evidencias (archivos) - MODIFICADO para aceptar más tipos
+                // Evidencias (archivos)
                 'fotoVideoFalla' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
                 'fotoBoletaFactura' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
                 'fotoNumeroSerie' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
@@ -151,7 +150,6 @@ class TicketClienteGeneralController extends Controller
             $idUsuarioCreador = $user->idUsuario;
             $numeroTicket = $this->generarNumeroTicket();
 
-            // Procesar archivos - MODIFICADO para manejar cualquier tipo
             $fotoVideoFalla = $this->subirArchivo($request->file('fotoVideoFalla'), 'fallas');
             $fotoBoletaFactura = $this->subirArchivo($request->file('fotoBoletaFactura'), 'boletas');
             $fotoNumeroSerie = $this->subirArchivo($request->file('fotoNumeroSerie'), 'series');
@@ -187,7 +185,6 @@ class TicketClienteGeneralController extends Controller
 
             $ticket->load(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador']);
 
-            // Crear notificación
             $notificacionId = \DB::table('notificaciones_ticket_general')->insertGetId([
                 'idTicketClienteGeneral' => $ticket->idTicketClienteGeneral,
                 'estado_web' => 0,
@@ -280,6 +277,7 @@ class TicketClienteGeneralController extends Controller
                 ], 404);
             }
 
+            // Validación MODIFICADA: acepta string para URLs existentes
             $validator = Validator::make($request->all(), [
                 'nombreCompleto' => 'sometimes|required|string|max:255',
                 'correoElectronico' => 'sometimes|required|email|max:255',
@@ -298,9 +296,10 @@ class TicketClienteGeneralController extends Controller
                 'detallesFalla' => 'sometimes|required|string',
                 'fechaCompra' => 'sometimes|required|date|before_or_equal:today',
                 'tiendaSedeCompra' => 'sometimes|required|string|max:255',
-                'fotoVideoFalla' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
-                'fotoBoletaFactura' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
-                'fotoNumeroSerie' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10240',
+                // MODIFICADO: Acepta archivo o string (URL existente)
+                'fotoVideoFalla' => 'nullable',
+                'fotoBoletaFactura' => 'nullable',
+                'fotoNumeroSerie' => 'nullable',
                 'ubicacionGoogleMaps' => 'nullable|url|max:500',
                 'estado' => 'sometimes|integer'
             ]);
@@ -314,12 +313,16 @@ class TicketClienteGeneralController extends Controller
 
             $data = $request->except(['_method', 'fotoVideoFalla', 'fotoBoletaFactura', 'fotoNumeroSerie']);
 
+            // Procesar archivos SOLO si se subió un archivo nuevo (no un string URL)
             if ($request->hasFile('fotoVideoFalla')) {
                 if ($ticket->fotoVideoFalla) {
                     $oldPath = str_replace(asset('storage'), 'public', $ticket->fotoVideoFalla);
                     Storage::delete($oldPath);
                 }
                 $data['fotoVideoFalla'] = $this->subirArchivo($request->file('fotoVideoFalla'), 'fallas');
+            } else if ($request->input('fotoVideoFalla') !== null && $request->input('fotoVideoFalla') !== '') {
+                // Si es una URL (string) y no es vacío, mantener el valor actual
+                $data['fotoVideoFalla'] = $request->input('fotoVideoFalla');
             }
 
             if ($request->hasFile('fotoBoletaFactura')) {
@@ -328,6 +331,8 @@ class TicketClienteGeneralController extends Controller
                     Storage::delete($oldPath);
                 }
                 $data['fotoBoletaFactura'] = $this->subirArchivo($request->file('fotoBoletaFactura'), 'boletas');
+            } else if ($request->input('fotoBoletaFactura') !== null && $request->input('fotoBoletaFactura') !== '') {
+                $data['fotoBoletaFactura'] = $request->input('fotoBoletaFactura');
             }
 
             if ($request->hasFile('fotoNumeroSerie')) {
@@ -336,6 +341,8 @@ class TicketClienteGeneralController extends Controller
                     Storage::delete($oldPath);
                 }
                 $data['fotoNumeroSerie'] = $this->subirArchivo($request->file('fotoNumeroSerie'), 'series');
+            } else if ($request->input('fotoNumeroSerie') !== null && $request->input('fotoNumeroSerie') !== '') {
+                $data['fotoNumeroSerie'] = $request->input('fotoNumeroSerie');
             }
 
             $ticket->update($data);
@@ -539,7 +546,7 @@ class TicketClienteGeneralController extends Controller
     }
 
     /**
-     * Subir archivo al servidor - MODIFICADO para manejar cualquier tipo
+     * Subir archivo al servidor
      */
     private function subirArchivo($file, $carpeta)
     {
