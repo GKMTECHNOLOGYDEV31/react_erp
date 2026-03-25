@@ -64,7 +64,6 @@ class ModeloController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Modelo creado exitosamente',
                 'data' => [
                     'idModelo' => $modelo->idModelo,
                     'nombre' => $modelo->nombre,
