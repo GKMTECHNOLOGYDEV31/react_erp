@@ -2,11 +2,10 @@ import toastr from 'toastr';
 import 'toastr/build/toastr.min.css';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext'; // 👈 Importa el hook personalizado
-import { login as loginService } from '../../services/authService'; // Renombra para evitar conflicto
-// import { Usuario } from '../../types/auth'; // (opcional, si lo necesitas)
+import { useAuth } from '../../context/AuthContext';
+import { login as loginService } from '../../services/authService';
 
-// Configuración global de toastr (puede estar en otro lado, pero se deja igual)
+// Configuración global de toastr
 toastr.options = {
   closeButton: true,
   progressBar: true,
@@ -15,6 +14,13 @@ toastr.options = {
   showMethod: 'fadeIn',
   hideMethod: 'fadeOut',
   preventDuplicates: true,
+};
+
+// Mapeo de roles por ID
+const ROLES = {
+  ADMINISTRADOR: 1,
+  CALL_CENTER: 2,
+  INVITADO: 3
 };
 
 const InicioPage: React.FC = () => {
@@ -47,19 +53,28 @@ const InicioPage: React.FC = () => {
       // Llama al servicio de autenticación (devuelve LoginResponse)
       const data = await loginService(documento, clave);
 
-      // Usa la función login del contexto para guardar usuario y token
-      // (esto también persiste en localStorage automáticamente)
-      login(data);
-
-      // Limpiar todos los toasts
+      // Obtener el idRol antes de hacer cualquier otra cosa
+      const idRol = data.user.idRol;
+      
+      // Limpiar toasts
       toastr.clear();
-
+      
       // Toast de éxito
       toastr.success('Bienvenido 🎉', '¡Inicio de sesión exitoso!');
 
-      setTimeout(() => {
-        navigate('/analytics');
-      }, 1200);
+      // Usa la función login del contexto para guardar usuario y token
+      // Esto debe hacerse DESPUÉS de determinar la redirección
+      login(data);
+
+      // Redirigir inmediatamente sin setTimeout
+      if (idRol === ROLES.CALL_CENTER) {
+        // CALL CENTER: redirigir a crear ticket
+        navigate('/tickets/crear', { replace: true });
+      } else {
+        // ADMINISTRADOR (1) o INVITADO (3): redirigir al dashboard
+        navigate('/analytics', { replace: true });
+      }
+      
     } catch (error: any) {
       // Limpiar toasts anteriores
       toastr.clear();
@@ -71,7 +86,6 @@ const InicioPage: React.FC = () => {
       }
     }
   };
-
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#D11D1D] via-[#B01818] to-[#8B1212] relative">
@@ -214,7 +228,6 @@ const InicioPage: React.FC = () => {
                       </div>
                     </div>
 
-
                     {/* Botón Iniciar sesión con sombra más pronunciada */}
                     <button
                       type="submit"
@@ -222,7 +235,6 @@ const InicioPage: React.FC = () => {
                     >
                       Iniciar sesión
                     </button>
-
 
                     {/* Iconos de redes sociales con sombras */}
                     <div className="pt-4 mt-2 border-t border-gray-200">

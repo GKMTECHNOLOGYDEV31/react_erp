@@ -5,7 +5,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { toggleSidebar } from '../../store/themeConfigSlice';
 import { IRootState } from '../../store';
 import { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext'; // Importar useAuth
+import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 
 const Sidebar = () => {
@@ -14,11 +14,18 @@ const Sidebar = () => {
     const location = useLocation();
     const dispatch = useDispatch();
     const { t } = useTranslation();
-    const { user } = useAuth(); // Obtener el usuario del contexto
+    const { user } = useAuth();
     const [clienteGeneral, setClienteGeneral] = useState(null);
     const [loadingCliente, setLoadingCliente] = useState(false);
     
     const API_URL = 'http://127.0.0.1:8000/api';
+
+    // Mapeo de roles por ID
+    const ROLES = {
+        ADMINISTRADOR: 1,
+        CALL_CENTER: 2,
+        INVITADO: 3
+    };
 
     // Cargar datos del cliente general
     useEffect(() => {
@@ -27,14 +34,12 @@ const Sidebar = () => {
         const cargarClienteGeneral = async () => {
             if (!user) return;
             
-            // Si el cliente general ya viene en el user, lo usamos
             if (user.clienteGeneral) {
                 console.log('✅ Sidebar - Usando clienteGeneral del user:', user.clienteGeneral);
                 setClienteGeneral(user.clienteGeneral);
                 return;
             }
             
-            // Si tiene idClienteGeneral pero no los datos, los cargamos
             if (user.idClienteGeneral && !user.clienteGeneral) {
                 setLoadingCliente(true);
                 try {
@@ -65,12 +70,10 @@ const Sidebar = () => {
         if (window.innerWidth < 1024 && themeConfig.sidebar) {
             dispatch(toggleSidebar());
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [location]);
+    }, [location, dispatch, themeConfig.sidebar]);
 
     // Función para obtener la URL del logo
     const getLogoUrl = () => {
-        // Prioridad 1: Foto del cliente general
         if (clienteGeneral?.foto) {
             if (typeof clienteGeneral.foto === 'string') {
                 if (clienteGeneral.foto.startsWith('data:image')) {
@@ -80,7 +83,6 @@ const Sidebar = () => {
             }
         }
         
-        // Prioridad 2: Foto del cliente general desde el user
         if (user?.clienteGeneral?.foto) {
             if (typeof user.clienteGeneral.foto === 'string') {
                 if (user.clienteGeneral.foto.startsWith('data:image')) {
@@ -90,23 +92,19 @@ const Sidebar = () => {
             }
         }
         
-        // Prioridad 3: Logo por defecto
         return '/assets/images/LOGO-GKM-1.webp';
     };
 
     // Función para obtener la descripción de la empresa
     const getEmpresaDescripcion = () => {
-        // Prioridad 1: Descripción del cliente general
         if (clienteGeneral?.descripcion) {
             return clienteGeneral.descripcion;
         }
         
-        // Prioridad 2: Descripción del cliente general desde el user
         if (user?.clienteGeneral?.descripcion) {
             return user.clienteGeneral.descripcion;
         }
         
-        // Prioridad 3: Texto por defecto
         return 'GKM TECHNOLOGY';
     };
 
@@ -146,90 +144,92 @@ const Sidebar = () => {
                     
                     <PerfectScrollbar className="h-[calc(100vh-80px)] relative">
                         <ul className="relative font-semibold space-y-0.5 p-4 py-0">
-                            {/* SECCIÓN DASHBOARD */}
-                            <h2 className="py-3 px-7 flex items-center uppercase font-extrabold bg-white-light/30 dark:bg-dark dark:bg-opacity-[0.08] -mx-4 mb-1">
-                                <svg className="w-4 h-5 flex-none hidden" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                                <span>DASHBOARD</span>
-                            </h2>
+                            {/* DASHBOARD - Visible para ADMINISTRADOR e INVITADO */}
+                            {user && (user.idRol === ROLES.ADMINISTRADOR || user.idRol === ROLES.INVITADO) && (
+                                <>
+                                    <h2 className="py-3 px-7 flex items-center uppercase font-extrabold bg-white-light/30 dark:bg-dark dark:bg-opacity-[0.08] -mx-4 mb-1">
+                                        <span>DASHBOARD</span>
+                                    </h2>
 
-                            <li className="nav-item">
-                                <NavLink to="/analytics" className="group">
-                                    <div className="flex items-center">
-                                        <svg className="group-hover:!text-primary shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path
-                                                opacity="0.5"
-                                                d="M2 12.2039C2 9.91549 2 8.77128 2.5192 7.82274C3.0384 6.87421 3.98695 6.28551 5.88403 5.10813L7.88403 3.86687C9.88939 2.62229 10.8921 2 12 2C13.1079 2 14.1106 2.62229 16.116 3.86687L18.116 5.10812C20.0131 6.28551 20.9616 6.87421 21.4808 7.82274C22 8.77128 22 9.91549 22 12.2039V13.725C22 17.6258 22 19.5763 20.8284 20.7881C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.7881C2 19.5763 2 17.6258 2 13.725V12.2039Z"
-                                                fill="currentColor"
-                                            />
-                                            <path
-                                                d="M9 17.25C8.58579 17.25 8.25 17.5858 8.25 18C8.25 18.4142 8.58579 18.75 9 18.75H15C15.4142 18.75 15.75 18.4142 15.75 18C15.75 17.5858 15.4142 17.25 15 17.25H9Z"
-                                                fill="currentColor"
-                                            />
-                                        </svg>
-                                        <span className="ltr:pl-3 rtl:pr-3 text-black dark:text-[#506690] dark:group-hover:text-white-dark">Analítica</span>
-                                    </div>
-                                </NavLink>
-                            </li>
+                                    <li className="nav-item">
+                                        <NavLink to="/analytics" className="group">
+                                            <div className="flex items-center">
+                                                <svg className="group-hover:!text-primary shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path
+                                                        opacity="0.5"
+                                                        d="M2 12.2039C2 9.91549 2 8.77128 2.5192 7.82274C3.0384 6.87421 3.98695 6.28551 5.88403 5.10813L7.88403 3.86687C9.88939 2.62229 10.8921 2 12 2C13.1079 2 14.1106 2.62229 16.116 3.86687L18.116 5.10812C20.0131 6.28551 20.9616 6.87421 21.4808 7.82274C22 8.77128 22 9.91549 22 12.2039V13.725C22 17.6258 22 19.5763 20.8284 20.7881C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.7881C2 19.5763 2 17.6258 2 13.725V12.2039Z"
+                                                        fill="currentColor"
+                                                    />
+                                                    <path
+                                                        d="M9 17.25C8.58579 17.25 8.25 17.5858 8.25 18C8.25 18.4142 8.58579 18.75 9 18.75H15C15.4142 18.75 15.75 18.4142 15.75 18C15.75 17.5858 15.4142 17.25 15 17.25H9Z"
+                                                        fill="currentColor"
+                                                    />
+                                                </svg>
+                                                <span className="ltr:pl-3 rtl:pr-3 text-black dark:text-[#506690] dark:group-hover:text-white-dark">Analítica</span>
+                                            </div>
+                                        </NavLink>
+                                    </li>
+                                </>
+                            )}
 
-                            {/* SECCIÓN TICKETS */}
-                            <h2 className="py-3 px-7 flex items-center uppercase font-extrabold bg-white-light/30 dark:bg-dark dark:bg-opacity-[0.08] -mx-4 mb-1 mt-4">
-                                <svg className="w-4 h-5 flex-none hidden" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                                <span>TICKETS</span>
-                            </h2>
+                            {/* SECCIÓN TICKETS - Visible para ADMINISTRADOR y CALL CENTER */}
+                            {user && (user.idRol === ROLES.ADMINISTRADOR || user.idRol === ROLES.CALL_CENTER) && (
+                                <>
+                                    <h2 className="py-3 px-7 flex items-center uppercase font-extrabold bg-white-light/30 dark:bg-dark dark:bg-opacity-[0.08] -mx-4 mb-1 mt-4">
+                                        <span>TICKETS</span>
+                                    </h2>
 
-                            {/* LISTA TICKETS (index) */}
-                            <li className="nav-item">
-                                <NavLink to="/tickets" className="group" end>
-                                    <div className="flex items-center">
-                                        <svg className="group-hover:!text-primary shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path
-                                                opacity="0.5"
-                                                d="M2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12Z"
-                                                fill="currentColor"
-                                            />
-                                            <path
-                                                d="M16.75 12C16.75 12.4142 16.4142 12.75 16 12.75L8 12.75C7.58579 12.75 7.25 12.4142 7.25 12C7.25 11.5858 7.58579 11.25 8 11.25L16 11.25C16.4142 11.25 16.75 11.5858 16.75 12Z"
-                                                fill="currentColor"
-                                            />
-                                            <path
-                                                d="M13.75 16C13.75 16.4142 13.4142 16.75 13 16.75H8C7.58579 16.75 7.25 16.4142 7.25 16C7.25 15.5858 7.58579 15.25 8 15.25H13C13.4142 15.25 13.75 15.5858 13.75 16Z"
-                                                fill="currentColor"
-                                            />
-                                            <path
-                                                d="M11.75 8C11.75 8.41421 11.4142 8.75 11 8.75H8C7.58579 8.75 7.25 8.41421 7.25 8C7.25 7.58579 7.58579 7.25 8 7.25H11C11.4142 7.25 11.75 7.58579 11.75 8Z"
-                                                fill="currentColor"
-                                            />
-                                        </svg>
-                                        <span className="ltr:pl-3 rtl:pr-3 text-black dark:text-[#506690] dark:group-hover:text-white-dark">Lista Tickets</span>
-                                    </div>
-                                </NavLink>
-                            </li>
+                                    {/* LISTA TICKETS */}
+                                    <li className="nav-item">
+                                        <NavLink to="/tickets" className="group" end>
+                                            <div className="flex items-center">
+                                                <svg className="group-hover:!text-primary shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path
+                                                        opacity="0.5"
+                                                        d="M2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12Z"
+                                                        fill="currentColor"
+                                                    />
+                                                    <path
+                                                        d="M16.75 12C16.75 12.4142 16.4142 12.75 16 12.75L8 12.75C7.58579 12.75 7.25 12.4142 7.25 12C7.25 11.5858 7.58579 11.25 8 11.25L16 11.25C16.4142 11.25 16.75 11.5858 16.75 12Z"
+                                                        fill="currentColor"
+                                                    />
+                                                    <path
+                                                        d="M13.75 16C13.75 16.4142 13.4142 16.75 13 16.75H8C7.58579 16.75 7.25 16.4142 7.25 16C7.25 15.5858 7.58579 15.25 8 15.25H13C13.4142 15.25 13.75 15.5858 13.75 16Z"
+                                                        fill="currentColor"
+                                                    />
+                                                    <path
+                                                        d="M11.75 8C11.75 8.41421 11.4142 8.75 11 8.75H8C7.58579 8.75 7.25 8.41421 7.25 8C7.25 7.58579 7.58579 7.25 8 7.25H11C11.4142 7.25 11.75 7.58579 11.75 8Z"
+                                                        fill="currentColor"
+                                                    />
+                                                </svg>
+                                                <span className="ltr:pl-3 rtl:pr-3 text-black dark:text-[#506690] dark:group-hover:text-white-dark">Lista Tickets</span>
+                                            </div>
+                                        </NavLink>
+                                    </li>
 
-                            {/* CREAR TICKET */}
-                            <li className="nav-item">
-                                <NavLink to="/tickets/crear" className="group">
-                                    <div className="flex items-center">
-                                        <svg className="group-hover:!text-primary shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path
-                                                opacity="0.5"
-                                                d="M12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22Z"
-                                                fill="currentColor"
-                                            />
-                                            <path
-                                                d="M12 7.25C12.4142 7.25 12.75 7.58579 12.75 8V11.25H16C16.4142 11.25 16.75 11.5858 16.75 12C16.75 12.4142 16.4142 12.75 16 12.75H12.75V16C12.75 16.4142 12.4142 16.75 12 16.75C11.5858 16.75 11.25 16.4142 11.25 16V12.75H8C7.58579 12.75 7.25 12.4142 7.25 12C7.25 11.5858 7.58579 11.25 8 11.25H11.25V8C11.25 7.58579 11.5858 7.25 12 7.25Z"
-                                                fill="currentColor"
-                                            />
-                                        </svg>
-                                        <span className="ltr:pl-3 rtl:pr-3 text-black dark:text-[#506690] dark:group-hover:text-white-dark">Crear Tickets</span>
-                                    </div>
-                                </NavLink>
-                            </li>
+                                    {/* CREAR TICKET */}
+                                    <li className="nav-item">
+                                        <NavLink to="/tickets/crear" className="group">
+                                            <div className="flex items-center">
+                                                <svg className="group-hover:!text-primary shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path
+                                                        opacity="0.5"
+                                                        d="M12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22Z"
+                                                        fill="currentColor"
+                                                    />
+                                                    <path
+                                                        d="M12 7.25C12.4142 7.25 12.75 7.58579 12.75 8V11.25H16C16.4142 11.25 16.75 11.5858 16.75 12C16.75 12.4142 16.4142 12.75 16 12.75H12.75V16C12.75 16.4142 12.4142 16.75 12 16.75C11.5858 16.75 11.25 16.4142 11.25 16V12.75H8C7.58579 12.75 7.25 12.4142 7.25 12C7.25 11.5858 7.58579 11.25 8 11.25H11.25V8C11.25 7.58579 11.5858 7.25 12 7.25Z"
+                                                        fill="currentColor"
+                                                    />
+                                                </svg>
+                                                <span className="ltr:pl-3 rtl:pr-3 text-black dark:text-[#506690] dark:group-hover:text-white-dark">Crear Tickets</span>
+                                            </div>
+                                        </NavLink>
+                                    </li>
+                                </>
+                            )}
 
-                            {/* CONSULTAR TICKET */}
+                            {/* CONSULTAR TICKET - Visible para todos los roles */}
                             <li className="nav-item">
                                 <NavLink to="/tickets/consultar" className="group">
                                     <div className="flex items-center">
