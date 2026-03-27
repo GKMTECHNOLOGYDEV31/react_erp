@@ -50,6 +50,7 @@ import {
     faFileWord,
     faFile,
     faDownload,
+    faExclamationCircle,
 } from '@fortawesome/free-solid-svg-icons';
 
 const CrearTicket = () => {
@@ -90,6 +91,11 @@ const CrearTicket = () => {
     const [fileNameFalla, setFileNameFalla] = useState('');
     const [fileNameBoleta, setFileNameBoleta] = useState('');
     const [fileNameSerie, setFileNameSerie] = useState('');
+
+    // Estados para errores de archivos
+    const [fileFallaError, setFileFallaError] = useState('');
+    const [fileBoletaError, setFileBoletaError] = useState('');
+    const [fileSerieError, setFileSerieError] = useState('');
 
     // Estado para el modal de archivo ampliado
     const [modalFile, setModalFile] = useState(null);
@@ -196,12 +202,42 @@ const CrearTicket = () => {
             detallesFalla: Yup.string().required('Los detalles de la falla son requeridos').min(10, 'Describe la falla con más detalle (mínimo 10 caracteres)').max(5000, 'Máximo 5000 caracteres'),
             fechaCompra: Yup.date().required('La fecha de compra es requerida').max(new Date(), 'La fecha no puede ser futura').typeError('Fecha inválida - Use el formato DD/MM/AAAA'),
             tiendaSedeCompra: Yup.string().required('La tienda y sede de compra es requerida').max(255, 'Máximo 255 caracteres'),
-            fotoVideoFalla: Yup.string().nullable().url('Debe ser una URL válida'),
-            fotoBoletaFactura: Yup.string().nullable().url('Debe ser una URL válida'),
-            fotoNumeroSerie: Yup.string().nullable().url('Debe ser una URL válida'),
             ubicacionGoogleMaps: Yup.string().nullable().url('Debe ser una URL válida de Google Maps'),
         }),
+        validate: (values) => {
+            const errors = {};
+            
+            // Validar archivos requeridos
+            if (!fileFalla) {
+                errors.fotoVideoFalla = 'La evidencia de la falla es obligatoria';
+            }
+            if (!fileBoleta) {
+                errors.fotoBoletaFactura = 'La boleta/factura de compra es obligatoria';
+            }
+            if (!fileSerie) {
+                errors.fotoNumeroSerie = 'La foto del número de serie es obligatoria';
+            }
+            
+            return errors;
+        },
         onSubmit: async (values, { setSubmitting, resetForm }) => {
+            // Validar archivos antes de enviar
+            if (!fileFalla) {
+                setFileFallaError('La evidencia de la falla es obligatoria');
+                toastr.error('Debe subir la evidencia de la falla', 'Campo requerido');
+                return;
+            }
+            if (!fileBoleta) {
+                setFileBoletaError('La boleta/factura de compra es obligatoria');
+                toastr.error('Debe subir la boleta/factura de compra', 'Campo requerido');
+                return;
+            }
+            if (!fileSerie) {
+                setFileSerieError('La foto del número de serie es obligatoria');
+                toastr.error('Debe subir la foto del número de serie', 'Campo requerido');
+                return;
+            }
+
             setSubmitting(true);
 
             try {
@@ -218,10 +254,10 @@ const CrearTicket = () => {
                     }
                 });
 
-                // Agregar archivos si existen
-                if (fileFalla) formData.append('fotoVideoFalla', fileFalla);
-                if (fileBoleta) formData.append('fotoBoletaFactura', fileBoleta);
-                if (fileSerie) formData.append('fotoNumeroSerie', fileSerie);
+                // Agregar archivos (ahora son obligatorios)
+                formData.append('fotoVideoFalla', fileFalla);
+                formData.append('fotoBoletaFactura', fileBoleta);
+                formData.append('fotoNumeroSerie', fileSerie);
 
                 const response = await axios.post(`${API_URL}/tickets`, formData, {
                     headers: {
@@ -248,6 +284,9 @@ const CrearTicket = () => {
                     setFileNameFalla('');
                     setFileNameBoleta('');
                     setFileNameSerie('');
+                    setFileFallaError('');
+                    setFileBoletaError('');
+                    setFileSerieError('');
 
                     if (fileInputFallaRef.current) fileInputFallaRef.current.value = '';
                     if (fileInputBoletaRef.current) fileInputBoletaRef.current.value = '';
@@ -458,11 +497,16 @@ const CrearTicket = () => {
         }
     };
 
-    const handleFileChange = (e, setFile, setPreview, setFileType, setFileName, fieldName) => {
+    const handleFileChange = (e, setFile, setPreview, setFileType, setFileName, setFileError, fieldName) => {
         const file = e.target.files[0];
+        
+        // Limpiar error previo
+        setFileError('');
+        
         if (file) {
             // Validar tamaño máximo (10MB)
             if (file.size > 10 * 1024 * 1024) {
+                setFileError('El archivo no debe superar los 10MB');
                 toastr.error('El archivo no debe superar los 10MB', 'Error');
                 e.target.value = '';
                 return;
@@ -477,6 +521,7 @@ const CrearTicket = () => {
             ];
             
             if (!allowedTypes.includes(file.type)) {
+                setFileError('Solo se permiten imágenes (JPG, PNG, GIF), PDF o documentos de Word (DOC, DOCX)');
                 toastr.error('Solo se permiten imágenes (JPG, PNG, GIF), PDF o documentos de Word (DOC, DOCX)', 'Error');
                 e.target.value = '';
                 return;
@@ -1044,23 +1089,23 @@ const CrearTicket = () => {
                                     </div>
                                 </div>
 
-                                {/* SECCIÓN 5: ARCHIVOS ADJUNTOS */}
+                                {/* SECCIÓN 5: ARCHIVOS ADJUNTOS - OBLIGATORIOS */}
                                 <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                     <h2 className="text-xl font-semibold flex items-center gap-2">
                                         <FontAwesomeIcon icon={faCamera} className="w-5 h-5 text-primary" />
-                                        Archivos Adjuntos
+                                        Archivos Adjuntos <span className="text-red-500">*</span>
                                     </h2>
-                                    <p className="text-sm text-gray-500 mt-1">Sube imágenes (JPG, PNG, GIF) o documentos (PDF, DOC, DOCX). Máx. 10MB por archivo</p>
+                                    <p className="text-sm text-gray-500 mt-1">Todos los archivos son obligatorios. Sube imágenes (JPG, PNG, GIF) o documentos (PDF, DOC, DOCX). Máx. 10MB por archivo</p>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Foto Falla */}
-                                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {/* Foto Falla - OBLIGATORIA */}
+                                    <div className={`bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border ${fileFallaError ? 'border-red-500' : ''}`}>
                                         <label className="flex items-center gap-2 mb-3 font-medium">
                                             <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full">
                                                 <FontAwesomeIcon icon={faVideo} className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                             </div>
-                                            Evidencia de la Falla
+                                            Evidencia de la Falla <span className="text-red-500">*</span>
                                         </label>
 
                                         <div className="flex flex-col items-center gap-3">
@@ -1070,10 +1115,11 @@ const CrearTicket = () => {
                                                         ref={fileInputFallaRef}
                                                         type="file"
                                                         accept="image/jpeg,image/png,image/jpg,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                                        onChange={(e) => handleFileChange(e, setFileFalla, setPreviewFalla, setFileTypeFalla, setFileNameFalla, 'fotoVideoFalla')}
+                                                        onChange={(e) => handleFileChange(e, setFileFalla, setPreviewFalla, setFileTypeFalla, setFileNameFalla, setFileFallaError, 'fotoVideoFalla')}
                                                         className="hidden"
                                                         id="upload-falla"
                                                         disabled={submitting}
+                                                        required
                                                     />
                                                     <label
                                                         htmlFor="upload-falla"
@@ -1111,6 +1157,7 @@ const CrearTicket = () => {
                                                             setPreviewFalla(null);
                                                             setFileTypeFalla(null);
                                                             setFileNameFalla('');
+                                                            setFileFallaError('');
                                                             if (fileInputFallaRef.current) fileInputFallaRef.current.value = '';
                                                         }}
                                                     >
@@ -1119,15 +1166,21 @@ const CrearTicket = () => {
                                                 </div>
                                             )}
                                         </div>
+                                        {fileFallaError && (
+                                            <div className="text-danger text-sm mt-2 flex items-center gap-1">
+                                                <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3" />
+                                                {fileFallaError}
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Foto Boleta */}
-                                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+                                    {/* Foto Boleta - OBLIGATORIA */}
+                                    <div className={`bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border ${fileBoletaError ? 'border-red-500' : ''}`}>
                                         <label className="flex items-center gap-2 mb-3 font-medium">
                                             <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full">
                                                 <FontAwesomeIcon icon={faFileInvoice} className="w-4 h-4 text-green-600 dark:text-green-400" />
                                             </div>
-                                            Boleta/Factura de Compra
+                                            Boleta/Factura de Compra <span className="text-red-500">*</span>
                                         </label>
 
                                         <div className="flex flex-col items-center gap-3">
@@ -1137,10 +1190,11 @@ const CrearTicket = () => {
                                                         ref={fileInputBoletaRef}
                                                         type="file"
                                                         accept="image/jpeg,image/png,image/jpg,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                                        onChange={(e) => handleFileChange(e, setFileBoleta, setPreviewBoleta, setFileTypeBoleta, setFileNameBoleta, 'fotoBoletaFactura')}
+                                                        onChange={(e) => handleFileChange(e, setFileBoleta, setPreviewBoleta, setFileTypeBoleta, setFileNameBoleta, setFileBoletaError, 'fotoBoletaFactura')}
                                                         className="hidden"
                                                         id="upload-boleta"
                                                         disabled={submitting}
+                                                        required
                                                     />
                                                     <label
                                                         htmlFor="upload-boleta"
@@ -1178,6 +1232,7 @@ const CrearTicket = () => {
                                                             setPreviewBoleta(null);
                                                             setFileTypeBoleta(null);
                                                             setFileNameBoleta('');
+                                                            setFileBoletaError('');
                                                             if (fileInputBoletaRef.current) fileInputBoletaRef.current.value = '';
                                                         }}
                                                     >
@@ -1186,15 +1241,21 @@ const CrearTicket = () => {
                                                 </div>
                                             )}
                                         </div>
+                                        {fileBoletaError && (
+                                            <div className="text-danger text-sm mt-2 flex items-center gap-1">
+                                                <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3" />
+                                                {fileBoletaError}
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Foto Serie */}
-                                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+                                    {/* Foto Serie - OBLIGATORIA */}
+                                    <div className={`bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border ${fileSerieError ? 'border-red-500' : ''}`}>
                                         <label className="flex items-center gap-2 mb-3 font-medium">
                                             <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full">
                                                 <FontAwesomeIcon icon={faImage} className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                                             </div>
-                                            Número de Serie
+                                            Número de Serie <span className="text-red-500">*</span>
                                         </label>
 
                                         <div className="flex flex-col items-center gap-3">
@@ -1204,10 +1265,11 @@ const CrearTicket = () => {
                                                         ref={fileInputSerieRef}
                                                         type="file"
                                                         accept="image/jpeg,image/png,image/jpg,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                                        onChange={(e) => handleFileChange(e, setFileSerie, setPreviewSerie, setFileTypeSerie, setFileNameSerie, 'fotoNumeroSerie')}
+                                                        onChange={(e) => handleFileChange(e, setFileSerie, setPreviewSerie, setFileTypeSerie, setFileNameSerie, setFileSerieError, 'fotoNumeroSerie')}
                                                         className="hidden"
                                                         id="upload-serie"
                                                         disabled={submitting}
+                                                        required
                                                     />
                                                     <label
                                                         htmlFor="upload-serie"
@@ -1245,6 +1307,7 @@ const CrearTicket = () => {
                                                             setPreviewSerie(null);
                                                             setFileTypeSerie(null);
                                                             setFileNameSerie('');
+                                                            setFileSerieError('');
                                                             if (fileInputSerieRef.current) fileInputSerieRef.current.value = '';
                                                         }}
                                                     >
@@ -1253,6 +1316,12 @@ const CrearTicket = () => {
                                                 </div>
                                             )}
                                         </div>
+                                        {fileSerieError && (
+                                            <div className="text-danger text-sm mt-2 flex items-center gap-1">
+                                                <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3" />
+                                                {fileSerieError}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Ubicación Google Maps */}
@@ -1286,7 +1355,7 @@ const CrearTicket = () => {
                                             Cancelar
                                         </button>
                                     </Link>
-                                    <button type="submit" className="btn btn-primary flex items-center gap-2 min-w-[140px] justify-center" disabled={submitting || !formik.isValid}>
+                                    <button type="submit" className="btn btn-primary flex items-center gap-2 min-w-[140px] justify-center" disabled={submitting || !formik.isValid || !fileFalla || !fileBoleta || !fileSerie}>
                                         {submitting ? (
                                             <>
                                                 <FontAwesomeIcon icon={faSpinner} className="animate-spin" />

@@ -41,6 +41,8 @@ import {
     faFileWord,
     faFile,
     faDownload,
+    faExclamationCircle,
+    faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 import toastr from 'toastr';
 import flatpickr from 'flatpickr';
@@ -99,6 +101,16 @@ const EditarTicket = () => {
     const [fileNameBoleta, setFileNameBoleta] = useState('');
     const [fileNameSerie, setFileNameSerie] = useState('');
 
+    // Estados para marcar eliminación de archivos existentes
+    const [deleteFalla, setDeleteFalla] = useState(false);
+    const [deleteBoleta, setDeleteBoleta] = useState(false);
+    const [deleteSerie, setDeleteSerie] = useState(false);
+
+    // Estados para errores de archivos
+    const [fileFallaError, setFileFallaError] = useState('');
+    const [fileBoletaError, setFileBoletaError] = useState('');
+    const [fileSerieError, setFileSerieError] = useState('');
+
     // Estado para el modal de archivo ampliado
     const [modalFile, setModalFile] = useState(null);
     const [modalFileType, setModalFileType] = useState(null);
@@ -107,7 +119,7 @@ const EditarTicket = () => {
     const API_URL = 'http://127.0.0.1:8000/api';
 
     // ============================================
-    // FUNCIONES AUXILIARES PARA ARCHIVOS (CORREGIDAS)
+    // FUNCIONES AUXILIARES PARA ARCHIVOS
     // ============================================
 
     // Función para determinar si una URL es una imagen
@@ -294,11 +306,48 @@ const EditarTicket = () => {
                 return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year && date <= new Date();
             }),
         tiendaSedeCompra: Yup.string().required('La tienda y sede de compra es requerida').max(255, 'Máximo 255 caracteres'),
-        fotoVideoFalla: Yup.string().nullable(),
-        fotoBoletaFactura: Yup.string().nullable(),
-        fotoNumeroSerie: Yup.string().nullable(),
         ubicacionGoogleMaps: Yup.string().nullable().url('Debe ser una URL válida de Google Maps'),
     });
+
+    // Validación personalizada para archivos
+    const validateFiles = () => {
+        const errors = {};
+        
+        // Validar evidencia de la falla
+        if (deleteFalla && !fileFalla) {
+            errors.fotoVideoFalla = 'Debe seleccionar un nuevo archivo para la evidencia de la falla';
+            setFileFallaError('Debe seleccionar un nuevo archivo');
+        } else if (!deleteFalla && !fileFalla && !formik.values.fotoVideoFalla) {
+            errors.fotoVideoFalla = 'La evidencia de la falla es obligatoria';
+            setFileFallaError('La evidencia de la falla es obligatoria');
+        } else {
+            setFileFallaError('');
+        }
+        
+        // Validar boleta/factura
+        if (deleteBoleta && !fileBoleta) {
+            errors.fotoBoletaFactura = 'Debe seleccionar un nuevo archivo para la boleta/factura';
+            setFileBoletaError('Debe seleccionar un nuevo archivo');
+        } else if (!deleteBoleta && !fileBoleta && !formik.values.fotoBoletaFactura) {
+            errors.fotoBoletaFactura = 'La boleta/factura de compra es obligatoria';
+            setFileBoletaError('La boleta/factura de compra es obligatoria');
+        } else {
+            setFileBoletaError('');
+        }
+        
+        // Validar número de serie
+        if (deleteSerie && !fileSerie) {
+            errors.fotoNumeroSerie = 'Debe seleccionar un nuevo archivo para el número de serie';
+            setFileSerieError('Debe seleccionar un nuevo archivo');
+        } else if (!deleteSerie && !fileSerie && !formik.values.fotoNumeroSerie) {
+            errors.fotoNumeroSerie = 'La foto del número de serie es obligatoria';
+            setFileSerieError('La foto del número de serie es obligatoria');
+        } else {
+            setFileSerieError('');
+        }
+        
+        return errors;
+    };
 
     // Formik
     const formik = useFormik({
@@ -326,7 +375,15 @@ const EditarTicket = () => {
             ubicacionGoogleMaps: '',
         },
         validationSchema,
+        validate: validateFiles,
         onSubmit: async (values, { setSubmitting }) => {
+            // Validar archivos antes de enviar
+            const fileErrors = validateFiles();
+            if (Object.keys(fileErrors).length > 0) {
+                toastr.error('Todos los archivos adjuntos son obligatorios', 'Campos requeridos');
+                return;
+            }
+
             setSubmitting(true);
 
             try {
@@ -342,12 +399,35 @@ const EditarTicket = () => {
                         if (key === 'fechaCompra') {
                             const fechaBackend = formatDateForBackend(values[key]);
                             formData.append(key, fechaBackend);
-                        } else {
+                        } else if (key !== 'fotoVideoFalla' && key !== 'fotoBoletaFactura' && key !== 'fotoNumeroSerie') {
                             formData.append(key, values[key]);
                         }
                     }
                 });
 
+                // Agregar indicadores de eliminación
+                if (deleteFalla) {
+                    formData.append('delete_fotoVideoFalla', '1');
+                }
+                if (deleteBoleta) {
+                    formData.append('delete_fotoBoletaFactura', '1');
+                }
+                if (deleteSerie) {
+                    formData.append('delete_fotoNumeroSerie', '1');
+                }
+
+                // Agregar URLs existentes (solo si no se van a eliminar)
+                if (!deleteFalla && !fileFalla && values.fotoVideoFalla) {
+                    formData.append('fotoVideoFalla', values.fotoVideoFalla);
+                }
+                if (!deleteBoleta && !fileBoleta && values.fotoBoletaFactura) {
+                    formData.append('fotoBoletaFactura', values.fotoBoletaFactura);
+                }
+                if (!deleteSerie && !fileSerie && values.fotoNumeroSerie) {
+                    formData.append('fotoNumeroSerie', values.fotoNumeroSerie);
+                }
+
+                // Agregar archivos nuevos
                 if (fileFalla) formData.append('fotoVideoFalla', fileFalla);
                 if (fileBoleta) formData.append('fotoBoletaFactura', fileBoleta);
                 if (fileSerie) formData.append('fotoNumeroSerie', fileSerie);
@@ -674,6 +754,16 @@ const EditarTicket = () => {
                     ubicacionGoogleMaps: ticket.ubicacionGoogleMaps || '',
                 });
 
+                // Resetear banderas de eliminación
+                setDeleteFalla(false);
+                setDeleteBoleta(false);
+                setDeleteSerie(false);
+
+                // Limpiar errores de archivos si hay archivos existentes
+                if (ticket.fotoVideoFalla) setFileFallaError('');
+                if (ticket.fotoBoletaFactura) setFileBoletaError('');
+                if (ticket.fotoNumeroSerie) setFileSerieError('');
+
                 if (ticket.idCategoria) {
                     await cargarModelosPorCategoria(ticket.idCategoria);
                 }
@@ -710,10 +800,15 @@ const EditarTicket = () => {
         }
     };
 
-    const handleFileChange = (e, setFile, setPreview, setFileType, setFileName, fieldName) => {
+    const handleFileChange = (e, setFile, setPreview, setFileType, setFileName, setFileError, fieldName, setDeleteFlag) => {
         const file = e.target.files[0];
+        
+        // Limpiar error previo
+        setFileError('');
+        
         if (file) {
             if (file.size > 10 * 1024 * 1024) {
+                setFileError('El archivo no debe superar los 10MB');
                 toastr.error('El archivo no debe superar los 10MB', 'Error');
                 e.target.value = '';
                 return;
@@ -727,6 +822,7 @@ const EditarTicket = () => {
             ];
             
             if (!allowedTypes.includes(file.type)) {
+                setFileError('Solo se permiten imágenes (JPG, PNG, GIF), PDF o documentos de Word (DOC, DOCX)');
                 toastr.error('Solo se permiten imágenes (JPG, PNG, GIF), PDF o documentos de Word (DOC, DOCX)', 'Error');
                 e.target.value = '';
                 return;
@@ -735,6 +831,11 @@ const EditarTicket = () => {
             setFile(file);
             setFileType(file.type);
             setFileName(file.name);
+            
+            // Si se está subiendo un nuevo archivo, limpiar la bandera de eliminación
+            if (setDeleteFlag) {
+                setDeleteFlag(false);
+            }
 
             if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
@@ -746,6 +847,7 @@ const EditarTicket = () => {
                 setPreview(null);
             }
 
+            // Limpiar el campo del formulario para que se envíe el nuevo archivo
             if (fieldName) {
                 formik.setFieldValue(fieldName, '');
             }
@@ -785,6 +887,19 @@ const EditarTicket = () => {
                 </div>
             </div>
         );
+    };
+
+    // Verificar si todos los archivos están presentes (existentes o nuevos)
+    const hasAllFiles = () => {
+        // Si se marcó para eliminar, debe haber un archivo nuevo
+        if (deleteFalla && !fileFalla) return false;
+        if (deleteBoleta && !fileBoleta) return false;
+        if (deleteSerie && !fileSerie) return false;
+        
+        // Si no se marcó para eliminar, debe haber archivo existente o nuevo
+        return ((!deleteFalla && (fileFalla || formik.values.fotoVideoFalla)) || (deleteFalla && fileFalla)) && 
+               ((!deleteBoleta && (fileBoleta || formik.values.fotoBoletaFactura)) || (deleteBoleta && fileBoleta)) && 
+               ((!deleteSerie && (fileSerie || formik.values.fotoNumeroSerie)) || (deleteSerie && fileSerie));
     };
 
     if (loading || loadingUbigeo) {
@@ -1224,23 +1339,23 @@ const EditarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS - CORREGIDO */}
+                            {/* SECCIÓN 5: ARCHIVOS ADJUNTOS - CON SOPORTE PARA ELIMINAR */}
                             <div className="border-l-4 border-primary pl-4 mb-6 mt-8">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
                                     <FontAwesomeIcon icon={faCamera} className="w-5 h-5 text-primary" />
-                                    Archivos Adjuntos
+                                    Archivos Adjuntos <span className="text-red-500">*</span>
                                 </h2>
-                                <p className="text-sm text-gray-500 mt-1">Sube nuevas imágenes (JPG, PNG, GIF) o documentos (PDF, DOC, DOCX). Máx. 10MB por archivo</p>
+                                <p className="text-sm text-gray-500 mt-1">Todos los archivos son obligatorios. Puedes eliminar el archivo actual y subir uno nuevo. Máx. 10MB por archivo</p>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Foto Falla */}
-                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Foto Falla - OBLIGATORIA CON ELIMINACIÓN */}
+                                <div className={`bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border ${fileFallaError ? 'border-red-500' : ''}`}>
                                     <label className="flex items-center gap-2 mb-3 font-medium">
                                         <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full">
                                             <FontAwesomeIcon icon={faVideo} className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                         </div>
-                                        Evidencia de la Falla
+                                        Evidencia de la Falla <span className="text-red-500">*</span>
                                     </label>
 
                                     <div className="flex flex-col items-center gap-3">
@@ -1260,6 +1375,8 @@ const EditarTicket = () => {
                                                         setPreviewFalla(null);
                                                         setFileTypeFalla(null);
                                                         setFileNameFalla('');
+                                                        setFileFallaError('');
+                                                        setDeleteFalla(false);
                                                         if (fileInputFallaRef.current) fileInputFallaRef.current.value = '';
                                                     }}
                                                 >
@@ -1285,6 +1402,8 @@ const EditarTicket = () => {
                                                         setPreviewFalla(null);
                                                         setFileTypeFalla(null);
                                                         setFileNameFalla('');
+                                                        setFileFallaError('');
+                                                        setDeleteFalla(false);
                                                         if (fileInputFallaRef.current) fileInputFallaRef.current.value = '';
                                                     }}
                                                 >
@@ -1317,17 +1436,20 @@ const EditarTicket = () => {
                                                         <p className="text-xs text-gray-400 mt-1">{getFileTypeTextFromUrl(formik.values.fotoVideoFalla)}</p>
                                                     </div>
                                                 )}
+                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Archivo actual</div>
                                                 <button
                                                     type="button"
                                                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 hover:bg-red-600 transition-colors shadow-lg"
                                                     onClick={() => {
+                                                        setDeleteFalla(true);
                                                         formik.setFieldValue('fotoVideoFalla', '');
                                                         if (fileInputFallaRef.current) fileInputFallaRef.current.value = '';
+                                                        setFileFallaError('');
                                                     }}
+                                                    title="Eliminar archivo actual"
                                                 >
-                                                    <FontAwesomeIcon icon={faTimes} />
+                                                    <FontAwesomeIcon icon={faTrash} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Archivo actual</div>
                                             </div>
                                         ) : (
                                             <div className="w-full">
@@ -1335,10 +1457,11 @@ const EditarTicket = () => {
                                                     ref={fileInputFallaRef}
                                                     type="file"
                                                     accept="image/jpeg,image/png,image/jpg,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                                    onChange={(e) => handleFileChange(e, setFileFalla, setPreviewFalla, setFileTypeFalla, setFileNameFalla, 'fotoVideoFalla')}
+                                                    onChange={(e) => handleFileChange(e, setFileFalla, setPreviewFalla, setFileTypeFalla, setFileNameFalla, setFileFallaError, 'fotoVideoFalla', setDeleteFalla)}
                                                     className="hidden"
                                                     id="upload-falla"
                                                     disabled={submitting}
+                                                    required
                                                 />
                                                 <label
                                                     htmlFor="upload-falla"
@@ -1351,15 +1474,27 @@ const EditarTicket = () => {
                                             </div>
                                         )}
                                     </div>
+                                    {deleteFalla && (
+                                        <div className="text-warning text-sm mt-2 flex items-center gap-1">
+                                            <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3" />
+                                            Archivo actual marcado para eliminar. Seleccione un nuevo archivo.
+                                        </div>
+                                    )}
+                                    {fileFallaError && (
+                                        <div className="text-danger text-sm mt-2 flex items-center gap-1">
+                                            <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3" />
+                                            {fileFallaError}
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Foto Boleta - Mismo patrón corregido */}
-                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+                                {/* Foto Boleta - OBLIGATORIA CON ELIMINACIÓN */}
+                                <div className={`bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border ${fileBoletaError ? 'border-red-500' : ''}`}>
                                     <label className="flex items-center gap-2 mb-3 font-medium">
                                         <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full">
                                             <FontAwesomeIcon icon={faFileInvoice} className="w-4 h-4 text-green-600 dark:text-green-400" />
                                         </div>
-                                        Boleta/Factura de Compra
+                                        Boleta/Factura de Compra <span className="text-red-500">*</span>
                                     </label>
 
                                     <div className="flex flex-col items-center gap-3">
@@ -1379,6 +1514,8 @@ const EditarTicket = () => {
                                                         setPreviewBoleta(null);
                                                         setFileTypeBoleta(null);
                                                         setFileNameBoleta('');
+                                                        setFileBoletaError('');
+                                                        setDeleteBoleta(false);
                                                         if (fileInputBoletaRef.current) fileInputBoletaRef.current.value = '';
                                                     }}
                                                 >
@@ -1404,6 +1541,8 @@ const EditarTicket = () => {
                                                         setPreviewBoleta(null);
                                                         setFileTypeBoleta(null);
                                                         setFileNameBoleta('');
+                                                        setFileBoletaError('');
+                                                        setDeleteBoleta(false);
                                                         if (fileInputBoletaRef.current) fileInputBoletaRef.current.value = '';
                                                     }}
                                                 >
@@ -1436,17 +1575,20 @@ const EditarTicket = () => {
                                                         <p className="text-xs text-gray-400 mt-1">{getFileTypeTextFromUrl(formik.values.fotoBoletaFactura)}</p>
                                                     </div>
                                                 )}
+                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Archivo actual</div>
                                                 <button
                                                     type="button"
                                                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 hover:bg-red-600 transition-colors shadow-lg"
                                                     onClick={() => {
+                                                        setDeleteBoleta(true);
                                                         formik.setFieldValue('fotoBoletaFactura', '');
                                                         if (fileInputBoletaRef.current) fileInputBoletaRef.current.value = '';
+                                                        setFileBoletaError('');
                                                     }}
+                                                    title="Eliminar archivo actual"
                                                 >
-                                                    <FontAwesomeIcon icon={faTimes} />
+                                                    <FontAwesomeIcon icon={faTrash} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Archivo actual</div>
                                             </div>
                                         ) : (
                                             <div className="w-full">
@@ -1454,10 +1596,11 @@ const EditarTicket = () => {
                                                     ref={fileInputBoletaRef}
                                                     type="file"
                                                     accept="image/jpeg,image/png,image/jpg,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                                    onChange={(e) => handleFileChange(e, setFileBoleta, setPreviewBoleta, setFileTypeBoleta, setFileNameBoleta, 'fotoBoletaFactura')}
+                                                    onChange={(e) => handleFileChange(e, setFileBoleta, setPreviewBoleta, setFileTypeBoleta, setFileNameBoleta, setFileBoletaError, 'fotoBoletaFactura', setDeleteBoleta)}
                                                     className="hidden"
                                                     id="upload-boleta"
                                                     disabled={submitting}
+                                                    required
                                                 />
                                                 <label
                                                     htmlFor="upload-boleta"
@@ -1470,15 +1613,27 @@ const EditarTicket = () => {
                                             </div>
                                         )}
                                     </div>
+                                    {deleteBoleta && (
+                                        <div className="text-warning text-sm mt-2 flex items-center gap-1">
+                                            <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3" />
+                                            Archivo actual marcado para eliminar. Seleccione un nuevo archivo.
+                                        </div>
+                                    )}
+                                    {fileBoletaError && (
+                                        <div className="text-danger text-sm mt-2 flex items-center gap-1">
+                                            <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3" />
+                                            {fileBoletaError}
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Foto Serie - Mismo patrón corregido */}
-                                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+                                {/* Foto Serie - OBLIGATORIA CON ELIMINACIÓN */}
+                                <div className={`bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border ${fileSerieError ? 'border-red-500' : ''}`}>
                                     <label className="flex items-center gap-2 mb-3 font-medium">
                                         <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full">
                                             <FontAwesomeIcon icon={faImage} className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                                         </div>
-                                        Número de Serie
+                                        Número de Serie <span className="text-red-500">*</span>
                                     </label>
 
                                     <div className="flex flex-col items-center gap-3">
@@ -1498,6 +1653,8 @@ const EditarTicket = () => {
                                                         setPreviewSerie(null);
                                                         setFileTypeSerie(null);
                                                         setFileNameSerie('');
+                                                        setFileSerieError('');
+                                                        setDeleteSerie(false);
                                                         if (fileInputSerieRef.current) fileInputSerieRef.current.value = '';
                                                     }}
                                                 >
@@ -1523,6 +1680,8 @@ const EditarTicket = () => {
                                                         setPreviewSerie(null);
                                                         setFileTypeSerie(null);
                                                         setFileNameSerie('');
+                                                        setFileSerieError('');
+                                                        setDeleteSerie(false);
                                                         if (fileInputSerieRef.current) fileInputSerieRef.current.value = '';
                                                     }}
                                                 >
@@ -1555,17 +1714,20 @@ const EditarTicket = () => {
                                                         <p className="text-xs text-gray-400 mt-1">{getFileTypeTextFromUrl(formik.values.fotoNumeroSerie)}</p>
                                                     </div>
                                                 )}
+                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Archivo actual</div>
                                                 <button
                                                     type="button"
                                                     className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-8 h-8 hover:bg-red-600 transition-colors shadow-lg"
                                                     onClick={() => {
+                                                        setDeleteSerie(true);
                                                         formik.setFieldValue('fotoNumeroSerie', '');
                                                         if (fileInputSerieRef.current) fileInputSerieRef.current.value = '';
+                                                        setFileSerieError('');
                                                     }}
+                                                    title="Eliminar archivo actual"
                                                 >
-                                                    <FontAwesomeIcon icon={faTimes} />
+                                                    <FontAwesomeIcon icon={faTrash} />
                                                 </button>
-                                                <div className="absolute bottom-2 left-2 bg-gray-700 text-white text-xs px-2 py-1 rounded-full">Archivo actual</div>
                                             </div>
                                         ) : (
                                             <div className="w-full">
@@ -1573,10 +1735,11 @@ const EditarTicket = () => {
                                                     ref={fileInputSerieRef}
                                                     type="file"
                                                     accept="image/jpeg,image/png,image/jpg,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                                    onChange={(e) => handleFileChange(e, setFileSerie, setPreviewSerie, setFileTypeSerie, setFileNameSerie, 'fotoNumeroSerie')}
+                                                    onChange={(e) => handleFileChange(e, setFileSerie, setPreviewSerie, setFileTypeSerie, setFileNameSerie, setFileSerieError, 'fotoNumeroSerie', setDeleteSerie)}
                                                     className="hidden"
                                                     id="upload-serie"
                                                     disabled={submitting}
+                                                    required
                                                 />
                                                 <label
                                                     htmlFor="upload-serie"
@@ -1589,6 +1752,18 @@ const EditarTicket = () => {
                                             </div>
                                         )}
                                     </div>
+                                    {deleteSerie && (
+                                        <div className="text-warning text-sm mt-2 flex items-center gap-1">
+                                            <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3" />
+                                            Archivo actual marcado para eliminar. Seleccione un nuevo archivo.
+                                        </div>
+                                    )}
+                                    {fileSerieError && (
+                                        <div className="text-danger text-sm mt-2 flex items-center gap-1">
+                                            <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3" />
+                                            {fileSerieError}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Ubicación Google Maps */}
@@ -1631,7 +1806,11 @@ const EditarTicket = () => {
                                     <FontAwesomeIcon icon={faTimes} />
                                     Cancelar
                                 </button>
-                                <button type="submit" className="btn btn-primary flex items-center gap-2 min-w-[160px] justify-center" disabled={submitting || !formik.isValid}>
+                                <button 
+                                    type="submit" 
+                                    className="btn btn-primary flex items-center gap-2 min-w-[160px] justify-center" 
+                                    disabled={submitting || !formik.isValid || !hasAllFiles()}
+                                >
                                     {submitting ? (
                                         <>
                                             <FontAwesomeIcon icon={faSpinner} className="animate-spin" />

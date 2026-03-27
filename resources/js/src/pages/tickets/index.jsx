@@ -29,6 +29,9 @@ import {
     faSearchLocation,
     faTools,
     faCheckDouble,
+    faHourglassHalf,
+    faPlayCircle,
+    faCheckCircle as faCheckCircleSolid,
 } from '@fortawesome/free-solid-svg-icons';
 import DataTable from 'react-data-table-component';
 import toastr from 'toastr';
@@ -39,6 +42,40 @@ import axios from 'axios';
 // Importar modales
 import ModalVerTicket from './components/ModalVerTicket';
 import ModalEliminarTicket from './components/ModalEliminarTicket';
+
+// Constantes para los estados
+const ESTADOS = {
+    PENDIENTE_ACEPTAR: 1,
+    GESTIONANDO: 2,
+    FINALIZADO: 3
+};
+
+const ESTADO_CONFIG = {
+    [ESTADOS.PENDIENTE_ACEPTAR]: {
+        nombre: 'pendiente por aceptar',
+        clase: 'warning',
+        icon: faHourglassHalf,
+        badgeColor: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+        buttonColor: 'bg-yellow-600 text-white',
+        buttonBg: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-800'
+    },
+    [ESTADOS.GESTIONANDO]: {
+        nombre: 'gestionando',
+        clase: 'info',
+        icon: faTools,
+        badgeColor: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+        buttonColor: 'bg-blue-600 text-white',
+        buttonBg: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800'
+    },
+    [ESTADOS.FINALIZADO]: {
+        nombre: 'finalizado',
+        clase: 'success',
+        icon: faCheckCircleSolid,
+        badgeColor: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+        buttonColor: 'bg-green-600 text-white',
+        buttonBg: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800'
+    }
+};
 
 const ListaTickets = () => {
     const dispatch = useDispatch();
@@ -86,58 +123,73 @@ const ListaTickets = () => {
             });
 
             if (response.data.success) {
-                const ticketsTransformados = response.data.data.map((ticket) => ({
-                    id: ticket.idTicket,
-                    numeroTicket: ticket.numero_ticket,
-                    // Datos cliente
-                    nombreCompleto: ticket.nombreCompleto,
-                    correoElectronico: ticket.correoElectronico,
-                    telefonoCelular: ticket.telefonoCelular,
-                    telefonoFijo: ticket.telefonoFijo || '',
-                    tipoDocumento: ticket.tipo_documento?.nombre || '',
-                    dni_ruc_ce: ticket.dni_ruc_ce,
+                const ticketsTransformados = response.data.data.map((ticket) => {
+                    // Usar estado_nombre si viene de la API, sino mapear
+                    let estadoNombre = ticket.estado_nombre;
+                    let estadoValor = ticket.estado;
+                    
+                    // Si no viene estado_nombre, mapeamos según el valor
+                    if (!estadoNombre) {
+                        if (estadoValor === ESTADOS.PENDIENTE_ACEPTAR) estadoNombre = 'pendiente por aceptar';
+                        else if (estadoValor === ESTADOS.GESTIONANDO) estadoNombre = 'gestionando';
+                        else if (estadoValor === ESTADOS.FINALIZADO) estadoNombre = 'finalizado';
+                        else estadoNombre = 'desconocido';
+                    }
 
-                    // Datos producto
-                    tipoProducto: ticket.categoria?.nombre || 'N/A',
-                    modelo: ticket.modelo?.nombre || 'N/A',
-                    serie: ticket.serieProducto,
+                    return {
+                        id: ticket.idTicket,
+                        numeroTicket: ticket.numero_ticket,
+                        // Datos cliente
+                        nombreCompleto: ticket.nombreCompleto,
+                        correoElectronico: ticket.correoElectronico,
+                        telefonoCelular: ticket.telefonoCelular,
+                        telefonoFijo: ticket.telefonoFijo || '',
+                        tipoDocumento: ticket.tipo_documento?.nombre || '',
+                        dni_ruc_ce: ticket.dni_ruc_ce,
 
-                    // Falla
-                    detallesFalla: ticket.detallesFalla,
+                        // Datos producto
+                        tipoProducto: ticket.categoria?.nombre || 'N/A',
+                        modelo: ticket.modelo?.nombre || 'N/A',
+                        serie: ticket.serieProducto,
 
-                    // Fechas
-                    fechaCreacion: new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                    }),
-                    fechaCompra: ticket.fechaCompra,
-                    tiendaSedeCompra: ticket.tiendaSedeCompra,
+                        // Falla
+                        detallesFalla: ticket.detallesFalla,
 
-                    // Estado (1: evaluando, 2: gestionando, 3: finalizado)
-                    estado: ticket.estado === 1 ? 'evaluando' : ticket.estado === 2 ? 'gestionando' : 'finalizado',
-                    estado_valor: ticket.estado, // Guardamos el valor numérico para las validaciones
+                        // Fechas
+                        fechaCreacion: new Date(ticket.fechaCreacion).toLocaleString('es-PE', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                        }),
+                        fechaCompra: ticket.fechaCompra,
+                        tiendaSedeCompra: ticket.tiendaSedeCompra,
 
-                    // Ubicación
-                    departamento: ticket.departamento,
-                    provincia: ticket.provincia,
-                    distrito: ticket.distrito,
-                    direccionCompleta: ticket.direccionCompleta,
-                    referenciaDomicilio: ticket.referenciaDomicilio,
-                    ubicacionGoogleMaps: ticket.ubicacionGoogleMaps,
+                        // Estado
+                        estado: estadoNombre,
+                        estado_valor: estadoValor,
+                        estado_clase: ticket.estado_clase || ESTADO_CONFIG[estadoValor]?.clase || 'secondary',
 
-                    // Evidencias
-                    fotoVideoFalla: ticket.fotoVideoFalla,
-                    fotoBoletaFactura: ticket.fotoBoletaFactura,
-                    fotoNumeroSerie: ticket.fotoNumeroSerie,
+                        // Ubicación
+                        departamento: ticket.departamento,
+                        provincia: ticket.provincia,
+                        distrito: ticket.distrito,
+                        direccionCompleta: ticket.direccionCompleta,
+                        referenciaDomicilio: ticket.referenciaDomicilio,
+                        ubicacionGoogleMaps: ticket.ubicacionGoogleMaps,
 
-                    // Información adicional
-                    idUsuarioCreador: ticket.idUsuarioCreador,
-                    idClienteGeneral: ticket.idClienteGeneral,
-                    usuarioCreador: ticket.usuario_creador ? `${ticket.usuario_creador.Nombre} ${ticket.usuario_creador.apellidoPaterno}` : 'N/A',
-                }));
+                        // Evidencias
+                        fotoVideoFalla: ticket.fotoVideoFalla,
+                        fotoBoletaFactura: ticket.fotoBoletaFactura,
+                        fotoNumeroSerie: ticket.fotoNumeroSerie,
+
+                        // Información adicional
+                        idUsuarioCreador: ticket.idUsuarioCreador,
+                        idClienteGeneral: ticket.idClienteGeneral,
+                        usuarioCreador: ticket.usuario_creador ? `${ticket.usuario_creador.Nombre} ${ticket.usuario_creador.apellidoPaterno}` : 'N/A',
+                    };
+                });
 
                 setTicketsData(ticketsTransformados);
             }
@@ -210,33 +262,40 @@ const ListaTickets = () => {
     });
 
     // Función para obtener el badge de estado
-    const getStatusBadge = (estado) => {
-        const statusConfig = {
-            evaluando: {
-                color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-                icon: faSearchLocation,
-                text: 'Evaluando',
-            },
-            gestionando: {
-                color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-                icon: faTools,
-                text: 'Gestionando',
-            },
-            finalizado: {
-                color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                icon: faCheckDouble,
-                text: 'Finalizado',
-            },
-        };
-
-        const config = statusConfig[estado] || statusConfig.evaluando;
+    const getStatusBadge = (estadoNombre, estadoValor) => {
+        const config = ESTADO_CONFIG[estadoValor] || ESTADO_CONFIG[ESTADOS.PENDIENTE_ACEPTAR];
+        
+        // Formatear el texto para mostrar
+        let displayText = '';
+        if (estadoNombre === 'pendiente por aceptar') displayText = 'Pendiente por Aceptar';
+        else if (estadoNombre === 'gestionando') displayText = 'Gestionando';
+        else if (estadoNombre === 'finalizado') displayText = 'Finalizado';
+        else displayText = estadoNombre;
 
         return (
-            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${config.badgeColor}`}>
                 <FontAwesomeIcon icon={config.icon} className="w-3 h-3" />
-                {config.text}
+                {displayText}
             </span>
         );
+    };
+
+    // Función para verificar si el botón de editar debe estar deshabilitado
+    const isEditDisabled = (estado_valor) => {
+        return estado_valor !== ESTADOS.PENDIENTE_ACEPTAR; // Solo editable si está pendiente por aceptar
+    };
+
+    // Función para verificar si el botón de eliminar debe estar deshabilitado
+    const isDeleteDisabled = (estado_valor) => {
+        return estado_valor !== ESTADOS.PENDIENTE_ACEPTAR; // Solo eliminable si está pendiente por aceptar
+    };
+
+    // Función para obtener el tooltip según el estado
+    const getActionTooltip = (estado_valor, accion) => {
+        if (estado_valor === ESTADOS.PENDIENTE_ACEPTAR) return `${accion} ticket`;
+        if (estado_valor === ESTADOS.GESTIONANDO) return `No se puede ${accion.toLowerCase()} - Ticket en gestión`;
+        if (estado_valor === ESTADOS.FINALIZADO) return `No se puede ${accion.toLowerCase()} - Ticket finalizado`;
+        return `${accion} ticket`;
     };
 
     // Función para manejar eliminación desde el modal
@@ -253,32 +312,16 @@ const ListaTickets = () => {
             if (response.data.success) {
                 toastr.success('Ticket eliminado correctamente');
                 cargarTickets();
+            } else {
+                toastr.error(response.data.message || 'Error al eliminar el ticket', 'Error');
             }
         } catch (error) {
             console.error('Error al eliminar ticket:', error);
-            toastr.error('Error al eliminar el ticket', 'Error');
+            toastr.error(error.response?.data?.message || 'Error al eliminar el ticket', 'Error');
         } finally {
             setLoading(false);
             setModalEliminar(false);
         }
-    };
-
-    // Función para verificar si el botón de editar debe estar deshabilitado
-    const isEditDisabled = (estado_valor) => {
-        return estado_valor !== 1; // Deshabilitado para estados 2 y 3 (gestionando y finalizado)
-    };
-
-    // Función para verificar si el botón de eliminar debe estar deshabilitado
-    const isDeleteDisabled = (estado_valor) => {
-        return estado_valor !== 1; // Deshabilitado para estados 2 y 3 (gestionando y finalizado)
-    };
-
-    // Función para obtener el tooltip según el estado
-    const getActionTooltip = (estado_valor, accion) => {
-        if (estado_valor === 1) return `${accion} ticket`;
-        if (estado_valor === 2) return `No se puede ${accion.toLowerCase()} - Ticket en gestión`;
-        if (estado_valor === 3) return `No se puede ${accion.toLowerCase()} - Ticket finalizado`;
-        return `${accion} ticket`;
     };
 
     // Definir columnas para DataTable
@@ -423,9 +466,13 @@ const ListaTickets = () => {
             selector: (row) => row.estado,
             sortable: true,
             style: {
-                minWidth: '110px',
+                minWidth: '150px',
             },
-            cell: (row) => <div className="flex items-center justify-center w-full py-2">{getStatusBadge(row.estado)}</div>,
+            cell: (row) => (
+                <div className="flex items-center justify-center w-full py-2">
+                    {getStatusBadge(row.estado, row.estado_valor)}
+                </div>
+            ),
         },
         {
             name: 'Acciones',
@@ -493,7 +540,12 @@ const ListaTickets = () => {
 
         // Filtro por estado
         if (selectedStatus !== 'todos') {
-            data = data.filter((t) => t.estado === selectedStatus);
+            data = data.filter((t) => {
+                if (selectedStatus === 'pendiente_aceptar') return t.estado_valor === ESTADOS.PENDIENTE_ACEPTAR;
+                if (selectedStatus === 'gestionando') return t.estado_valor === ESTADOS.GESTIONANDO;
+                if (selectedStatus === 'finalizado') return t.estado_valor === ESTADOS.FINALIZADO;
+                return t.estado === selectedStatus;
+            });
         }
 
         // Filtro por búsqueda
@@ -552,18 +604,20 @@ const ListaTickets = () => {
                     </button>
                     <button
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
-                            selectedStatus === 'evaluando'
-                                ? 'bg-purple-600 text-white'
-                                : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800'
+                            selectedStatus === 'pendiente_aceptar'
+                                ? 'bg-yellow-600 text-white'
+                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-800'
                         }`}
-                        onClick={() => setSelectedStatus('evaluando')}
+                        onClick={() => setSelectedStatus('pendiente_aceptar')}
                     >
-                        <FontAwesomeIcon icon={faSearchLocation} className="w-3 h-3" />
-                        Evaluando
+                        <FontAwesomeIcon icon={faHourglassHalf} className="w-3 h-3" />
+                        Pendiente por Aceptar
                     </button>
                     <button
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
-                            selectedStatus === 'gestionando' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800'
+                            selectedStatus === 'gestionando'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800'
                         }`}
                         onClick={() => setSelectedStatus('gestionando')}
                     >
@@ -572,11 +626,13 @@ const ListaTickets = () => {
                     </button>
                     <button
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
-                            selectedStatus === 'finalizado' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800'
+                            selectedStatus === 'finalizado'
+                                ? 'bg-green-600 text-white'
+                                : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800'
                         }`}
                         onClick={() => setSelectedStatus('finalizado')}
                     >
-                        <FontAwesomeIcon icon={faCheckDouble} className="w-3 h-3" />
+                        <FontAwesomeIcon icon={faCheckCircleSolid} className="w-3 h-3" />
                         Finalizado
                     </button>
                 </div>

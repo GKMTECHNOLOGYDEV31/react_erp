@@ -47,10 +47,39 @@ import {
     faUserTie,
     faFileSignature,
     faExternalLinkAlt,
+    faHourglassHalf,
 } from '@fortawesome/free-solid-svg-icons';
 import toastr from 'toastr';
 import 'toastr/build/toastr.min.css';
 import axios from 'axios';
+
+// Constantes para los estados
+const ESTADOS = {
+    PENDIENTE_ACEPTAR: 1,
+    GESTIONANDO: 2,
+    FINALIZADO: 3
+};
+
+const ESTADO_CONFIG = {
+    [ESTADOS.PENDIENTE_ACEPTAR]: {
+        nombre: 'Pendiente por Aceptar',
+        color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        icon: faHourglassHalf,
+        badgeColor: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+    },
+    [ESTADOS.GESTIONANDO]: {
+        nombre: 'Gestionando',
+        color: 'bg-blue-100 text-blue-800 border-blue-200',
+        icon: faTools,
+        badgeColor: 'bg-blue-100 text-blue-800 border-blue-200'
+    },
+    [ESTADOS.FINALIZADO]: {
+        nombre: 'Finalizado',
+        color: 'bg-green-100 text-green-800 border-green-200',
+        icon: faCheckDouble,
+        badgeColor: 'bg-green-100 text-green-800 border-green-200'
+    }
+};
 
 const ConsultarTicket = () => {
     const [ticketId, setTicketId] = useState('');
@@ -157,13 +186,63 @@ const ConsultarTicket = () => {
         }
     };
 
+    // Función para obtener el badge de estado - ACTUALIZADA para manejar números
     const getStatusBadge = (estado) => {
-        const statusConfig = {
-            evaluando: 'bg-purple-100 text-purple-800 border-purple-200',
-            gestionando: 'bg-blue-100 text-blue-800 border-blue-200',
-            finalizado: 'bg-green-100 text-green-800 border-green-200',
-        };
-        return statusConfig[estado] || 'bg-gray-100 text-gray-800 border-gray-200';
+        // Determinar el valor numérico del estado
+        let estadoValor;
+        
+        if (typeof estado === 'number') {
+            estadoValor = estado;
+        } else if (typeof estado === 'string') {
+            // Mapear strings a valores numéricos
+            if (estado === 'pendiente por aceptar') estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+            else if (estado === 'gestionando') estadoValor = ESTADOS.GESTIONANDO;
+            else if (estado === 'finalizado') estadoValor = ESTADOS.FINALIZADO;
+            else estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+        } else {
+            estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+        }
+
+        const config = ESTADO_CONFIG[estadoValor] || ESTADO_CONFIG[ESTADOS.PENDIENTE_ACEPTAR];
+        return config.color;
+    };
+
+    // Función para obtener el texto del estado
+    const getEstadoTexto = (estado) => {
+        let estadoValor;
+        
+        if (typeof estado === 'number') {
+            estadoValor = estado;
+        } else if (typeof estado === 'string') {
+            if (estado === 'pendiente por aceptar') estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+            else if (estado === 'gestionando') estadoValor = ESTADOS.GESTIONANDO;
+            else if (estado === 'finalizado') estadoValor = ESTADOS.FINALIZADO;
+            else estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+        } else {
+            estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+        }
+
+        const config = ESTADO_CONFIG[estadoValor] || ESTADO_CONFIG[ESTADOS.PENDIENTE_ACEPTAR];
+        return config.nombre;
+    };
+
+    // Función para obtener el icono del estado
+    const getEstadoIcono = (estado) => {
+        let estadoValor;
+        
+        if (typeof estado === 'number') {
+            estadoValor = estado;
+        } else if (typeof estado === 'string') {
+            if (estado === 'pendiente por aceptar') estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+            else if (estado === 'gestionando') estadoValor = ESTADOS.GESTIONANDO;
+            else if (estado === 'finalizado') estadoValor = ESTADOS.FINALIZADO;
+            else estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+        } else {
+            estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+        }
+
+        const config = ESTADO_CONFIG[estadoValor] || ESTADO_CONFIG[ESTADOS.PENDIENTE_ACEPTAR];
+        return config.icon;
     };
 
     const getEstadoOTBadge = (color) => {
@@ -519,7 +598,10 @@ const ConsultarTicket = () => {
                                 <p className="text-gray-300 text-lg">{ticket.detallesFalla}</p>
                             </div>
                             <div>
-                                <span className={`px-4 py-2 rounded-xl text-sm font-bold text-center block ${getStatusBadge(ticket.estado)}`}>{ticket.estado?.toUpperCase()}</span>
+                                <span className={`px-4 py-2 rounded-xl text-sm font-bold text-center block ${getStatusBadge(ticket.estado)}`}>
+                                    <FontAwesomeIcon icon={getEstadoIcono(ticket.estado)} className="w-4 h-4 mr-2" />
+                                    {getEstadoTexto(ticket.estado)}
+                                </span>
                             </div>
                         </div>
 

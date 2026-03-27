@@ -37,7 +37,34 @@ import {
     faFile,
     faDownload,
     faExternalLinkAlt,
+    faHourglassHalf,
+    faPlayCircle,
 } from '@fortawesome/free-solid-svg-icons';
+
+// Constantes para los estados
+const ESTADOS = {
+    PENDIENTE_ACEPTAR: 1,
+    GESTIONANDO: 2,
+    FINALIZADO: 3
+};
+
+const ESTADO_CONFIG = {
+    [ESTADOS.PENDIENTE_ACEPTAR]: {
+        color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+        icon: faHourglassHalf,
+        text: 'Pendiente por Aceptar',
+    },
+    [ESTADOS.GESTIONANDO]: {
+        color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+        icon: faTools,
+        text: 'Gestionando',
+    },
+    [ESTADOS.FINALIZADO]: {
+        color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+        icon: faCheckDouble,
+        text: 'Finalizado',
+    },
+};
 
 const ModalVerTicket = ({ modal, setModal, ticketData }) => {
     const [modalFile, setModalFile] = useState(null);
@@ -188,27 +215,24 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
         }
     };
 
-    // Función para obtener el badge de estado
+    // Función para obtener el badge de estado - ACTUALIZADA
     const getStatusBadge = (estado) => {
-        const statusConfig = {
-            evaluando: {
-                color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-                icon: faSearchLocation,
-                text: 'Evaluando',
-            },
-            gestionando: {
-                color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-                icon: faTools,
-                text: 'Gestionando',
-            },
-            finalizado: {
-                color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                icon: faCheckDouble,
-                text: 'Finalizado',
-            },
-        };
+        // Determinar el valor numérico del estado
+        let estadoValor;
+        
+        if (typeof estado === 'number') {
+            estadoValor = estado;
+        } else if (typeof estado === 'string') {
+            // Mapear strings a valores numéricos
+            if (estado === 'pendiente por aceptar') estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+            else if (estado === 'gestionando') estadoValor = ESTADOS.GESTIONANDO;
+            else if (estado === 'finalizado') estadoValor = ESTADOS.FINALIZADO;
+            else estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+        } else {
+            estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
+        }
 
-        const config = statusConfig[estado] || statusConfig.evaluando;
+        const config = ESTADO_CONFIG[estadoValor] || ESTADO_CONFIG[ESTADOS.PENDIENTE_ACEPTAR];
 
         return (
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>
@@ -342,6 +366,9 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
 
     if (!ticketData) return null;
 
+    // Obtener el valor del estado para pasarlo a getStatusBadge
+    const estadoValue = ticketData.estado_valor !== undefined ? ticketData.estado_valor : ticketData.estado;
+
     return (
         <>
             {/* Modal de archivo ampliado */}
@@ -406,7 +433,7 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                                 <span className="text-sm text-gray-500 dark:text-gray-400">Ticket #</span>
                                                 <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{ticketData.numeroTicket}</h2>
                                             </div>
-                                            {getStatusBadge(ticketData.estado)}
+                                            {getStatusBadge(estadoValue)}
                                         </div>
 
                                         {/* DATOS DEL CLIENTE */}
@@ -580,7 +607,7 @@ const ModalVerTicket = ({ modal, setModal, ticketData }) => {
                                             </div>
                                         </div>
 
-                                        {/* ARCHIVOS ADJUNTOS - MODIFICADO CON FileRenderer */}
+                                        {/* ARCHIVOS ADJUNTOS */}
                                         <div className="border-l-4 border-primary pl-4 mb-4">
                                             <h3 className="text-md font-semibold flex items-center gap-2">
                                                 <FontAwesomeIcon icon={faCamera} className="w-4 h-4 text-primary" />

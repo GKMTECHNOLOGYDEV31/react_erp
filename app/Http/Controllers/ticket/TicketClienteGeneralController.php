@@ -20,6 +20,11 @@ use Illuminate\Support\Facades\Storage;
 
 class TicketClienteGeneralController extends Controller
 {
+    // Constantes para los estados de los tickets
+    const ESTADO_PENDIENTE_ACEPTAR = 1;
+    const ESTADO_GESTIONANDO = 2;  // Cambiado de ESTADO_EN_PROCESO a ESTADO_GESTIONANDO
+    const ESTADO_FINALIZADO = 3;
+
     public function __construct()
     {
         try {
@@ -70,6 +75,12 @@ class TicketClienteGeneralController extends Controller
                 ->get();
 
             $ticketsArray = $this->cleanUtf8Strings($tickets->toArray());
+
+            // Transformar los estados a sus nombres para la respuesta
+            foreach ($ticketsArray as &$ticket) {
+                $ticket['estado_nombre'] = $this->getEstadoNombre($ticket['estado']);
+                $ticket['estado_clase'] = $this->getEstadoClase($ticket['estado']);
+            }
 
             return response()->json([
                 'success' => true,
@@ -177,13 +188,18 @@ class TicketClienteGeneralController extends Controller
                 'fotoBoletaFactura' => $fotoBoletaFactura ?? $request->fotoBoletaFactura,
                 'fotoNumeroSerie' => $fotoNumeroSerie ?? $request->fotoNumeroSerie,
                 'ubicacionGoogleMaps' => $request->ubicacionGoogleMaps,
-                'estado' => 1,
+                'estado' => self::ESTADO_PENDIENTE_ACEPTAR, // Estado inicial: pendiente por aceptar
                 'idUsuarioCreador' => $idUsuarioCreador,
                 'idClienteGeneral' => $user->idClienteGeneral,
                 'fechaCreacion' => now()
             ]);
 
             $ticket->load(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador']);
+
+            // Agregar nombres de estado a la respuesta
+            $ticketArray = $ticket->toArray();
+            $ticketArray['estado_nombre'] = $this->getEstadoNombre($ticket->estado);
+            $ticketArray['estado_clase'] = $this->getEstadoClase($ticket->estado);
 
             $notificacionId = \DB::table('notificaciones_ticket_general')->insertGetId([
                 'idTicketClienteGeneral' => $ticket->idTicketClienteGeneral,
@@ -213,7 +229,7 @@ class TicketClienteGeneralController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Ticket creado exitosamente',
-                'data' => $ticket
+                'data' => $ticketArray
             ], 201);
 
         } catch (\Exception $e) {
@@ -249,6 +265,8 @@ class TicketClienteGeneralController extends Controller
             }
 
             $ticketArray = $this->cleanUtf8Strings($ticket->toArray());
+            $ticketArray['estado_nombre'] = $this->getEstadoNombre($ticket->estado);
+            $ticketArray['estado_clase'] = $this->getEstadoClase($ticket->estado);
 
             return response()->json([
                 'success' => true,
@@ -277,7 +295,7 @@ class TicketClienteGeneralController extends Controller
                 ], 404);
             }
 
-            // Validación MODIFICADA: acepta string para URLs existentes
+            // Validación actualizada para incluir el estado
             $validator = Validator::make($request->all(), [
                 'nombreCompleto' => 'sometimes|required|string|max:255',
                 'correoElectronico' => 'sometimes|required|email|max:255',
@@ -296,12 +314,11 @@ class TicketClienteGeneralController extends Controller
                 'detallesFalla' => 'sometimes|required|string',
                 'fechaCompra' => 'sometimes|required|date|before_or_equal:today',
                 'tiendaSedeCompra' => 'sometimes|required|string|max:255',
-                // MODIFICADO: Acepta archivo o string (URL existente)
                 'fotoVideoFalla' => 'nullable',
                 'fotoBoletaFactura' => 'nullable',
                 'fotoNumeroSerie' => 'nullable',
                 'ubicacionGoogleMaps' => 'nullable|url|max:500',
-                'estado' => 'sometimes|integer'
+                'estado' => 'sometimes|integer|in:' . self::ESTADO_PENDIENTE_ACEPTAR . ',' . self::ESTADO_GESTIONANDO . ',' . self::ESTADO_FINALIZADO
             ]);
 
             if ($validator->fails()) {
@@ -313,6 +330,48 @@ class TicketClienteGeneralController extends Controller
 
             $data = $request->except(['_method', 'fotoVideoFalla', 'fotoBoletaFactura', 'fotoNumeroSerie']);
 
+            // Registrar cambio de estado si ocurre
+            $estadoAnterior = $ticket->estado;
+            if ($request->has('estado') && $request->estado != $estadoAnterior) {
+                $data['fechaUltimoCambioEstado'] = now();
+                
+                // Registrar en bitácora o log el cambio de estado
+                \Log::info("Cambio de estado en ticket {$ticket->numero_ticket}: de {$estadoAnterior} a {$request->estado}");
+                
+                // Si el estado cambia a finalizado, registrar fecha de finalización
+                if ($request->estado == self::ESTADO_FINALIZADO) {
+                    $data['fechaFinalizacion'] = now();
+                }
+                
+                // Crear notificación de cambio de estado
+                try {
+                    $notificacionId = \DB::table('notificaciones_ticket_general')->insertGetId([
+                        'idTicketClienteGeneral' => $ticket->idTicketClienteGeneral,
+                        'estado_web' => 0,
+                        'estado_app' => 0,
+                        'fecha' => now(),
+                        'tipo' => 'CAMBIO_ESTADO',
+                        'estado_anterior' => $estadoAnterior,
+                        'estado_nuevo' => $request->estado,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                    
+                    $payload = [
+                        'type' => 'cambio_estado_evento',
+                        'idNotificacion' => (int) $notificacionId,
+                        'idTicket' => (int) $ticket->idTicketClienteGeneral,
+                        'numeroTicket' => $ticket->numero_ticket,
+                        'estadoAnterior' => $estadoAnterior,
+                        'estadoNuevo' => $request->estado,
+                        'estadoNombre' => $this->getEstadoNombre($request->estado)
+                    ];
+                    \App\Services\WsBridge::emitSolicitudEvento($payload);
+                } catch (\Throwable $e) {
+                    \Log::error('Error enviando notificación cambio estado: ' . $e->getMessage());
+                }
+            }
+
             // Procesar archivos SOLO si se subió un archivo nuevo (no un string URL)
             if ($request->hasFile('fotoVideoFalla')) {
                 if ($ticket->fotoVideoFalla) {
@@ -321,7 +380,6 @@ class TicketClienteGeneralController extends Controller
                 }
                 $data['fotoVideoFalla'] = $this->subirArchivo($request->file('fotoVideoFalla'), 'fallas');
             } else if ($request->input('fotoVideoFalla') !== null && $request->input('fotoVideoFalla') !== '') {
-                // Si es una URL (string) y no es vacío, mantener el valor actual
                 $data['fotoVideoFalla'] = $request->input('fotoVideoFalla');
             }
 
@@ -348,6 +406,8 @@ class TicketClienteGeneralController extends Controller
             $ticket->update($data);
             $ticket->load(['tipoDocumento', 'categoria', 'modelo', 'usuarioCreador']);
             $ticketArray = $this->cleanUtf8Strings($ticket->toArray());
+            $ticketArray['estado_nombre'] = $this->getEstadoNombre($ticket->estado);
+            $ticketArray['estado_clase'] = $this->getEstadoClase($ticket->estado);
 
             return response()->json([
                 'success' => true,
@@ -431,10 +491,30 @@ class TicketClienteGeneralController extends Controller
                 $modelos = collect();
             }
 
+            // Agregar lista de estados disponibles para el formulario
+            $estadosDisponibles = [
+                [
+                    'id' => self::ESTADO_PENDIENTE_ACEPTAR,
+                    'nombre' => $this->getEstadoNombre(self::ESTADO_PENDIENTE_ACEPTAR),
+                    'clase' => $this->getEstadoClase(self::ESTADO_PENDIENTE_ACEPTAR)
+                ],
+                [
+                    'id' => self::ESTADO_GESTIONANDO,
+                    'nombre' => $this->getEstadoNombre(self::ESTADO_GESTIONANDO),
+                    'clase' => $this->getEstadoClase(self::ESTADO_GESTIONANDO)
+                ],
+                [
+                    'id' => self::ESTADO_FINALIZADO,
+                    'nombre' => $this->getEstadoNombre(self::ESTADO_FINALIZADO),
+                    'clase' => $this->getEstadoClase(self::ESTADO_FINALIZADO)
+                ]
+            ];
+
             $data = [
                 'tiposDocumento' => $this->cleanUtf8Strings($tiposDocumento->toArray()),
                 'categorias' => $this->cleanUtf8Strings($categorias->toArray()),
-                'modelos' => $this->cleanUtf8Strings($modelos->toArray())
+                'modelos' => $this->cleanUtf8Strings($modelos->toArray()),
+                'estadosDisponibles' => $estadosDisponibles
             ];
 
             return response()->json([
@@ -542,6 +622,40 @@ class TicketClienteGeneralController extends Controller
                 'message' => 'Error al subir el archivo',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Obtener el nombre del estado según el código
+     */
+    private function getEstadoNombre($estado)
+    {
+        switch ($estado) {
+            case self::ESTADO_PENDIENTE_ACEPTAR:
+                return 'pendiente por aceptar';
+            case self::ESTADO_GESTIONANDO:
+                return 'gestionando';
+            case self::ESTADO_FINALIZADO:
+                return 'finalizado';
+            default:
+                return 'desconocido';
+        }
+    }
+
+    /**
+     * Obtener la clase CSS para el estado
+     */
+    private function getEstadoClase($estado)
+    {
+        switch ($estado) {
+            case self::ESTADO_PENDIENTE_ACEPTAR:
+                return 'warning';
+            case self::ESTADO_GESTIONANDO:
+                return 'info';
+            case self::ESTADO_FINALIZADO:
+                return 'success';
+            default:
+                return 'secondary';
         }
     }
 
@@ -926,7 +1040,9 @@ class TicketClienteGeneralController extends Controller
                 'fechaCompra' => $ticketBase->fechaCompra,
                 'fechaCreacion' => $ticketBase->fechaCreacion,
                 'tiendaSedeCompra' => $ticketBase->tiendaSedeCompra,
-                'estado' => $ticketBase->estado === 1 ? 'evaluando' : ($ticketBase->estado === 2 ? 'gestionando' : 'finalizado'),
+                'estado' => $ticketBase->estado,
+                'estado_nombre' => $this->getEstadoNombre($ticketBase->estado),
+                'estado_clase' => $this->getEstadoClase($ticketBase->estado),
                 'fotoVideoFalla' => $ticketBase->fotoVideoFalla,
                 'fotoBoletaFactura' => $ticketBase->fotoBoletaFactura,
                 'fotoNumeroSerie' => $ticketBase->fotoNumeroSerie,
@@ -957,6 +1073,166 @@ class TicketClienteGeneralController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error al consultar el ticket',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Método para cambiar el estado de un ticket específico
+     */
+    public function cambiarEstado(Request $request, $id)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'estado' => 'required|integer|in:' . self::ESTADO_PENDIENTE_ACEPTAR . ',' . self::ESTADO_GESTIONANDO . ',' . self::ESTADO_FINALIZADO,
+                'comentario' => 'nullable|string|max:500'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $ticket = TicketClienteGeneral::find($id);
+            
+            if (!$ticket) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ticket no encontrado'
+                ], 404);
+            }
+
+            $estadoAnterior = $ticket->estado;
+            $nuevoEstado = $request->estado;
+
+            $ticket->estado = $nuevoEstado;
+            $ticket->fechaUltimoCambioEstado = now();
+            
+            if ($nuevoEstado == self::ESTADO_FINALIZADO) {
+                $ticket->fechaFinalizacion = now();
+            }
+            
+            $ticket->save();
+
+            // Crear registro en bitácora de cambios de estado
+            \DB::table('cambios_estado_ticket')->insert([
+                'idTicketClienteGeneral' => $ticket->idTicketClienteGeneral,
+                'estado_anterior' => $estadoAnterior,
+                'estado_nuevo' => $nuevoEstado,
+                'comentario' => $request->comentario,
+                'idUsuario' => auth()->user()->idUsuario,
+                'fecha_cambio' => now(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Crear notificación de cambio de estado
+            try {
+                $notificacionId = \DB::table('notificaciones_ticket_general')->insertGetId([
+                    'idTicketClienteGeneral' => $ticket->idTicketClienteGeneral,
+                    'estado_web' => 0,
+                    'estado_app' => 0,
+                    'fecha' => now(),
+                    'tipo' => 'CAMBIO_ESTADO',
+                    'estado_anterior' => $estadoAnterior,
+                    'estado_nuevo' => $nuevoEstado,
+                    'comentario' => $request->comentario,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                
+                $payload = [
+                    'type' => 'cambio_estado_evento',
+                    'idNotificacion' => (int) $notificacionId,
+                    'idTicket' => (int) $ticket->idTicketClienteGeneral,
+                    'numeroTicket' => $ticket->numero_ticket,
+                    'estadoAnterior' => $estadoAnterior,
+                    'estadoNuevo' => $nuevoEstado,
+                    'estadoNombre' => $this->getEstadoNombre($nuevoEstado),
+                    'comentario' => $request->comentario
+                ];
+                \App\Services\WsBridge::emitSolicitudEvento($payload);
+            } catch (\Throwable $e) {
+                \Log::error('Error enviando notificación cambio estado: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estado del ticket actualizado exitosamente',
+                'data' => [
+                    'id' => $ticket->idTicketClienteGeneral,
+                    'numeroTicket' => $ticket->numero_ticket,
+                    'estado' => $ticket->estado,
+                    'estado_nombre' => $this->getEstadoNombre($ticket->estado),
+                    'estado_clase' => $this->getEstadoClase($ticket->estado),
+                    'fecha_cambio' => now()
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Error en cambiarEstado: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cambiar el estado del ticket',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Método para obtener el historial de cambios de estado de un ticket
+     */
+    public function historialEstados($id)
+    {
+        try {
+            $ticket = TicketClienteGeneral::find($id);
+            
+            if (!$ticket) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ticket no encontrado'
+                ], 404);
+            }
+
+            $historial = \DB::table('cambios_estado_ticket')
+                ->where('idTicketClienteGeneral', $id)
+                ->orderBy('fecha_cambio', 'desc')
+                ->get()
+                ->map(function($cambio) {
+                    return [
+                        'id' => $cambio->id,
+                        'estado_anterior' => $cambio->estado_anterior,
+                        'estado_anterior_nombre' => $this->getEstadoNombre($cambio->estado_anterior),
+                        'estado_nuevo' => $cambio->estado_nuevo,
+                        'estado_nuevo_nombre' => $this->getEstadoNombre($cambio->estado_nuevo),
+                        'comentario' => $cambio->comentario,
+                        'idUsuario' => $cambio->idUsuario,
+                        'fecha_cambio' => $cambio->fecha_cambio
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'ticket' => [
+                        'id' => $ticket->idTicketClienteGeneral,
+                        'numeroTicket' => $ticket->numero_ticket,
+                        'estado_actual' => $ticket->estado,
+                        'estado_actual_nombre' => $this->getEstadoNombre($ticket->estado),
+                        'estado_actual_clase' => $this->getEstadoClase($ticket->estado)
+                    ],
+                    'historial' => $historial
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Error en historialEstados: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener el historial de estados',
                 'error' => $e->getMessage()
             ], 500);
         }
