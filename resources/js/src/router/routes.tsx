@@ -131,19 +131,19 @@ path: '/analytics',
 
  {
     path: '/tickets',
-    element: <ListaTickets />,
+    element: <ProtectedRoute><ListaTickets /></ProtectedRoute>,
   },
   {
     path: '/tickets/crear',
-    element: <CrearTicket />
+    element: <ProtectedRoute><CrearTicket /></ProtectedRoute>,
   },
   {
     path: '/tickets/editar/:id',
-    element: <EditarTicket />,
+    element: <ProtectedRoute><EditarTicket /></ProtectedRoute>,
   },
   {
     path: '/tickets/consultar',
-    element: <ConsultarTicket />,
+    element: <ProtectedRoute><ConsultarTicket /></ProtectedRoute>,
   },
     // finance page
     // {
@@ -204,15 +204,15 @@ path: '/analytics',
     // components page
     {
         path: '/components/tabs',
-        element: <Tabs />,
+        element: <ProtectedRoute><Tabs /></ProtectedRoute>,
     },
     {
         path: '/components/accordions',
-        element: <Accordians />,
+        element: <ProtectedRoute><Accordians /></ProtectedRoute>,
     },
     {
         path: '/components/modals',
-        element: <Modals />,
+        element: <ProtectedRoute><Modals /></ProtectedRoute>,
     },
     // {
     //     path: '/components/cards',
@@ -261,75 +261,75 @@ path: '/analytics',
     // elements page
     {
         path: '/elements/alerts',
-        element: <Alerts />,
+        element: <ProtectedRoute><Alerts /></ProtectedRoute>,
     },
     {
         path: '/elements/avatar',
-        element: <Avatar />,
+        element: <ProtectedRoute><Avatar /></ProtectedRoute>,
     },
     {
         path: '/elements/badges',
-        element: <Badges />,
+        element: <ProtectedRoute><Badges /></ProtectedRoute>,
     },
     {
         path: '/elements/breadcrumbs',
-        element: <Breadcrumbs />,
+        element: <ProtectedRoute><Breadcrumbs /></ProtectedRoute>,
     },
     {
         path: '/elements/buttons',
-        element: <Buttons />,
+        element: <ProtectedRoute><Buttons /></ProtectedRoute>,
     },
     {
         path: '/elements/buttons-group',
-        element: <Buttongroups />,
+        element: <ProtectedRoute><Buttongroups /></ProtectedRoute>,
     },
     {
         path: '/elements/color-library',
-        element: <Colorlibrary />,
+        element: <ProtectedRoute><Colorlibrary /></ProtectedRoute>,
     },
     {
         path: '/elements/dropdown',
-        element: <DropdownPage />,
+        element: <ProtectedRoute><DropdownPage /></ProtectedRoute>,
     },
     {
         path: '/elements/infobox',
-        element: <Infobox />,
+        element: <ProtectedRoute><Infobox /></ProtectedRoute>,
     },
     {
         path: '/elements/jumbotron',
-        element: <Jumbotron />,
+        element: <ProtectedRoute><Jumbotron /></ProtectedRoute>,
     },
     {
         path: '/elements/loader',
-        element: <Loader />,
+        element: <ProtectedRoute><Loader /></ProtectedRoute>,
     },
     {
         path: '/elements/pagination',
-        element: <Pagination />,
+        element: <ProtectedRoute><Pagination /></ProtectedRoute>,
     },
     {
         path: '/elements/popovers',
-        element: <Popovers />,
+        element: <ProtectedRoute><Popovers /></ProtectedRoute>,
     },
     {
         path: '/elements/progress-bar',
-        element: <Progressbar />,
+        element: <ProtectedRoute><Progressbar /></ProtectedRoute>,
     },
     {
         path: '/elements/search',
-        element: <Search />,
+        element: <ProtectedRoute><Search /></ProtectedRoute>,
     },
     {
         path: '/elements/tooltips',
-        element: <Tooltip />,
+        element: <ProtectedRoute><Tooltip /></ProtectedRoute>,
     },
     {
         path: '/elements/treeview',
-        element: <Treeview />,
+        element: <ProtectedRoute><Treeview /></ProtectedRoute>,
     },
     {
         path: '/elements/typography',
-        element: <Typography />,
+        element: <ProtectedRoute><Typography /></ProtectedRoute>,
     },
 
     // charts page
@@ -345,7 +345,7 @@ path: '/analytics',
     //  font-icons page
     {
         path: '/font-icons',
-        element: <FontIcons />,
+        element: <ProtectedRoute><FontIcons /></ProtectedRoute>,
     },
     //  Drag And Drop page
     // {
@@ -504,72 +504,72 @@ path: '/analytics',
     //forms page
     {
         path: '/forms/basic',
-        element: <FormBasic />,
+        element: <ProtectedRoute><FormBasic /></ProtectedRoute>,
     },
     {
         path: '/forms/input-group',
-        element: <FormInputGroup />,
+        element: <ProtectedRoute><FormInputGroup /></ProtectedRoute>,
     },
     {
         path: '/forms/layouts',
-        element: <FormLayouts />,
+        element: <ProtectedRoute><FormLayouts /></ProtectedRoute>,
     },
     {
         path: '/forms/validation',
-        element: <Validation />,
+        element: <ProtectedRoute><Validation /></ProtectedRoute>,
     },
     {
         path: '/forms/input-mask',
-        element: <InputMask />,
+        element: <ProtectedRoute><InputMask /></ProtectedRoute>,
     },
     {
         path: '/forms/select2',
-        element: <Select2 />,
+        element: <ProtectedRoute><Select2 /></ProtectedRoute>,
     },
     {
         path: '/forms/touchspin',
-        element: <Touchspin />,
+        element: <ProtectedRoute><Touchspin /></ProtectedRoute>,
     },
     {
         path: '/forms/checkbox-radio',
-        element: <CheckBoxRadio />,
+        element: <ProtectedRoute><CheckBoxRadio /></ProtectedRoute>,
     },
     {
         path: '/forms/switches',
-        element: <Switches />,
+        element: <ProtectedRoute><Switches /></ProtectedRoute>,
     },
     {
         path: '/forms/wizards',
-        element: <Wizards />,
+        element: <ProtectedRoute><Wizards /></ProtectedRoute>,
     },
     {
         path: '/forms/file-upload',
-        element: <FileUploadPreview />,
+        element: <ProtectedRoute><FileUploadPreview /></ProtectedRoute>,
     },
     {
         path: '/forms/quill-editor',
-        element: <QuillEditor />,
+        element: <ProtectedRoute><QuillEditor /></ProtectedRoute>,
     },
     {
         path: '/forms/markdown-editor',
-        element: <MarkDownEditor />,
+        element: <ProtectedRoute><MarkDownEditor /></ProtectedRoute>,
     },
     {
         path: '/forms/date-picker',
-        element: <DateRangePicker />,
+        element: <ProtectedRoute><DateRangePicker /></ProtectedRoute>,
     },
     {
         path: '/forms/clipboard',
-        element: <Clipboard />,
+        element: <ProtectedRoute><Clipboard /></ProtectedRoute>,
     },
     {
         path: '/about',
-        element: <About />,
+        element: <ProtectedRoute><About /></ProtectedRoute>,
         layout: 'blank',
     },
     {
         path: '*',
-        element: <Error />,
+        element: <ProtectedRoute><Error /></ProtectedRoute>,
         layout: 'blank',
     },
 ];
