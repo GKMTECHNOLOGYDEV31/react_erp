@@ -473,6 +473,13 @@ const EditarTicket = () => {
     });
 
     // ============================================
+    // Forzar revalidación cuando cambien los archivos
+    // ============================================
+    useEffect(() => {
+        formik.validateForm();
+    }, [fileFalla, fileBoleta, fileSerie, deleteFalla, deleteBoleta, deleteSerie]);
+
+    // ============================================
     // CONFIGURACIÓN DE REACT-SELECT CON MODO DARK
     // ============================================
 
@@ -832,7 +839,7 @@ const EditarTicket = () => {
             setFileType(file.type);
             setFileName(file.name);
             
-            // Si se está subiendo un nuevo archivo, limpiar la bandera de eliminación
+            // IMPORTANTE: Limpiar la bandera de eliminación cuando se sube un nuevo archivo
             if (setDeleteFlag) {
                 setDeleteFlag(false);
             }
@@ -851,6 +858,11 @@ const EditarTicket = () => {
             if (fieldName) {
                 formik.setFieldValue(fieldName, '');
             }
+            
+            // Forzar revalidación después de actualizar el estado
+            setTimeout(() => {
+                formik.validateForm();
+            }, 100);
         }
     };
 

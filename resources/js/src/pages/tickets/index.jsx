@@ -7,7 +7,6 @@ import {
     faTicket,
     faPlus,
     faEdit,
-    faTrash,
     faEye,
     faFilter,
     faCheckCircle,
@@ -39,9 +38,8 @@ import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.css';
 import axios from 'axios';
 
-// Importar modales
+// Importar modal de ver ticket (eliminamos el modal de eliminar)
 import ModalVerTicket from './components/ModalVerTicket';
-import ModalEliminarTicket from './components/ModalEliminarTicket';
 
 // Constantes para los estados
 const ESTADOS = {
@@ -88,7 +86,6 @@ const ListaTickets = () => {
 
     // Estados para modales
     const [modalVer, setModalVer] = useState(false);
-    const [modalEliminar, setModalEliminar] = useState(false);
     const [selectedTicket, setSelectedTicket] = useState(null);
 
     // Refs para los inputs de fecha
@@ -285,11 +282,6 @@ const ListaTickets = () => {
         return estado_valor !== ESTADOS.PENDIENTE_ACEPTAR; // Solo editable si está pendiente por aceptar
     };
 
-    // Función para verificar si el botón de eliminar debe estar deshabilitado
-    const isDeleteDisabled = (estado_valor) => {
-        return estado_valor !== ESTADOS.PENDIENTE_ACEPTAR; // Solo eliminable si está pendiente por aceptar
-    };
-
     // Función para obtener el tooltip según el estado
     const getActionTooltip = (estado_valor, accion) => {
         if (estado_valor === ESTADOS.PENDIENTE_ACEPTAR) return `${accion} ticket`;
@@ -298,33 +290,7 @@ const ListaTickets = () => {
         return `${accion} ticket`;
     };
 
-    // Función para manejar eliminación desde el modal
-    const handleConfirmDelete = async (id) => {
-        setLoading(true);
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.delete(`${API_URL}/tickets/${id}`, {
-                headers: {
-                    Authorization: token ? `Bearer ${token}` : '',
-                },
-            });
-
-            if (response.data.success) {
-                toastr.success('Ticket eliminado correctamente');
-                cargarTickets();
-            } else {
-                toastr.error(response.data.message || 'Error al eliminar el ticket', 'Error');
-            }
-        } catch (error) {
-            console.error('Error al eliminar ticket:', error);
-            toastr.error(error.response?.data?.message || 'Error al eliminar el ticket', 'Error');
-        } finally {
-            setLoading(false);
-            setModalEliminar(false);
-        }
-    };
-
-    // Definir columnas para DataTable
+    // Definir columnas para DataTable (sin columna de eliminar)
     const columns = [
         {
             name: 'N° Ticket',
@@ -477,10 +443,10 @@ const ListaTickets = () => {
         {
             name: 'Acciones',
             style: {
-                minWidth: '150px',
+                minWidth: '100px',
             },
             cell: (row) => (
-                <div className="flex items-center justify-center gap-1 py-2">
+                <div className="flex items-center justify-center gap-2 py-2">
                     {/* Botón Ver - Siempre habilitado */}
                     <button
                         className="p-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-full transition-colors group"
@@ -509,25 +475,6 @@ const ListaTickets = () => {
                         disabled={isEditDisabled(row.estado_valor)}
                     >
                         <FontAwesomeIcon icon={faEdit} className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                    </button>
-
-                    {/* Botón Eliminar - Deshabilitado para estados 2 y 3 */}
-                    <button
-                        className={`p-1.5 rounded-full transition-colors group ${
-                            isDeleteDisabled(row.estado_valor)
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800'
-                                : 'hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400'
-                        }`}
-                        onClick={() => {
-                            if (!isDeleteDisabled(row.estado_valor)) {
-                                setSelectedTicket(row);
-                                setModalEliminar(true);
-                            }
-                        }}
-                        title={getActionTooltip(row.estado_valor, 'Eliminar')}
-                        disabled={isDeleteDisabled(row.estado_valor)}
-                    >
-                        <FontAwesomeIcon icon={faTrash} className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     </button>
                 </div>
             ),
@@ -826,10 +773,8 @@ const ListaTickets = () => {
                 />
             </div>
 
-            {/* Modales */}
+            {/* Modales - Solo modal de ver ticket */}
             <ModalVerTicket modal={modalVer} setModal={setModalVer} ticketData={selectedTicket} />
-
-            <ModalEliminarTicket modal={modalEliminar} setModal={setModalEliminar} ticketData={selectedTicket} onConfirm={handleConfirmDelete} />
         </div>
     );
 };

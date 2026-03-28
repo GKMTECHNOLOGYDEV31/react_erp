@@ -42,10 +42,6 @@ import {
     faClock,
     faUserCircle,
     faClipboardList,
-    faSignature,
-    faPen,
-    faUserTie,
-    faFileSignature,
     faExternalLinkAlt,
     faHourglassHalf,
 } from '@fortawesome/free-solid-svg-icons';
@@ -90,8 +86,10 @@ const ConsultarTicket = () => {
     const [modalFileType, setModalFileType] = useState(null);
     const [activeTab, setActiveTab] = useState('general');
     const [expandedVisita, setExpandedVisita] = useState(null);
+    const [generatingPdf, setGeneratingPdf] = useState(null);
 
     const API_URL = 'http://127.0.0.1:8000/api';
+    const PDF_API_URL = 'http://127.0.0.1:5000';
 
     // Configurar toastr
     toastr.options = {
@@ -103,74 +101,33 @@ const ConsultarTicket = () => {
         hideDuration: 500,
     };
 
-    // ============================================
-    // FUNCIONES PARA MANEJO DE ARCHIVOS
-    // ============================================
+    // Función para generar PDF - Abre en nueva pestaña sin usar axios
+    const handleGenerarPDF = (idTickets, idVisitas, visitaNombre) => {
+        if (!idTickets) {
+            toastr.error('No se encontró el ID del ticket', 'Error');
+            return;
+        }
 
-    // Función para determinar si una URL es una imagen
-    const isImageFile = (url) => {
-        if (!url) return false;
-        const urlWithoutParams = url.split('?')[0];
-        const extension = urlWithoutParams.split('.').pop()?.toLowerCase();
-        return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension);
-    };
+        if (!idVisitas) {
+            toastr.error('No se encontró el ID de la visita', 'Error');
+            return;
+        }
 
-    // Función para determinar si es un PDF
-    const isPdfFile = (url) => {
-        if (!url) return false;
-        const urlWithoutParams = url.split('?')[0];
-        const extension = urlWithoutParams.split('.').pop()?.toLowerCase();
-        return extension === 'pdf';
-    };
-
-    // Función para determinar si es un documento Word
-    const isWordFile = (url) => {
-        if (!url) return false;
-        const urlWithoutParams = url.split('?')[0];
-        const extension = urlWithoutParams.split('.').pop()?.toLowerCase();
-        return extension === 'doc' || extension === 'docx';
-    };
-
-    // Función para obtener el icono según el tipo de archivo
-    const getFileIcon = (url) => {
-        if (!url) return faFile;
+        setGeneratingPdf(idVisitas);
         
-        if (isImageFile(url)) return faImage;
-        if (isPdfFile(url)) return faFilePdf;
-        if (isWordFile(url)) return faFileWord;
-        return faFile;
-    };
-
-    // Función para obtener el color del icono
-    const getFileIconColor = (url) => {
-        if (!url) return 'text-gray-500';
-        
-        if (isImageFile(url)) return 'text-green-500';
-        if (isPdfFile(url)) return 'text-red-500';
-        if (isWordFile(url)) return 'text-blue-500';
-        return 'text-gray-500';
-    };
-
-    // Función para obtener el texto del tipo de archivo
-    const getFileTypeText = (url) => {
-        if (!url) return 'Archivo';
-        
-        const urlWithoutParams = url.split('?')[0];
-        const extension = urlWithoutParams.split('.').pop()?.toUpperCase();
-        
-        if (extension === 'PDF') return 'Documento PDF';
-        if (extension === 'DOC' || extension === 'DOCX') return 'Documento Word';
-        if (extension === 'JPG' || extension === 'JPEG') return 'Imagen JPG';
-        if (extension === 'PNG') return 'Imagen PNG';
-        if (extension === 'GIF') return 'Imagen GIF';
-        return `Archivo ${extension}`;
-    };
-
-    // Función para obtener el nombre del archivo
-    const getFileName = (url) => {
-        if (!url) return 'archivo';
-        const urlWithoutParams = url.split('?')[0];
-        return urlWithoutParams.split('/').pop() || 'archivo';
+        try {
+            const url = `${PDF_API_URL}/ordenes/smart/informe/${idTickets}/visita/${idVisitas}/pdf`;
+            console.log('Abriendo PDF en nueva pestaña:', url);
+            window.open(url, '_blank');
+            toastr.success(`PDF de la visita "${visitaNombre}" abierto en nueva pestaña`, 'Éxito');
+        } catch (error) {
+            console.error('Error al abrir PDF:', error);
+            toastr.error('Error al abrir el PDF. Intente nuevamente.', 'Error');
+        } finally {
+            setTimeout(() => {
+                setGeneratingPdf(null);
+            }, 500);
+        }
     };
 
     // Función para manejar la visualización del archivo
@@ -181,20 +138,86 @@ const ConsultarTicket = () => {
             setModalFile(fileUrl);
             setModalFileType('image');
         } else {
-            // Para PDFs y documentos, abrir en nueva pestaña
             window.open(fileUrl, '_blank');
         }
     };
 
-    // Función para obtener el badge de estado - ACTUALIZADA para manejar números
+    // Función para determinar si una URL es una imagen
+    const isImageFile = (url) => {
+        if (!url) return false;
+        if (url.startsWith('data:image/')) return true;
+        const urlWithoutParams = url.split('?')[0];
+        const extension = urlWithoutParams.split('.').pop()?.toLowerCase();
+        return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(extension);
+    };
+
+    // Función para determinar si es un PDF
+    const isPdfFile = (url) => {
+        if (!url) return false;
+        if (url.startsWith('data:application/pdf')) return true;
+        const urlWithoutParams = url.split('?')[0];
+        const extension = urlWithoutParams.split('.').pop()?.toLowerCase();
+        return extension === 'pdf';
+    };
+
+    // Función para determinar si es un documento Word
+    const isWordFile = (url) => {
+        if (!url) return false;
+        if (url.startsWith('data:application/msword') || url.startsWith('data:application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
+            return true;
+        }
+        const urlWithoutParams = url.split('?')[0];
+        const extension = urlWithoutParams.split('.').pop()?.toLowerCase();
+        return extension === 'doc' || extension === 'docx';
+    };
+
+    // Función para obtener el icono según el tipo de archivo
+    const getFileIcon = (url) => {
+        if (!url) return faFile;
+        if (isImageFile(url)) return faImage;
+        if (isPdfFile(url)) return faFilePdf;
+        if (isWordFile(url)) return faFileWord;
+        return faFile;
+    };
+
+    // Función para obtener el color del icono
+    const getFileIconColor = (url) => {
+        if (!url) return 'text-gray-500';
+        if (isImageFile(url)) return 'text-green-500';
+        if (isPdfFile(url)) return 'text-red-500';
+        if (isWordFile(url)) return 'text-blue-500';
+        return 'text-gray-500';
+    };
+
+    // Función para obtener el texto del tipo de archivo
+    const getFileTypeText = (url) => {
+        if (!url) return 'Archivo';
+        if (isImageFile(url)) return 'Imagen';
+        if (isPdfFile(url)) return 'Documento PDF';
+        if (isWordFile(url)) return 'Documento Word';
+        return 'Archivo';
+    };
+
+    // Función para obtener el nombre del archivo
+    const getFileName = (url) => {
+        if (!url) return 'archivo';
+        if (url.startsWith('data:')) {
+            if (isImageFile(url)) return 'imagen.jpg';
+            if (isPdfFile(url)) return 'documento.pdf';
+            if (isWordFile(url)) return 'documento.docx';
+            return 'archivo';
+        }
+        const urlWithoutParams = url.split('?')[0];
+        return urlWithoutParams.split('/').pop() || 'archivo';
+    };
+
+    // Función para obtener el badge de estado
     const getStatusBadge = (estado) => {
-        // Determinar el valor numérico del estado
         let estadoValor;
         
         if (typeof estado === 'number') {
             estadoValor = estado;
         } else if (typeof estado === 'string') {
-            // Mapear strings a valores numéricos
             if (estado === 'pendiente por aceptar') estadoValor = ESTADOS.PENDIENTE_ACEPTAR;
             else if (estado === 'gestionando') estadoValor = ESTADOS.GESTIONANDO;
             else if (estado === 'finalizado') estadoValor = ESTADOS.FINALIZADO;
@@ -321,7 +344,7 @@ const ConsultarTicket = () => {
         });
     };
 
-    // Modal para archivos (imagen o documento)
+    // Modal para archivos
     const FileModal = ({ file, fileType, onClose }) => {
         if (!file) return null;
 
@@ -357,7 +380,7 @@ const ConsultarTicket = () => {
         );
     };
 
-    // Componente para renderizar un archivo (imagen o documento)
+    // Componente para renderizar un archivo
     const FileRenderer = ({ fileUrl, label, icon }) => {
         if (!fileUrl) {
             return (
@@ -417,6 +440,53 @@ const ConsultarTicket = () => {
         }
     };
 
+    // Componente para renderizar un anexo en la visita
+    const AnexoRenderer = ({ anexo }) => {
+        if (!anexo.foto) {
+            return (
+                <div className="w-full h-24 bg-gray-200 rounded-lg flex items-center justify-center">
+                    <span className="text-gray-500 text-xs">Sin archivo</span>
+                </div>
+            );
+        }
+
+        const isImage = isImageFile(anexo.foto);
+        const fileIcon = getFileIcon(anexo.foto);
+        const iconColor = getFileIconColor(anexo.foto);
+        const fileTypeText = getFileTypeText(anexo.foto);
+        const fileName = getFileName(anexo.foto);
+
+        if (isImage) {
+            return (
+                <div className="relative group">
+                    <img
+                        src={anexo.foto}
+                        alt={anexo.descripcion || 'Anexo'}
+                        className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-300"
+                        onClick={() => handleFilePreview(anexo.foto)}
+                    />
+                    {anexo.descripcion && (
+                        <p className="text-xs text-gray-600 mt-1 truncate">{anexo.descripcion}</p>
+                    )}
+                </div>
+            );
+        } else {
+            return (
+                <div 
+                    className="w-full h-24 bg-gray-100 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors border border-gray-300"
+                    onClick={() => handleFilePreview(anexo.foto)}
+                >
+                    <FontAwesomeIcon icon={fileIcon} className={`w-8 h-8 ${iconColor} mb-1`} />
+                    <p className="text-[10px] text-gray-500 text-center px-1 truncate max-w-full">{fileName}</p>
+                    <p className="text-[9px] text-gray-400 mt-0.5">{fileTypeText}</p>
+                    {anexo.descripcion && (
+                        <p className="text-[9px] text-gray-500 mt-1 truncate max-w-full">{anexo.descripcion}</p>
+                    )}
+                </div>
+            );
+        }
+    };
+
     const InfoRow = ({ label, value, icon }) => (
         <div className="flex items-start">
             <span className="text-xl mr-3">{icon}</span>
@@ -426,75 +496,6 @@ const ConsultarTicket = () => {
             </div>
         </div>
     );
-
-    const TimelineItem = ({ fecha, estado, comentario, usuario, color }) => (
-        <div className="flex gap-4 mb-4">
-            <div className="relative">
-                <div className={`w-3 h-3 rounded-full mt-1.5 ${color ? `bg-${color}-500` : 'bg-gray-400'}`}></div>
-                {usuario && <div className="absolute top-4 left-1.5 w-0.5 h-full bg-gray-200"></div>}
-            </div>
-            <div className="flex-1 pb-4">
-                <div className="flex justify-between items-start">
-                    <span className="font-medium text-gray-800">{estado}</span>
-                    <span className="text-xs text-gray-500">{formatDate(fecha)}</span>
-                </div>
-                {comentario && <p className="text-sm text-gray-600 mt-1">{comentario}</p>}
-                {usuario && <p className="text-xs text-gray-500 mt-1">por {usuario}</p>}
-            </div>
-        </div>
-    );
-
-    const FirmasSection = ({ firmas, title }) => {
-        if (!firmas || firmas.length === 0) return null;
-
-        return (
-            <div className="mt-6">
-                <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <FontAwesomeIcon icon={faSignature} className="text-blue-600" />
-                    {title || 'Firmas'}
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {firmas.map((firma, idx) => (
-                        <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                            <div className="flex items-center gap-2 mb-2 text-gray-700">
-                                <FontAwesomeIcon icon={faUserTie} className="text-purple-600" />
-                                <span className="font-medium">{firma.nombreencargado || 'Sin nombre'}</span>
-                            </div>
-                            {firma.tipodocumento && firma.documento && (
-                                <p className="text-xs text-gray-600 mb-2">
-                                    {firma.tipodocumento}: {firma.documento}
-                                </p>
-                            )}
-                            <div className="grid grid-cols-2 gap-2 mt-2">
-                                {firma.firma_tecnico && (
-                                    <div className="text-center">
-                                        <p className="text-xs text-gray-500 mb-1">Firma Técnico</p>
-                                        <img
-                                            src={firma.firma_tecnico}
-                                            alt="Firma técnico"
-                                            className="max-h-16 mx-auto cursor-pointer border border-gray-300 rounded"
-                                            onClick={() => setModalFile(firma.firma_tecnico, 'image')}
-                                        />
-                                    </div>
-                                )}
-                                {firma.firma_cliente && (
-                                    <div className="text-center">
-                                        <p className="text-xs text-gray-500 mb-1">Firma Cliente</p>
-                                        <img
-                                            src={firma.firma_cliente}
-                                            alt="Firma cliente"
-                                            className="max-h-16 mx-auto cursor-pointer border border-gray-300 rounded"
-                                            onClick={() => setModalFile(firma.firma_cliente, 'image')}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div className="p-6 min-h-screen">
@@ -628,7 +629,7 @@ const ConsultarTicket = () => {
                         )}
                     </div>
 
-                    {/* Tabs de navegación */}
+                    {/* Tabs de navegación - ELIMINAMOS EL TAB DE FOTOS ADICIONALES */}
                     <div className="panel rounded-xl shadow-lg p-2">
                         <div className="flex space-x-2 overflow-x-auto">
                             <button
@@ -660,24 +661,6 @@ const ConsultarTicket = () => {
                                         <FontAwesomeIcon icon={faEye} />
                                         Visitas
                                     </button>
-                                    <button
-                                        className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
-                                            activeTab === 'firmas' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-                                        }`}
-                                        onClick={() => setActiveTab('firmas')}
-                                    >
-                                        <FontAwesomeIcon icon={faSignature} />
-                                        Firmas
-                                    </button>
-                                    <button
-                                        className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
-                                            activeTab === 'fotos' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-                                        }`}
-                                        onClick={() => setActiveTab('fotos')}
-                                    >
-                                        <FontAwesomeIcon icon={faCamera} />
-                                        Fotos Adicionales
-                                    </button>
                                 </>
                             )}
                         </div>
@@ -686,9 +669,7 @@ const ConsultarTicket = () => {
                     {/* Contenido según tab activo */}
                     {activeTab === 'general' && (
                         <>
-                            {/* Grid de Información General */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* INFORMACION DEL TICKET */}
                                 <div className="panel rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
                                     <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-blue-500 flex items-center gap-2">
                                         <FontAwesomeIcon icon={faTicket} className="w-6 h-6 text-blue-600" />
@@ -702,7 +683,6 @@ const ConsultarTicket = () => {
                                     </div>
                                 </div>
 
-                                {/* DATOS DEL CONTACTO */}
                                 <div className="panel rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
                                     <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-purple-500 flex items-center gap-2">
                                         <FontAwesomeIcon icon={faUser} className="w-6 h-6 text-purple-600" />
@@ -716,7 +696,6 @@ const ConsultarTicket = () => {
                                     </div>
                                 </div>
 
-                                {/* DIRECCIÓN */}
                                 <div className="panel rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
                                     <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-green-500 flex items-center gap-2">
                                         <FontAwesomeIcon icon={faMapMarkerAlt} className="w-6 h-6 text-green-600" />
@@ -742,7 +721,6 @@ const ConsultarTicket = () => {
                                     </div>
                                 </div>
 
-                                {/* PRODUCTO */}
                                 <div className="panel rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
                                     <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-orange-500 flex items-center gap-2">
                                         <FontAwesomeIcon icon={faLaptop} className="w-6 h-6 text-orange-600" />
@@ -757,7 +735,6 @@ const ConsultarTicket = () => {
                                 </div>
                             </div>
 
-                            {/* EVIDENCIAS - CON SOPORTE PARA DOCUMENTOS */}
                             <div className="panel rounded-2xl shadow-xl p-6">
                                 <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-gray-300 flex items-center gap-2">
                                     <FontAwesomeIcon icon={faCamera} className="w-6 h-6 text-gray-600" />
@@ -795,196 +772,125 @@ const ConsultarTicket = () => {
                         </div>
                     )}
 
-                    {/* Tab de Visitas */}
+                    {/* Tab de Visitas - CON BOTÓN GENERAR PDF Y FOTOS ADICIONALES DENTRO DE CADA VISITA */}
                     {activeTab === 'visitas' && ticket.visitas && ticket.visitas.length > 0 && (
                         <div className="space-y-6">
-                            {ticket.visitas.map((visita, index) => (
-                                <div key={index} className="bg-white rounded-2xl shadow-xl p-6">
-                                    <div className="flex justify-between items-center cursor-pointer" onClick={() => setExpandedVisita(expandedVisita === index ? null : index)}>
-                                        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                            <FontAwesomeIcon icon={faEye} className="text-green-600" />
-                                            Visita: {visita.nombre || `Visita #${index + 1}`}
-                                        </h3>
-                                        <FontAwesomeIcon icon={expandedVisita === index ? faTimes : faEye} className="text-gray-500" />
-                                    </div>
-
-                                    {expandedVisita === index && (
-                                        <>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-                                                <div>
-                                                    <InfoRow label="Fecha Programada" value={formatDate(visita.fecha_programada)} icon="📅" />
-                                                    <InfoRow label="Fecha Llegada" value={formatDate(visita.fecha_llegada)} icon="📅" />
-                                                </div>
-                                                <div>
-                                                    <InfoRow label="Necesita Apoyo" value={visita.necesita_apoyo ? 'Sí' : 'No'} icon="🤝" />
-                                                    <InfoRow label="Recojo" value={visita.recojo ? 'Sí' : 'No'} icon="📦" />
-                                                    {visita.celularcliente && <InfoRow label="Celular Cliente" value={visita.celularcliente} icon="📱" />}
-                                                </div>
+                            {ticket.visitas.map((visita, index) => {
+                                const idTickets = ticket.ordenTrabajo?.idTickets;
+                                const idVisitas = visita.id;
+                                const visitaNombre = visita.nombre || `Visita #${index + 1}`;
+                                
+                                // Filtrar las fotos adicionales que pertenecen a esta visita
+                                const fotosDeEstaVisita = ticket.fotosTicket?.filter(foto => foto.idVisitas === idVisitas) || [];
+                                
+                                return (
+                                    <div key={index} className="bg-white rounded-2xl shadow-xl p-6">
+                                        <div className="flex justify-between items-center cursor-pointer" onClick={() => setExpandedVisita(expandedVisita === index ? null : index)}>
+                                            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                                <FontAwesomeIcon icon={faEye} className="text-green-600" />
+                                                Visita: {visitaNombre}
+                                            </h3>
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleGenerarPDF(idTickets, idVisitas, visitaNombre);
+                                                    }}
+                                                    disabled={generatingPdf === idVisitas}
+                                                    className="px-3 py-1.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-sm font-medium rounded-lg transition-all flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title="Abrir PDF de esta visita"
+                                                >
+                                                    {generatingPdf === idVisitas ? (
+                                                        <>
+                                                            <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+                                                            Abriendo...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <FontAwesomeIcon icon={faFilePdf} className="w-4 h-4" />
+                                                            Ver PDF
+                                                        </>
+                                                    )}
+                                                </button>
+                                                <FontAwesomeIcon icon={expandedVisita === index ? faTimes : faEye} className="text-gray-500" />
                                             </div>
+                                        </div>
 
-                                            {/* Anexos de la visita - CON SOPORTE PARA DOCUMENTOS */}
-                                            {visita.anexos && visita.anexos.length > 0 && (
-                                                <div className="mt-4">
-                                                    <h4 className="font-semibold text-gray-700 mb-2">Anexos de la Visita ({visita.anexos.length})</h4>
-                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                        {visita.anexos.map((anexo, idx) => (
-                                                            <div key={idx} className="relative group">
-                                                                {anexo.foto ? (
-                                                                    isImageFile(anexo.foto) ? (
-                                                                        <img
-                                                                            src={anexo.foto}
-                                                                            alt={anexo.descripcion || 'Anexo'}
-                                                                            className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-300"
-                                                                            onClick={() => handleFilePreview(anexo.foto)}
-                                                                        />
+                                        {expandedVisita === index && (
+                                            <>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                                    <div>
+                                                        <InfoRow label="ID Visita" value={idVisitas} icon="🔢" />
+                                                        <InfoRow label="Fecha Programada" value={formatDate(visita.fecha_programada)} icon="📅" />
+                                                        <InfoRow label="Fecha Llegada" value={formatDate(visita.fecha_llegada)} icon="📅" />
+                                                    </div>
+                                                    <div>
+                                                        <InfoRow label="Necesita Apoyo" value={visita.necesita_apoyo ? 'Sí' : 'No'} icon="🤝" />
+                                                        <InfoRow label="Recojo" value={visita.recojo ? 'Sí' : 'No'} icon="📦" />
+                                                        {visita.celularcliente && <InfoRow label="Celular Cliente" value={visita.celularcliente} icon="📱" />}
+                                                    </div>
+                                                </div>
+
+                                                {/* Anexos de la visita */}
+                                                {visita.anexos && visita.anexos.length > 0 && (
+                                                    <div className="mt-4">
+                                                        <h4 className="font-semibold text-gray-700 mb-2">Anexos de la Visita ({visita.anexos.length})</h4>
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                            {visita.anexos.map((anexo, idx) => (
+                                                                <div key={idx}>
+                                                                    <AnexoRenderer anexo={anexo} />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Fotos adicionales de esta visita */}
+                                                {fotosDeEstaVisita.length > 0 && (
+                                                    <div className="mt-4">
+                                                        <h4 className="font-semibold text-gray-700 mb-2">Fotos Adicionales de la Visita ({fotosDeEstaVisita.length})</h4>
+                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                            {fotosDeEstaVisita.map((foto, idx) => (
+                                                                <div key={idx} className="relative group">
+                                                                    {foto.foto ? (
+                                                                        isImageFile(foto.foto) ? (
+                                                                            <>
+                                                                                <img
+                                                                                    src={foto.foto}
+                                                                                    alt={foto.descripcion || 'Archivo adicional'}
+                                                                                    className="w-full h-24 object-cover rounded-lg cursor-pointer border border-gray-300"
+                                                                                    onClick={() => handleFilePreview(foto.foto)}
+                                                                                />
+                                                                                {foto.descripcion && <p className="text-xs text-gray-600 mt-1 truncate">{foto.descripcion}</p>}
+                                                                            </>
+                                                                        ) : (
+                                                                            <div 
+                                                                                className="w-full h-24 bg-gray-100 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors border border-gray-300"
+                                                                                onClick={() => handleFilePreview(foto.foto)}
+                                                                            >
+                                                                                <FontAwesomeIcon icon={getFileIcon(foto.foto)} className={`w-8 h-8 ${getFileIconColor(foto.foto)} mb-1`} />
+                                                                                <p className="text-[10px] text-gray-500 text-center px-1 truncate max-w-full">{getFileName(foto.foto)}</p>
+                                                                                <p className="text-[9px] text-gray-400 mt-0.5">{getFileTypeText(foto.foto)}</p>
+                                                                                {foto.descripcion && <p className="text-[9px] text-gray-500 mt-1 truncate max-w-full">{foto.descripcion}</p>}
+                                                                            </div>
+                                                                        )
                                                                     ) : (
-                                                                        <div 
-                                                                            className="w-full h-24 bg-gray-100 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors border border-gray-300"
-                                                                            onClick={() => handleFilePreview(anexo.foto)}
-                                                                        >
-                                                                            <FontAwesomeIcon icon={getFileIcon(anexo.foto)} className={`w-8 h-8 ${getFileIconColor(anexo.foto)} mb-1`} />
-                                                                            <p className="text-[10px] text-gray-500 text-center px-1 truncate max-w-full">{getFileName(anexo.foto)}</p>
+                                                                        <div className="w-full h-24 bg-gray-200 rounded-lg flex items-center justify-center">
+                                                                            <span className="text-gray-500 text-xs">Sin archivo</span>
                                                                         </div>
-                                                                    )
-                                                                ) : (
-                                                                    <div className="w-full h-24 bg-gray-200 rounded-lg flex items-center justify-center">
-                                                                        <span className="text-gray-500 text-xs">Sin archivo</span>
-                                                                    </div>
-                                                                )}
-                                                                {anexo.descripcion && <p className="text-xs text-gray-600 mt-1 truncate">{anexo.descripcion}</p>}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Firmas de la visita */}
-                                            {visita.firmas && visita.firmas.length > 0 && <FirmasSection firmas={visita.firmas} title={`Firmas de la Visita (${visita.firmas.length})`} />}
-                                        </>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Tab de Firmas */}
-                    {activeTab === 'firmas' && (
-                        <div className="bg-white rounded-2xl shadow-xl p-6">
-                            <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-purple-500 flex items-center gap-2">
-                                <FontAwesomeIcon icon={faSignature} className="w-6 h-6 text-purple-600" />
-                                FIRMAS DEL TICKET
-                            </h3>
-
-                            {ticket.firmas && ticket.firmas.length > 0 ? (
-                                <div className="space-y-6">
-                                    {ticket.firmas.map((firma, idx) => (
-                                        <div key={idx} className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <InfoRow label="Nombre del Encargado" value={firma.nombreencargado} icon="👤" />
-                                                    {firma.tipodocumento && firma.documento && <InfoRow label="Documento" value={`${firma.tipodocumento}: ${firma.documento}`} icon="🆔" />}
-                                                    {firma.idVisitas > 0 && <InfoRow label="ID Visita" value={firma.idVisitas} icon="👁️" />}
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    {firma.firma_tecnico && (
-                                                        <div>
-                                                            <p className="text-sm font-medium text-gray-700 mb-2">Firma del Técnico</p>
-                                                            <img
-                                                                src={firma.firma_tecnico}
-                                                                alt="Firma técnico"
-                                                                className="max-h-24 border border-gray-300 rounded cursor-pointer"
-                                                                onClick={() => handleFilePreview(firma.firma_tecnico)}
-                                                            />
+                                                                    )}
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                    )}
-                                                    {firma.firma_cliente && (
-                                                        <div>
-                                                            <p className="text-sm font-medium text-gray-700 mb-2">Firma del Cliente</p>
-                                                            <img
-                                                                src={firma.firma_cliente}
-                                                                alt="Firma cliente"
-                                                                className="max-h-24 border border-gray-300 rounded cursor-pointer"
-                                                                onClick={() => handleFilePreview(firma.firma_cliente)}
-                                                            />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 text-gray-500">
-                                    <FontAwesomeIcon icon={faSignature} className="w-12 h-12 mb-3 text-gray-400" />
-                                    <p>No hay firmas registradas para este ticket</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Tab de Fotos Adicionales - CON SOPORTE PARA DOCUMENTOS */}
-                    {activeTab === 'fotos' && (
-                        <div className="bg-white rounded-2xl shadow-xl p-6">
-                            <h3 className="text-xl font-bold text-gray-800 mb-4 pb-3 border-b-2 border-green-500 flex items-center gap-2">
-                                <FontAwesomeIcon icon={faCamera} className="w-6 h-6 text-green-600" />
-                                ARCHIVOS ADICIONALES DEL TICKET
-                            </h3>
-
-                            {ticket.fotosTicket && ticket.fotosTicket.length > 0 ? (
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                    {ticket.fotosTicket.map((foto, idx) => (
-                                        <div key={idx} className="relative group">
-                                            {foto.foto ? (
-                                                isImageFile(foto.foto) ? (
-                                                    <>
-                                                        <img
-                                                            src={foto.foto}
-                                                            alt={foto.descripcion || 'Archivo adicional'}
-                                                            className="w-full h-32 object-cover rounded-lg cursor-pointer border border-gray-300"
-                                                            onClick={() => handleFilePreview(foto.foto)}
-                                                        />
-                                                        {foto.idVisitas > 0 && <span className="absolute top-1 right-1 bg-blue-500 text-white text-xs px-1 rounded">V{foto.idVisitas}</span>}
-                                                    </>
-                                                ) : (
-                                                    <div 
-                                                        className="w-full h-32 bg-gray-100 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors border border-gray-300"
-                                                        onClick={() => handleFilePreview(foto.foto)}
-                                                    >
-                                                        <FontAwesomeIcon icon={getFileIcon(foto.foto)} className={`w-8 h-8 ${getFileIconColor(foto.foto)} mb-1`} />
-                                                        <p className="text-[10px] text-gray-500 text-center px-1 truncate max-w-full">{getFileName(foto.foto)}</p>
-                                                        <p className="text-[9px] text-gray-400 mt-0.5">{getFileTypeText(foto.foto)}</p>
                                                     </div>
-                                                )
-                                            ) : (
-                                                <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
-                                                    <span className="text-gray-500 text-xs">Sin archivo</span>
-                                                </div>
-                                            )}
-                                            {foto.descripcion && <p className="text-xs text-gray-600 mt-1 truncate">{foto.descripcion}</p>}
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 text-gray-500">
-                                    <FontAwesomeIcon icon={faCamera} className="w-12 h-12 mb-3 text-gray-400" />
-                                    <p>No hay archivos adicionales para este ticket</p>
-                                </div>
-                            )}
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
-
-                    {/* Botones de Acción */}
-                    <div className="flex justify-end gap-4 mt-8">
-                        <a
-                            href={`http://127.0.0.1:5000/ordenes/smart/informe/${ticket.ordenTrabajo?.idTickets}/pdf`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
-                        >
-                            <FontAwesomeIcon icon={faFilePdf} className="w-5 h-5" />
-                            GENERAR PDF
-                        </a>
-                    </div>
                 </div>
             )}
         </div>
