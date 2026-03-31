@@ -131,19 +131,19 @@ path: '/analytics',
 
  {
     path: '/tickets',
-    element: <ProtectedRoute><ListaTickets /></ProtectedRoute>,
+    element: <ListaTickets />,
   },
   {
     path: '/tickets/crear',
-    element: <ProtectedRoute><CrearTicket /></ProtectedRoute>,
+    element: <CrearTicket />
   },
   {
     path: '/tickets/editar/:id',
-    element: <ProtectedRoute><EditarTicket /></ProtectedRoute>,
+    element: <EditarTicket />,
   },
   {
     path: '/tickets/consultar',
-    element: <ProtectedRoute><ConsultarTicket /></ProtectedRoute>,
+    element: <ConsultarTicket />,
   },
     // finance page
     // {
