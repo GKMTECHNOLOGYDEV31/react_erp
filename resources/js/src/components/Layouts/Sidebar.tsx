@@ -17,7 +17,7 @@ const Sidebar = () => {
     const { user } = useAuth();
     const [clienteGeneral, setClienteGeneral] = useState(null);
     const [loadingCliente, setLoadingCliente] = useState(false);
-    
+
     const API_URL = 'http://127.0.0.1:8000/api';
 
     // Mapeo de roles por ID
@@ -29,17 +29,19 @@ const Sidebar = () => {
 
     // Cargar datos del cliente general
     useEffect(() => {
-        console.log('🔍 Sidebar - Usuario:', user);
-        
         const cargarClienteGeneral = async () => {
-            if (!user) return;
-            
+            if (!user || !user.idRol) return;
+
+            console.log('Rol', user.idRol);
+
+            console.log('Rol', user.idRol);
+
             if (user.clienteGeneral) {
                 console.log('✅ Sidebar - Usando clienteGeneral del user:', user.clienteGeneral);
                 setClienteGeneral(user.clienteGeneral);
                 return;
             }
-            
+
             if (user.idClienteGeneral && !user.clienteGeneral) {
                 setLoadingCliente(true);
                 try {
@@ -82,7 +84,7 @@ const Sidebar = () => {
                 return `data:image/jpeg;base64,${clienteGeneral.foto}`;
             }
         }
-        
+
         if (user?.clienteGeneral?.foto) {
             if (typeof user.clienteGeneral.foto === 'string') {
                 if (user.clienteGeneral.foto.startsWith('data:image')) {
@@ -91,7 +93,7 @@ const Sidebar = () => {
                 return `data:image/jpeg;base64,${user.clienteGeneral.foto}`;
             }
         }
-        
+
         return '/assets/images/LOGO-GKM-1.webp';
     };
 
@@ -100,11 +102,11 @@ const Sidebar = () => {
         if (clienteGeneral?.descripcion) {
             return clienteGeneral.descripcion;
         }
-        
+
         if (user?.clienteGeneral?.descripcion) {
             return user.clienteGeneral.descripcion;
         }
-        
+
         return 'GKM TECHNOLOGY';
     };
 
@@ -116,9 +118,9 @@ const Sidebar = () => {
                 <div className="bg-white dark:bg-black h-full">
                     <div className="flex justify-between items-center px-4 py-3">
                         <NavLink to="/" className="main-logo flex items-center shrink-0">
-                            <img 
-                                className="w-8 ml-[5px] flex-none rounded" 
-                                src={getLogoUrl()} 
+                            <img
+                                className="w-8 ml-[5px] flex-none rounded"
+                                src={getLogoUrl()}
                                 alt={getEmpresaDescripcion()}
                                 onError={(e) => {
                                     console.log('Error cargando logo en sidebar, usando default');
@@ -141,11 +143,11 @@ const Sidebar = () => {
                             </svg>
                         </button>
                     </div>
-                    
+
                     <PerfectScrollbar className="h-[calc(100vh-80px)] relative">
                         <ul className="relative font-semibold space-y-0.5 p-4 py-0">
                             {/* DASHBOARD - Visible para ADMINISTRADOR e INVITADO */}
-                            {user && (user.idRol === ROLES.ADMINISTRADOR || user.idRol === ROLES.INVITADO) && (
+                            {user && user.idRol && (user.idRol === ROLES.ADMINISTRADOR || user.idRol === ROLES.INVITADO) && (
                                 <>
                                     <h2 className="py-3 px-7 flex items-center uppercase font-extrabold bg-white-light/30 dark:bg-dark dark:bg-opacity-[0.08] -mx-4 mb-1">
                                         <span>DASHBOARD</span>
@@ -173,7 +175,7 @@ const Sidebar = () => {
                             )}
 
                             {/* SECCIÓN TICKETS - Visible para ADMINISTRADOR y CALL CENTER */}
-                            {user && (user.idRol === ROLES.ADMINISTRADOR || user.idRol === ROLES.CALL_CENTER) && (
+                            {user && user.idRol && (user.idRol === ROLES.ADMINISTRADOR || user.idRol === ROLES.CALL_CENTER) && (
                                 <>
                                     <h2 className="py-3 px-7 flex items-center uppercase font-extrabold bg-white-light/30 dark:bg-dark dark:bg-opacity-[0.08] -mx-4 mb-1 mt-4">
                                         <span>TICKETS</span>
