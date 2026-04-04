@@ -93,7 +93,7 @@ const ListaTickets = () => {
     const endDateRef = useRef(null);
 
     // URL base de la API
-    const API_URL = 'http://127.0.0.1:8000/api';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
     // Obtener usuario actual del localStorage
     useEffect(() => {

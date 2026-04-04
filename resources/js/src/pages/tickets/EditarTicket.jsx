@@ -116,8 +116,8 @@ const EditarTicket = () => {
     const [modalFileType, setModalFileType] = useState(null);
 
     // URL base de la API
-    const API_URL = 'http://127.0.0.1:8000/api';
-
+    const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+//http://testmiportal.beyritech.com/api
     // ============================================
     // FUNCIONES AUXILIARES PARA ARCHIVOS
     // ============================================

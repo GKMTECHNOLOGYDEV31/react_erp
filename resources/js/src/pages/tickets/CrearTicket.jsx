@@ -106,8 +106,7 @@ const CrearTicket = () => {
     const [modalModelo, setModalModelo] = useState(false);
 
     // URL base de la API
-    const API_URL = 'http://127.0.0.1:8000/api';
-
+    const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
     // Función auxiliar para obtener el icono según el tipo de archivo
     const getFileIcon = (fileName, fileType) => {
         if (!fileName) return faFile;

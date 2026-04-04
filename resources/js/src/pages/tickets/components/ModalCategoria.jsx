@@ -7,7 +7,7 @@ import toastr from 'toastr';
 const ModalCategoria = ({ modal, setModal, onCategoriaCreada }) => {
     const [nombre, setNombre] = useState('');
     const [loading, setLoading] = useState(false);
-    const API_URL = 'http://127.0.0.1:8000/api';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
